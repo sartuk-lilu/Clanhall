@@ -1,0 +1,73 @@
+# Unreal Engine auto-generated folders
+.idea/
+.obsidian/
+.vs/
+Binaries/
+Config/
+Build/
+Content/
+DerivedDataCache/
+Docs/
+Intermediate/
+Plugins/
+package/
+Saved/
+FeaturePacks/
+
+# Visual Studio files
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.opensdf
+*.VC.db
+*.csproj
+*.vcxproj
+*.ncb
+*.dbmdl
+*.dbproj
+
+# Text editor files
+*.md
+
+# Compiled files
+*.exe
+*.dll
+*.lib
+*.app
+*.dylib
+*.pdb
+*.obj
+*.o
+*.so
+*.apk
+
+# Logs and dumps
+*.log
+*.dmp
+*.htm
+
+# Backup and temp
+*.tmp
+*.bak
+*.old
+*.autosave
+*.backup
+
+# Plugin build artifacts
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+Plugins/*/Saved/
+
+# Git metadata
+*.orig
+*.swp
+*.swo
+*.swn
+
+# OS metadata
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store
