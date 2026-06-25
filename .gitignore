@@ -1,4 +1,4 @@
-# Unreal Engine auto-generated folders
+.claude/
 .idea/
 .obsidian/
 .vs/
@@ -14,7 +14,11 @@ package/
 Saved/
 FeaturePacks/
 
+#Unreal Engine auto-generated files
+*.uproject
+
 # Visual Studio files
+*.slnx
 *.sln
 *.suo
 *.user
