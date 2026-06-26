@@ -17,6 +17,7 @@ class UAbilitySystemComponent;
 class UClanhallAttributeSet;
 class UClanhallMarkComponent;
 class UClanhallParryComponent;
+class UClanhallWeaponTraceComponent;
 class UAbilityData;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -40,9 +41,14 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallMarkComponent> MarkComponent;
 
-	/** Раздел 5: состояние окна парирования — читается GA_EnemyWASDSeries, пишется обработчиками WASD. */
+	/** Раздел 5: флаг bParrySuccessful — пишет ClanhallWeaponTraceComponent, читает GA_EnemyWASDSeries. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallParryComponent> ParryComponent;
+
+	/** Раздел 6.5: sweep-трейс оружия, открывается AnimNotify_WeaponTraceStart/End.
+	 *  При попадании во врага со State.Parrying вызывает ParryComponent->TryParry(). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallWeaponTraceComponent> WeaponTraceComponent;
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))

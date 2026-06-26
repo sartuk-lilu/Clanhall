@@ -72,6 +72,10 @@ namespace ClanhallGameplayTags
 	// ровно один SetByCaller-модификатор, поэтому им достаточно одного общего тега-слота.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(SetByCaller_Magnitude);
 
+	// ---- Event.* ----
+	// GameplayEvent-сигналы от AnimNotify к активной способности.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_ApplyMark);
+
 	// ---- Magic.School.* ----
 	// Только корни школ. Структура рангов (Rank.*) откладывается до Раздела 9 —
 	// преждевременно фиксировать форму, которая ещё не используется кодом.

@@ -23,6 +23,7 @@
 #include "AbilitySystem/Effects/GE_BalanceDrift.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
+#include "AbilitySystem/ClanhallWeaponTraceComponent.h"
 #include "Engine/Engine.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Engine/EngineTypes.h"
@@ -75,6 +76,8 @@ AClanhallCharacter::AClanhallCharacter()
 	// сам кладёт на врагов. См. UClanhallMarkComponent.
 	MarkComponent = CreateDefaultSubobject<UClanhallMarkComponent>(TEXT("MarkComponent"));
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
+	// Раздел 6.5: weapon trace для парирования и будущей damage-on-hit логики.
+	WeaponTraceComponent = CreateDefaultSubobject<UClanhallWeaponTraceComponent>(TEXT("WeaponTraceComponent"));
 }
 
 UAbilitySystemComponent* AClanhallCharacter::GetAbilitySystemComponent() const
@@ -291,12 +294,8 @@ void AClanhallCharacter::OnStanceReleased()
 
 void AClanhallCharacter::OnAttackOverhead()
 {
-	// W парирует атаку с тегом Parry.Incoming.S (AI бьёт S → ответ W).
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Parrying.GetTag()))
-	{
-		if (ParryComponent) ParryComponent->TryParry(ClanhallGameplayTags::Parry_Incoming_S.GetTag());
-		return;
-	}
+	// Раздел 6.5: парирование обрабатывает UClanhallWeaponTraceComponent при хите врага.
+	// State.Parrying теперь на ASC врага (не игрока) — input-based проверка удалена.
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(AttackOverheadHandle);
@@ -305,12 +304,6 @@ void AClanhallCharacter::OnAttackOverhead()
 
 void AClanhallCharacter::OnAttackRightSlash()
 {
-	// D парирует атаку с тегом Parry.Incoming.A (AI бьёт A → ответ D).
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Parrying.GetTag()))
-	{
-		if (ParryComponent) ParryComponent->TryParry(ClanhallGameplayTags::Parry_Incoming_A.GetTag());
-		return;
-	}
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(AttackRightSlashHandle);
@@ -319,12 +312,6 @@ void AClanhallCharacter::OnAttackRightSlash()
 
 void AClanhallCharacter::OnAttackLeftSlash()
 {
-	// A парирует атаку с тегом Parry.Incoming.D (AI бьёт D → ответ A).
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Parrying.GetTag()))
-	{
-		if (ParryComponent) ParryComponent->TryParry(ClanhallGameplayTags::Parry_Incoming_D.GetTag());
-		return;
-	}
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(AttackLeftSlashHandle);
@@ -333,12 +320,6 @@ void AClanhallCharacter::OnAttackLeftSlash()
 
 void AClanhallCharacter::OnAttackLowSweep()
 {
-	// S парирует атаку с тегом Parry.Incoming.W (AI бьёт W → ответ S).
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Parrying.GetTag()))
-	{
-		if (ParryComponent) ParryComponent->TryParry(ClanhallGameplayTags::Parry_Incoming_W.GetTag());
-		return;
-	}
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(AttackLowSweepHandle);

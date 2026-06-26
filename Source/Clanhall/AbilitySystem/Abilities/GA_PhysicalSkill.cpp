@@ -1,6 +1,7 @@
 #include "GA_PhysicalSkill.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Fragments/GameplayFragments.h"
+#include "AbilitySystem/Fragments/PresentationFragments.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallMarkTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
@@ -8,6 +9,8 @@
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Animation/AnimInstance.h"
+#include "GameFramework/Character.h"
 #include "Engine/Engine.h"
 
 UGA_PhysicalSkill::UGA_PhysicalSkill()
@@ -174,6 +177,23 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 						SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
 				}
 #endif
+			}
+		}
+
+		// Раздел 6.5: воспроизводим монтаж если AnimationFragment заполнен (косметика).
+		// Урон и метка уже применены выше мгновенно. AnimNotify_ApplyMark в монтаже
+		// отправит Event.ApplyMark — будущая async-версия способности будет ждать его.
+		if (const UAnimationFragment* AnimFrag = Data->FindFragment<UAnimationFragment>())
+		{
+			if (AnimFrag->CastMontage)
+			{
+				if (ACharacter* Char = Cast<ACharacter>(Avatar))
+				{
+					if (UAnimInstance* AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr)
+					{
+						AnimInst->Montage_Play(AnimFrag->CastMontage);
+					}
+				}
 			}
 		}
 	}

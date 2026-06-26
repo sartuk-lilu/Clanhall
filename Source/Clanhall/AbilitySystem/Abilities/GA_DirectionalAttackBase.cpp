@@ -1,9 +1,12 @@
 #include "GA_DirectionalAttackBase.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
+#include "AbilitySystem/ClanhallWeaponTraceComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Animation/AnimInstance.h"
+#include "GameFramework/Character.h"
 #include "Engine/Engine.h"
 
 UGA_DirectionalAttackBase::UGA_DirectionalAttackBase()
@@ -18,6 +21,17 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 
 	if (SourceASC && Avatar)
 	{
+		// Раздел 6.5: сообщаем WeaponTraceComponent направление до BeginTrace (который придёт
+		// из AnimNotify_WeaponTraceStart во время монтажа).
+		if (ACharacter* Char = Cast<ACharacter>(Avatar))
+		{
+			if (UClanhallWeaponTraceComponent* TraceComp = Char->FindComponentByClass<UClanhallWeaponTraceComponent>())
+			{
+				TraceComp->SetCurrentDirection(GetDirection());
+			}
+		}
+
+		// Мгновенный урон (sphere hit) — placeholder до полной animation-driven системы.
 		if (AActor* Target = FindMeleeTarget(Avatar))
 		{
 			IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
@@ -34,8 +48,6 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 				ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), BalanceShift);
 
 #if !UE_BUILD_SHIPPING
-				// Временный debug-вывод на экран — Раздел 2 ещё без HUD (development_plan.md, "минимальный HUD").
-				// Убрать, когда атрибуты станут видны на полосках HUD.
 				if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
 				{
 					GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, FString::Printf(
@@ -44,6 +56,20 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 						SelfAttributes->GetMP(), SelfAttributes->GetMaxMP(), SelfAttributes->GetBalance()));
 				}
 #endif
+			}
+		}
+
+		// Раздел 6.5: монтаж воспроизводится как косметика. AnimNotify_WeaponTraceStart/End
+		// в нём открывают/закрывают weapon trace независимо от жизненного цикла этой абилки.
+		if (AttackMontage)
+		{
+			ACharacter* Char = Cast<ACharacter>(Avatar);
+			if (Char && Char->GetMesh())
+			{
+				if (UAnimInstance* AnimInst = Char->GetMesh()->GetAnimInstance())
+				{
+					AnimInst->Montage_Play(AttackMontage);
+				}
 			}
 		}
 	}

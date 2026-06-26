@@ -77,8 +77,11 @@ void UGA_EnemyWASDSeries::PrepareHit()
 		FString::Printf(TEXT("↓ INCOMING [%s]  — press opposite!"), *DirectionChar));
 #endif
 
-	// Открыть окно парирования: навесить State.Parrying + конкретный Parry.Incoming.* на игрока.
-	ClanhallGameplayEffects::ApplyTimedTagToTarget(SelfASC, TargetASC.Get(), ClanhallGameplayTags::State_Parrying.GetTag(), WindowDuration);
+	// Раздел 6.5: State.Parrying вешается на SELF (враг — паррируемый актор).
+	// Это interim-замена AnimNotify_ParryWindowStart/End — когда animation setup будет готов
+	// в редакторе, этот вызов можно убрать, и тег будет управляться только нотифаями.
+	ClanhallGameplayEffects::ApplyTimedTag(SelfASC, ClanhallGameplayTags::State_Parrying.GetTag(), WindowDuration);
+	// Parry.Incoming.* по-прежнему вешается на игрока — он должен знать, какое направление контрить.
 	ClanhallGameplayEffects::ApplyTimedTagToTarget(SelfASC, TargetASC.Get(), IncomingTag, WindowDuration);
 
 	// Дождаться истечения окна.
