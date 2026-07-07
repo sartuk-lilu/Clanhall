@@ -27,11 +27,9 @@ public:
 
 protected:
 	/** Плейсхолдер урона WASD-удара — канон фиксирует числа только для активных навыков. */
-	UPROPERTY(EditDefaultsOnly, Category="Attack")
-	float RawDamage = 30.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Attack")
+	float RawDamage = 10.0f;
 
-	/** Монтаж удара. Weapon trace и парирование работают через AnimNotify в монтаже.
-	 *  Урон по-прежнему мгновенный (sphere hit при активации) — монтаж косметический. */
-	UPROPERTY(EditDefaultsOnly, Category="Animation")
+	UPROPERTY(EditDefaultsOnly, Category = "Attack")
 	TObjectPtr<UAnimMontage> AttackMontage;
 };

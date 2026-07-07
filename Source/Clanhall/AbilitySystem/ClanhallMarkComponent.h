@@ -20,8 +20,9 @@ public:
 	UClanhallMarkComponent();
 
 	/** Снимает текущую метку (если есть) и накладывает новую на 5 сек.
+	 *  InSourceASC — кто наложил метку (игрок или враг). Нужно для IsOwnMark().
 	 *  Правило максимума (mark_system.md §2, Правило 3): на участнике всегда не больше одной метки. */
-	void ApplyMark(FGameplayTag NewMark);
+	void ApplyMark(FGameplayTag NewMark, UAbilitySystemComponent* InSourceASC = nullptr);
 
 	/** Снимает текущую метку без замены — используется когда метка сгорает в синергии (Правило 2). */
 	void ClearMark();
@@ -31,6 +32,11 @@ public:
 
 	bool HasMark(FGameplayTag MarkTag) const { return MarkTag.IsValid() && GetCurrentMark() == MarkTag; }
 
+	/** Возвращает true если QueryASC является источником текущей метки.
+	 *  Своя метка (промах игрока) — переносится на врага при следующем попадании.
+	 *  Вражеская метка — атакой не снимается (mark_system.md §3, правка 1.2). */
+	bool IsOwnMark(const UAbilitySystemComponent* QueryASC) const;
+
 private:
 	UAbilitySystemComponent* GetOwnerASC() const;
 
@@ -39,4 +45,7 @@ private:
 	FGameplayTag CachedMarkTag;
 
 	FActiveGameplayEffectHandle ActiveMarkEffectHandle;
+
+	// Кто наложил текущую метку. Валиден пока метка жива.
+	TWeakObjectPtr<UAbilitySystemComponent> CurrentMarkSourceASC;
 };

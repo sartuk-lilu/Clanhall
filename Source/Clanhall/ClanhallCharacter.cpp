@@ -24,6 +24,8 @@
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/ClanhallWeaponTraceComponent.h"
+#include "AbilitySystem/ClanhallTargetingComponent.h"
+#include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "Engine/Engine.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Engine/EngineTypes.h"
@@ -78,6 +80,17 @@ AClanhallCharacter::AClanhallCharacter()
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
 	// Раздел 6.5: weapon trace для парирования и будущей damage-on-hit логики.
 	WeaponTraceComponent = CreateDefaultSubobject<UClanhallWeaponTraceComponent>(TEXT("WeaponTraceComponent"));
+	// HUD: camera line trace, мягкая цель под удар/метку (Enemy Frame больше не водит).
+	TargetingComponent = CreateDefaultSubobject<UClanhallTargetingComponent>(TEXT("TargetingComponent"));
+	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (changelog_enemyframe_unitroles.md §3).
+	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
+
+	// WASD-классы дефолтно равны C++ классам; Blueprint персонажа может переопределить их
+	// на BP-наследников с заполненным AttackMontage (см. GA_DirectionalAttackBase.h).
+	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
+	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
+	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
+	AttackLowSweepClass   = UGA_DirectionalAttack_LowSweep::StaticClass();
 }
 
 UAbilitySystemComponent* AClanhallCharacter::GetAbilitySystemComponent() const
@@ -129,10 +142,10 @@ void AClanhallCharacter::BeginPlay()
 
 		// Грант способностей боевой стойки и 4 направлений WASD-удара (combat_system.md §3-4).
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
-		AttackOverheadHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_DirectionalAttack_Overhead::StaticClass(), 1, INDEX_NONE, this));
-		AttackRightSlashHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_DirectionalAttack_RightSlash::StaticClass(), 1, INDEX_NONE, this));
-		AttackLeftSlashHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_DirectionalAttack_LeftSlash::StaticClass(), 1, INDEX_NONE, this));
-		AttackLowSweepHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_DirectionalAttack_LowSweep::StaticClass(), 1, INDEX_NONE, this));
+		AttackOverheadHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackOverheadClass,   1, INDEX_NONE, this));
+		AttackRightSlashHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackRightSlashClass, 1, INDEX_NONE, this));
+		AttackLeftSlashHandle  = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLeftSlashClass,  1, INDEX_NONE, this));
+		AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 		// Раздел 4: кит Knight — один класс GA_PhysicalSkill гранится 4 раза,
 		// каждый раз с разным UAbilityData как SourceObject (development_plan.md).

@@ -1,9 +1,11 @@
 #include "ClanhallTrainingDummy.h"
 #include "AbilitySystemComponent.h"
+#include "TimerManager.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/Abilities/GA_EnemyWASDSeries.h"
 #include "AbilitySystem/Abilities/GA_EnemyActiveSkill.h"
+#include "AbilitySystem/ClanhallGameplayTags.h"
 
 AClanhallTrainingDummy::AClanhallTrainingDummy()
 {
@@ -27,6 +29,10 @@ void AClanhallTrainingDummy::BeginPlay()
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		// changelog_enemyframe_unitroles.md §1-2: Часовой — edge-case (не моб, не учит игрока),
+		// провизорно Unit.Role.Boss.Humanoid, чтобы сохранить рамку боссфайта для теста.
+		AbilitySystemComponent->AddLooseGameplayTag(ClanhallGameplayTags::Unit_Role_Boss_Humanoid);
 
 		// Раздел 5: грантируем «Перекрёстный» A→D и запускаем цикл каждые 4 сек.
 		SeriesHandle = AbilitySystemComponent->GiveAbility(

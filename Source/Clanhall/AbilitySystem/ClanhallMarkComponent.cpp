@@ -23,7 +23,7 @@ UAbilitySystemComponent* UClanhallMarkComponent::GetOwnerASC() const
 	return nullptr;
 }
 
-void UClanhallMarkComponent::ApplyMark(FGameplayTag NewMark)
+void UClanhallMarkComponent::ApplyMark(FGameplayTag NewMark, UAbilitySystemComponent* InSourceASC)
 {
 	UAbilitySystemComponent* ASC = GetOwnerASC();
 	if (!ASC || !NewMark.IsValid())
@@ -38,6 +38,7 @@ void UClanhallMarkComponent::ApplyMark(FGameplayTag NewMark)
 	if (ActiveMarkEffectHandle.IsValid())
 	{
 		CachedMarkTag = NewMark;
+		CurrentMarkSourceASC = InSourceASC;
 	}
 }
 
@@ -53,6 +54,14 @@ void UClanhallMarkComponent::ClearMark()
 
 	ActiveMarkEffectHandle.Invalidate();
 	CachedMarkTag = FGameplayTag();
+	CurrentMarkSourceASC = nullptr;
+}
+
+bool UClanhallMarkComponent::IsOwnMark(const UAbilitySystemComponent* QueryASC) const
+{
+	return GetCurrentMark().IsValid()
+		&& CurrentMarkSourceASC.IsValid()
+		&& CurrentMarkSourceASC.Get() == QueryASC;
 }
 
 FGameplayTag UClanhallMarkComponent::GetCurrentMark() const

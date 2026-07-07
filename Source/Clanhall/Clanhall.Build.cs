@@ -29,6 +29,7 @@ public class Clanhall : ModuleRules
 		PublicIncludePaths.AddRange(new string[] {
 			"Clanhall",
 			"Clanhall/Animation",
+			"Clanhall/UI",
 			"Clanhall/Variant_Platforming",
 			"Clanhall/Variant_Platforming/Animation",
 			"Clanhall/Variant_Combat",

@@ -71,7 +71,9 @@ void UGA_EnemyActiveSkill::OnHitDelayExpired()
 		{
 			if (UClanhallMarkComponent* MarkComp = PlayerPawn->FindComponentByClass<UClanhallMarkComponent>())
 			{
-				MarkComp->ApplyMark(HitMarkTag);
+				// SelfASC — источник врага: IsOwnMark(PlayerASC) вернёт false.
+				// Игрок не сможет снять эту метку атакой (mark_system.md §3, правка 1.2).
+				MarkComp->ApplyMark(HitMarkTag, SelfASC);
 			}
 		}
 	}

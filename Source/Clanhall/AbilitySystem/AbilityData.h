@@ -28,9 +28,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	float Cooldown = 10.0f;
 
-	/** Уникальный для этого навыка тег "сейчас на КД" — см. ClanhallGameplayTags (Cooldown.*).
-	 *  Не путать с Ability.Skill.* (та таксономия — идентичность навыка для контрнавыка, Раздел 6). */
-	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Cooldown"))
+	/** Тег слота КД — Cooldown.Slot.Q/E/R/F/... (ability_system.md §3).
+	 *  КД принадлежит СЛОТУ, общему для всех оружий. Не путать с Ability.Skill.* (идентичность навыка). */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Cooldown.Slot"))
 	FGameplayTag CooldownTag;
 
 	/** Тег требуемого класса — Ability.Class.Knight и т.д. */

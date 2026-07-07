@@ -109,7 +109,7 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 
 	if (const UMarkApplyFragment* MarkApply = Data->FindFragment<UMarkApplyFragment>())
 	{
-		TargetMarkComponent->ApplyMark(MarkApply->MarkTag);
+		TargetMarkComponent->ApplyMark(MarkApply->MarkTag, SourceASC);
 	}
 }
 
@@ -130,6 +130,10 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		{
 			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(Data->ChargeCost));
 		}
+
+		// Метка на самом игроке: могла прийти от врага (активный навык босса) или от промаха
+		// собственного навыка. Нужна для переноса своей метки на врага при попадании (правка 1.2).
+		UClanhallMarkComponent* SelfMarkComponent = Avatar->FindComponentByClass<UClanhallMarkComponent>();
 
 		if (AActor* Target = FindMeleeTarget(Avatar))
 		{
@@ -152,6 +156,16 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			{
 				if (UClanhallMarkComponent* TargetMarkComponent = Target->FindComponentByClass<UClanhallMarkComponent>())
 				{
+					// mark_system.md правка 1.2: если у игрока висит СВОЯ метка (осталась от промаха
+					// собственного навыка) — она переносится на врага до обычной mark-логики.
+					// Вражеская метка (от босса) атакой не снимается и сюда не попадает.
+					if (SelfMarkComponent && SelfMarkComponent->IsOwnMark(SourceASC))
+					{
+						const FGameplayTag SelfMark = SelfMarkComponent->GetCurrentMark();
+						SelfMarkComponent->ClearMark();
+						TargetMarkComponent->ApplyMark(SelfMark, SourceASC);
+					}
+
 					ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
 				}
 
@@ -177,6 +191,20 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 						SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
 				}
 #endif
+			}
+		}
+
+		else
+		{
+			// ПРОМАХ: цель не найдена в зоне удара.
+			// mark_system.md §2 Правило 1: метка навыка остаётся у самого игрока на 5 сек.
+			// Если затем игрок попадёт следующим навыком — эта метка перейдёт на врага (см. выше IsOwnMark).
+			if (SelfMarkComponent)
+			{
+				if (const UMarkApplyFragment* MarkApply = Data->FindFragment<UMarkApplyFragment>())
+				{
+					SelfMarkComponent->ApplyMark(MarkApply->MarkTag, SourceASC);
+				}
 			}
 		}
 

@@ -18,7 +18,10 @@ class UClanhallAttributeSet;
 class UClanhallMarkComponent;
 class UClanhallParryComponent;
 class UClanhallWeaponTraceComponent;
+class UClanhallTargetingComponent;
+class UClanhallBossSensorComponent;
 class UAbilityData;
+class UGA_DirectionalAttackBase;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -49,6 +52,17 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	 *  При попадании во врага со State.Parrying вызывает ParryComponent->TryParry(). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallWeaponTraceComponent> WeaponTraceComponent;
+
+	/** HUD: camera-forward line trace 20 м. CurrentTarget → Enemy Frame виджета.
+	 *  OnTargetChanged — делегат для биндинга в WBP_HUD. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallTargetingComponent> TargetingComponent;
+
+	/** HUD: держит Unit.Role.Boss.* юнитов в радиусе игрока, вещает OnFrameUnitEntered/Exited
+	 *  для мульти-контейнера Enemy Frame (changelog_enemyframe_unitroles.md §3). Рамку водит этот
+	 *  компонент, а не TargetingComponent — тот остаётся мягкой целью под удар/метку. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallBossSensorComponent> BossSensorComponent;
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -97,6 +111,20 @@ protected:
 	/** S в стойке — Low Sweep */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* AttackLowSweepAction;
+
+	/** Blueprint-наследники позволяют задать AttackMontage в редакторе.
+	 *  По умолчанию — соответствующий C++ класс (работает без Blueprint). */
+	UPROPERTY(EditAnywhere, Category="Combat|WASD")
+	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
+
+	UPROPERTY(EditAnywhere, Category="Combat|WASD")
+	TSubclassOf<UGA_DirectionalAttackBase> AttackRightSlashClass;
+
+	UPROPERTY(EditAnywhere, Category="Combat|WASD")
+	TSubclassOf<UGA_DirectionalAttackBase> AttackLeftSlashClass;
+
+	UPROPERTY(EditAnywhere, Category="Combat|WASD")
+	TSubclassOf<UGA_DirectionalAttackBase> AttackLowSweepClass;
 
 	FGameplayAbilitySpecHandle StanceAbilityHandle;
 	FGameplayAbilitySpecHandle AttackOverheadHandle;

@@ -58,14 +58,18 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Parry_Incoming_A); // AI бьёт A → игрок жмёт D
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Parry_Incoming_D); // AI бьёт D → игрок жмёт A
 
-	// ---- Cooldown.* ----
-	// Тег "этот конкретный навык сейчас на КД" — отдельно от Ability.Skill.* (та таксономия
-	// для идентичности навыка, нужна в Разделе 6 для контрнавыка). КД навешивается/снимается
-	// вручную в GA_PhysicalSkill через GE_ApplyTimedTag, см. AbilityData.h.
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Knight_ShieldSlam);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Knight_PowerStrike);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Knight_ShieldCharge);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Knight_Retribution);
+	// ---- Cooldown.Slot.* ----
+	// КД принадлежит СЛОТУ, а не конкретному навыку (ability_system.md §3).
+	// Один таймер на слот — общий для всех оружий. Смена оружия не сбрасывает КД.
+	// DataAsset каждого навыка прописывает CooldownTag = Cooldown.Slot.Q/E/R/F/...
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_Q);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_E);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_R);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_F);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_Z);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_X);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_C);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_V);
 
 	// ---- SetByCaller.* ----
 	// Служебный тег: все наши generic GameplayEffect-классы (GE_Modify*) несут
@@ -79,10 +83,19 @@ namespace ClanhallGameplayTags
 	// ---- Magic.School.* ----
 	// Только корни школ. Структура рангов (Rank.*) откладывается до Раздела 9 —
 	// преждевременно фиксировать форму, которая ещё не используется кодом.
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Material);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Materia);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Elemental);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Aether);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Stars);
+
+	// ---- Unit.Role.* ----
+	// Роль юнита, навешивается loose-тегом на его ASC в BeginPlay (changelog_enemyframe_unitroles.md §1-2).
+	// Unit.Role.Boss — родитель для Humanoid/Monster: сенсор рамки (UClanhallBossSensorComponent)
+	// запрашивает именно родителя, чтобы матчить оба подтипа боссов разом.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Mob);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Boss);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Boss_Humanoid);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Boss_Monster);
 
 	// ---- Mark.* ----
 	// Полный канонический список из mark_system.md §6 (33 метки + Compressed,
