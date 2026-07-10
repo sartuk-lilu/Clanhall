@@ -3,6 +3,7 @@
 #include "TimerManager.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
+#include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/Abilities/GA_EnemyWASDSeries.h"
 #include "AbilitySystem/Abilities/GA_EnemyActiveSkill.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
@@ -15,6 +16,7 @@ AClanhallTrainingDummy::AClanhallTrainingDummy()
 
 	AttributeSet = CreateDefaultSubobject<UClanhallAttributeSet>(TEXT("AttributeSet"));
 	MarkComponent = CreateDefaultSubobject<UClanhallMarkComponent>(TEXT("MarkComponent"));
+	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
 }
 
 UAbilitySystemComponent* AClanhallTrainingDummy::GetAbilitySystemComponent() const

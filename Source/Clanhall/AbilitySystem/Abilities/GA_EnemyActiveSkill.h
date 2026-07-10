@@ -1,11 +1,13 @@
-// Раздел 6: базовый класс активных навыков врага с окном контрнавыка.
-// При активации открывает State.CounterWindow на своём ASC — игрок может
-// прервать через LMB+Ctrl+<matching skill> в течение CounterWindowDuration.
+// Раздел 6 (переработан): базовый класс активных навыков врага с окном контрнавыка.
+// При активации открывает окно на своём UClanhallCounterComponent (State.CounterWindow на ASC) —
+// игрок контрит, активировав навык с тем же CounterTag, без модификатора (clanhall_claude_code_counter.md).
 // Если НЕ прерван → по истечении окна наносит урон/метку игроку.
-// Если прерван → CancelAbility снимает WaitDelay-задачи → урон не применяется.
+// Если прерван → ConsumeCounter вызывает CancelAbilityHandle → WaitDelay-задача снимается → урон не применяется.
 //
-// AbilityTags наследника (UGA_Enemy_PowerStrike) содержат тот же тег, что у
-// соответствующего навыка игрока → CancelAbilities(Ability.Skill.*) его находит.
+// Интерим: реальных монтажей у врагов пока нет, поэтому окно открывается/закрывается прямо из кода
+// (ActivateAbility/OnHitDelayExpired), а не через UAnimNotifyState_CounterWindow — тот класс уже
+// построен и подключится сам, когда появятся монтажи (по образцу interim-подхода с State.Parrying,
+// см. Раздел 6.5).
 
 #pragma once
 
@@ -26,7 +28,23 @@ public:
 	                             const FGameplayAbilityActivationInfo ActivationInfo,
 	                             const FGameplayEventData* TriggerEventData) override;
 
+	FGameplayTag GetCounterTag() const { return CounterTag; }
+	FGameplayTag GetCooldownTag() const { return CooldownTag; }
+	float GetCooldownDuration() const { return Cooldown; }
+
 protected:
+	/** Идентичность навыка для контрнавыка — тот же тег, что и у навыка игрока (см. AbilityTags). */
+	UPROPERTY(EditDefaultsOnly, Category = "Counter", meta = (Categories = "Ability.Skill"))
+	FGameplayTag CounterTag;
+
+	/** Тег слота КД, который получит владелец при успешном контре (ConsumeCounter). */
+	UPROPERTY(EditDefaultsOnly, Category = "Counter", meta = (Categories = "Cooldown.Slot"))
+	FGameplayTag CooldownTag;
+
+	/** Длительность полного КД при контре, секунды — по тиру навыка (ability_system.md §3). */
+	UPROPERTY(EditDefaultsOnly, Category = "Counter")
+	float Cooldown = 10.0f;
+
 	/** Длительность окна контрнавыка в секундах. Одновременно — задержка до удара. */
 	UPROPERTY(EditDefaultsOnly, Category = "Counter")
 	float CounterWindowDuration = 1.2f;

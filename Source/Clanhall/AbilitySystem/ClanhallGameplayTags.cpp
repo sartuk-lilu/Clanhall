@@ -20,7 +20,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CastingAntimagic, "State.CastingAntimagic", "Идёт набор слогов антимагии (ПКМ зажат, Ctrl)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Parrying, "State.Parrying", "Окно парирования физической серии открыто");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterWindow, "State.CounterWindow", "Окно контрнавыка против активного навыка врага открыто");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterActive, "State.CounterActive", "Раздел 6: контрнавык успешен — следующий GA_PhysicalSkill без Charges и КД");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterActive, "State.CounterActive", "Не используется с переработки Раздела 6 (Ctrl-контр заменён резолвером по CounterTag) — тег оставлен объявленным, не переименован");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InStance, "State.InStance", "ЛКМ зажат — боевая стойка (WASD = направленные удары)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Оглушение после полного парирования серии");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");

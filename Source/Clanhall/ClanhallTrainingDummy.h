@@ -13,6 +13,7 @@
 class UAbilitySystemComponent;
 class UClanhallAttributeSet;
 class UClanhallMarkComponent;
+class UClanhallCounterComponent;
 class UGA_EnemyWASDSeries;
 class UGA_EnemyActiveSkill;
 
@@ -29,6 +30,11 @@ class AClanhallTrainingDummy : public ACharacter, public IAbilitySystemInterface
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallMarkComponent> MarkComponent;
+
+	/** Раздел 6 (переработан): держит окно контрнавыка, когда играет UGA_Enemy_PowerStrike
+	 *  (clanhall_claude_code_counter.md). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallCounterComponent> CounterComponent;
 
 public:
 	AClanhallTrainingDummy();

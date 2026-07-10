@@ -11,6 +11,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Clanhall.h"
+#include "ClanhallCombatTypes.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
@@ -23,12 +24,12 @@
 #include "AbilitySystem/Effects/GE_BalanceDrift.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
+#include "AbilitySystem/ClanhallCounterComponent.h"
+#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallWeaponTraceComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "Engine/Engine.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Engine/EngineTypes.h"
 
 AClanhallCharacter::AClanhallCharacter()
 {
@@ -78,6 +79,10 @@ AClanhallCharacter::AClanhallCharacter()
 	// сам кладёт на врагов. См. UClanhallMarkComponent.
 	MarkComponent = CreateDefaultSubobject<UClanhallMarkComponent>(TEXT("MarkComponent"));
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
+	// Раздел 6 (переработан): симметричный компонент окна контрнавыка, тот же класс на враге.
+	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
+	// Раздел 6.5 (combo_system_redesign.md): ворота ввода + владелец активации WASD-ударов.
+	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
 	// Раздел 6.5: weapon trace для парирования и будущей damage-on-hit логики.
 	WeaponTraceComponent = CreateDefaultSubobject<UClanhallWeaponTraceComponent>(TEXT("WeaponTraceComponent"));
 	// HUD: camera line trace, мягкая цель под удар/метку (Enemy Frame больше не водит).
@@ -86,7 +91,7 @@ AClanhallCharacter::AClanhallCharacter()
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
 	// WASD-классы дефолтно равны C++ классам; Blueprint персонажа может переопределить их
-	// на BP-наследников с заполненным AttackMontage (см. GA_DirectionalAttackBase.h).
+	// на BP-наследников (см. GA_DirectionalAttackBase.h). Монтажи — per-path в ComboData/UComboFragment.
 	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
 	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
 	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
@@ -207,14 +212,6 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(ActiveSkillEAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillE);
 		EnhancedInputComponent->BindAction(ActiveSkillRAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillR);
 		EnhancedInputComponent->BindAction(ActiveSkillFAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillF);
-
-		// Раздел 6: режим контрнавыка (Ctrl зажат).
-		if (CounterModeAction)
-		{
-			EnhancedInputComponent->BindAction(CounterModeAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnCounterModePressed);
-			EnhancedInputComponent->BindAction(CounterModeAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnCounterModeReleased);
-			EnhancedInputComponent->BindAction(CounterModeAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnCounterModeReleased);
-		}
 	}
 	else
 	{
@@ -303,154 +300,98 @@ void AClanhallCharacter::OnStanceReleased()
 		// combat_system.md §3: "Отпустить LMB в любой момент = мгновенный выход из стойки".
 		AbilitySystemComponent->CancelAbilityHandle(StanceAbilityHandle);
 	}
+
+	// combo_system_redesign.md: выход из стойки — всегда, вне ворот. Останавливает активный
+	// монтаж комбо с blend-out и сбрасывает последовательность независимо от фазы.
+	if (ComboComponent)
+	{
+		ComboComponent->OnStanceExit();
+	}
 }
+
+// combo_system_redesign.md, Часть B1: WASD больше не активирует направленный удар напрямую —
+// решение (опенер / продолжение по данным дерева / мусор вне окна) целиком у ComboComponent,
+// он же сам вызывает TryActivateAbility, когда ввод валиден. Парирование обрабатывает
+// UClanhallWeaponTraceComponent при хите врага (State.Parrying на ASC врага, не игрока).
 
 void AClanhallCharacter::OnAttackOverhead()
 {
-	// Раздел 6.5: парирование обрабатывает UClanhallWeaponTraceComponent при хите врага.
-	// State.Parrying теперь на ASC врага (не игрока) — input-based проверка удалена.
-	if (AbilitySystemComponent)
+	if (ComboComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(AttackOverheadHandle);
+		ComboComponent->HandleAttackInput(EClanhallAttackDirection::Overhead);
 	}
 }
 
 void AClanhallCharacter::OnAttackRightSlash()
 {
-	if (AbilitySystemComponent)
+	if (ComboComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(AttackRightSlashHandle);
+		ComboComponent->HandleAttackInput(EClanhallAttackDirection::RightSlash);
 	}
 }
 
 void AClanhallCharacter::OnAttackLeftSlash()
 {
-	if (AbilitySystemComponent)
+	if (ComboComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(AttackLeftSlashHandle);
+		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LeftSlash);
 	}
 }
 
 void AClanhallCharacter::OnAttackLowSweep()
 {
-	if (AbilitySystemComponent)
+	if (ComboComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(AttackLowSweepHandle);
+		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LowSweep);
+	}
+}
+
+FGameplayAbilitySpecHandle AClanhallCharacter::GetAttackHandle(EClanhallAttackDirection Direction) const
+{
+	switch (Direction)
+	{
+	case EClanhallAttackDirection::Overhead:   return AttackOverheadHandle;
+	case EClanhallAttackDirection::RightSlash: return AttackRightSlashHandle;
+	case EClanhallAttackDirection::LeftSlash:  return AttackLeftSlashHandle;
+	case EClanhallAttackDirection::LowSweep:   return AttackLowSweepHandle;
+	default:                                   return FGameplayAbilitySpecHandle();
 	}
 }
 
 // ---------------------------------------------------------------------------
-// Раздел 6: вспомогательная логика контрнавыка
+// Активные навыки (Q/E/R/F). Контрнавык (Раздел 6, переработан) больше не требует
+// модификатора — распознаётся резолвером внутри GA_PhysicalSkill::ActivateAbility
+// по совпадению CounterTag с открытым окном цели.
 // ---------------------------------------------------------------------------
-
-void AClanhallCharacter::OnCounterModePressed()
-{
-	bCounterModeActive = true;
-}
-
-void AClanhallCharacter::OnCounterModeReleased()
-{
-	bCounterModeActive = false;
-}
-
-bool AClanhallCharacter::TryCounterNearestEnemy()
-{
-	if (!AbilitySystemComponent)
-	{
-		return false;
-	}
-
-	// Те же параметры поиска цели, что у GA_ClanhallAbilityBase::FindMeleeTarget.
-	const float TraceRange = 200.0f;
-	const float TraceRadius = 75.0f;
-	const FVector Start = GetActorLocation() + GetActorForwardVector() * TraceRange;
-
-	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
-
-	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(this);
-
-	TArray<AActor*> Overlapping;
-	UKismetSystemLibrary::SphereOverlapActors(this, Start, TraceRadius, ObjectTypes, nullptr, ActorsToIgnore, Overlapping);
-
-	for (AActor* Candidate : Overlapping)
-	{
-		IAbilitySystemInterface* Interface = Cast<IAbilitySystemInterface>(Candidate);
-		if (!Interface)
-		{
-			continue;
-		}
-
-		UAbilitySystemComponent* EnemyASC = Interface->GetAbilitySystemComponent();
-		if (!EnemyASC)
-		{
-			continue;
-		}
-
-		// Проверяем, открыто ли окно контрнавыка у этого врага.
-		if (!EnemyASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_CounterWindow.GetTag()))
-		{
-			continue;
-		}
-
-		// Окно открыто — отменяем активный Ability.Skill.* навык врага.
-		// CancelAbilities использует иерархическое сопоставление тегов: родительский
-		// "Ability.Skill" найдёт все листовые Ability.Skill.Knight.PowerStrike и т.д.
-		FGameplayTagContainer SkillTags;
-		SkillTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Skill")));
-		EnemyASC->CancelAbilities(&SkillTags);
-
-#if !UE_BUILD_SHIPPING
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык врага прерван"));
-#endif
-		return true;
-	}
-
-	return false;
-}
-
-// ---------------------------------------------------------------------------
-// Активные навыки (Q/E/R/F) с поддержкой режима контрнавыка
-// ---------------------------------------------------------------------------
-
-static void ActivateSkillWithCounter(UAbilitySystemComponent* ASC, FGameplayAbilitySpecHandle Handle, bool bCountered)
-{
-	if (!ASC)
-	{
-		return;
-	}
-
-	if (bCountered)
-	{
-		// Навешиваем State.CounterActive перед активацией — GA_PhysicalSkill прочитает его
-		// в CanActivateAbility/ActivateAbility и пропустит проверки Charges и КД.
-		ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_CounterActive.GetTag(), 0.1f);
-	}
-
-	ASC->TryActivateAbility(Handle);
-}
 
 void AClanhallCharacter::OnActiveSkillQ()
 {
-	const bool bCountered = bCounterModeActive && TryCounterNearestEnemy();
-	ActivateSkillWithCounter(AbilitySystemComponent, ActiveSkillQHandle, bCountered);
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbility(ActiveSkillQHandle);
+	}
 }
 
 void AClanhallCharacter::OnActiveSkillE()
 {
-	const bool bCountered = bCounterModeActive && TryCounterNearestEnemy();
-	ActivateSkillWithCounter(AbilitySystemComponent, ActiveSkillEHandle, bCountered);
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbility(ActiveSkillEHandle);
+	}
 }
 
 void AClanhallCharacter::OnActiveSkillR()
 {
-	const bool bCountered = bCounterModeActive && TryCounterNearestEnemy();
-	ActivateSkillWithCounter(AbilitySystemComponent, ActiveSkillRHandle, bCountered);
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbility(ActiveSkillRHandle);
+	}
 }
 
 void AClanhallCharacter::OnActiveSkillF()
 {
-	const bool bCountered = bCounterModeActive && TryCounterNearestEnemy();
-	ActivateSkillWithCounter(AbilitySystemComponent, ActiveSkillFHandle, bCountered);
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbility(ActiveSkillFHandle);
+	}
 }

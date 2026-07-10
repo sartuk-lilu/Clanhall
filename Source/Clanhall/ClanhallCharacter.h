@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayAbilitySpecHandle.h"
+#include "ClanhallCombatTypes.h"
 #include "ClanhallCharacter.generated.h"
 
 class USpringArmComponent;
@@ -17,6 +18,8 @@ class UAbilitySystemComponent;
 class UClanhallAttributeSet;
 class UClanhallMarkComponent;
 class UClanhallParryComponent;
+class UClanhallCounterComponent;
+class UClanhallComboComponent;
 class UClanhallWeaponTraceComponent;
 class UClanhallTargetingComponent;
 class UClanhallBossSensorComponent;
@@ -47,6 +50,19 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	/** Раздел 5: флаг bParrySuccessful — пишет ClanhallWeaponTraceComponent, читает GA_EnemyWASDSeries. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallParryComponent> ParryComponent;
+
+	/** Раздел 6 (переработан): окно контрнавыка на самом игроке — держит State.CounterWindow,
+	 *  когда враг (в будущем — с AI-контром) мог бы прервать навык игрока. Симметричный компонент,
+	 *  тот же класс висит на враге (clanhall_claude_code_counter.md). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallCounterComponent> CounterComponent;
+
+	/** Ворота ввода, не буфер (combo_system_redesign.md): до открытия окна чтения ввод
+	 *  отбрасывается целиком, в окне — "последнее решает". Сам владеет активацией — решает,
+	 *  когда вызвать TryActivateAbility на GA_DirectionalAttack_* (инверсия потока, Часть B1),
+	 *  играет per-path монтаж и терминальный Recovery-хвост серии. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallComboComponent> ComboComponent;
 
 	/** Раздел 6.5: sweep-трейс оружия, открывается AnimNotify_WeaponTraceStart/End.
 	 *  При попадании во врага со State.Parrying вызывает ParryComponent->TryParry(). */
@@ -112,7 +128,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* AttackLowSweepAction;
 
-	/** Blueprint-наследники позволяют задать AttackMontage в редакторе.
+	/** Blueprint-наследники позволяют переопределить RawDamage и т.п. в редакторе. Монтажи
+	 *  теперь per-path в UComboFragment (ComboData), не на этих классах.
 	 *  По умолчанию — соответствующий C++ класс (работает без Blueprint). */
 	UPROPERTY(EditAnywhere, Category="Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
@@ -125,6 +142,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackLowSweepClass;
+
+	/** «Данные оружия» для комбо (Раздел 6.5): переиспользует UAbilityData — значимо только поле
+	 *  Fragments с одним UComboFragment внутри (таблица переходов + MaxComboLength). Назначается
+	 *  в Blueprint-наследнике персонажа, по образцу KnightSkill*. */
+	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
+	TObjectPtr<UAbilityData> ComboData;
 
 	FGameplayAbilitySpecHandle StanceAbilityHandle;
 	FGameplayAbilitySpecHandle AttackOverheadHandle;
@@ -167,12 +190,6 @@ protected:
 	FGameplayAbilitySpecHandle ActiveSkillEHandle;
 	FGameplayAbilitySpecHandle ActiveSkillRHandle;
 	FGameplayAbilitySpecHandle ActiveSkillFHandle;
-
-	// --- Раздел 6: контрнавык (LMB+Ctrl+<Q/E/R/F>) ---
-
-	/** Ctrl — переключатель режима контрнавыка. Удерживается одновременно с LMB (стойкой). */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* CounterModeAction;
 
 	/** Раздел 2 placeholder: настоящий выбор оружия появится в Разделе 10. Переключает тег Weapon.Type.STR/DEX на ASC. */
 	UPROPERTY(EditAnywhere, Category = "Combat")
@@ -219,14 +236,6 @@ protected:
 	void OnActiveSkillR();
 	void OnActiveSkillF();
 
-	void OnCounterModePressed();
-	void OnCounterModeReleased();
-
-	/** Ищет ближайшего врага в радиусе ближнего боя.
-	 *  Если у него открыто State.CounterWindow → отменяет его активный Ability.Skill.* навык.
-	 *  Возвращает true при успешном прерывании (окно открыто и навык отменён). */
-	bool TryCounterNearestEnemy();
-
 public:
 
 	/** Handles move inputs from either controls or UI interfaces */
@@ -253,9 +262,11 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-private:
+	/** Данные комбо текущего оружия — читает UClanhallComboComponent::GetActiveFragment(). */
+	FORCEINLINE const UAbilityData* GetComboData() const { return ComboData; }
 
-	/** Раздел 6: Ctrl зажат → режим контрнавыка активен. Q/E/R/F пытается прервать врага. */
-	bool bCounterModeActive = false;
+	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
+	 *  активировать (combo_system_redesign.md, Часть B1: инверсия потока активации). */
+	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 };
 

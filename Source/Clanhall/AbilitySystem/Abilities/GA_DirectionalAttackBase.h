@@ -1,7 +1,10 @@
 // Базовый класс для 4 направленных WASD-ударов. Канон: combat_system.md §4.
-// Урон резолвится мгновенно при активации (прямой sphere hit). Монтаж
-// воспроизводится как косметика — weapon trace в нём (AnimNotify_WeaponTraceStart/End)
-// работает независимо и обеспечивает парирование (development_plan.md, Раздел 6.5).
+// Урон резолвится мгновенно при активации (прямой sphere hit). Активация идёт только через
+// UClanhallComboComponent (combo_system_redesign.md, Часть B1 — валидатор комбо гейтит вызов
+// TryActivateAbility, формулы урона/MP/Balance ниже не тронуты). Монтаж играет сам комбо-компонент
+// per-path (UComboFragment) — эта абилка своего монтажа не проигрывает. Weapon trace
+// (AnimNotify_WeaponTraceStart/End) в монтаже работает независимо и обеспечивает парирование
+// (development_plan.md, Раздел 6.5).
 
 #pragma once
 
@@ -10,7 +13,6 @@
 #include "GA_DirectionalAttackBase.generated.h"
 
 class UAbilitySystemComponent;
-class UAnimMontage;
 
 UCLASS(Abstract)
 class CLANHALL_API UGA_DirectionalAttackBase : public UGA_ClanhallAbilityBase
@@ -29,7 +31,4 @@ protected:
 	/** Плейсхолдер урона WASD-удара — канон фиксирует числа только для активных навыков. */
 	UPROPERTY(EditDefaultsOnly, Category = "Attack")
 	float RawDamage = 10.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Attack")
-	TObjectPtr<UAnimMontage> AttackMontage;
 };

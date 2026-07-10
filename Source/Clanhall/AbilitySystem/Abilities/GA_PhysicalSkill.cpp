@@ -5,6 +5,7 @@
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallMarkTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
+#include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
@@ -42,13 +43,6 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 	if (!Data || !ASC)
 	{
 		return false;
-	}
-
-	// Раздел 6: контрнавык успешен → пропускаем проверки КД и Charges.
-	// State.CounterActive навешивается Character на 0.1 сек перед TryActivateAbility.
-	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_CounterActive.GetTag()))
-	{
-		return true;
 	}
 
 	// КД проверяется здесь (тег навешивается только при подтверждённом попадании, см. ActivateAbility),
@@ -121,12 +115,19 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 
 	if (SourceASC && Avatar && Data)
 	{
-		// Раздел 6: State.CounterActive → навык активирован через успешный контрнавык
-		// → Charges и КД не расходуются (CLAUDE.md "ЗАБЛОКИРОВАННЫЙ КАНОН" §6).
-		const bool bIsCounterActivation = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_CounterActive.GetTag());
+		AActor* Target = FindMeleeTarget(Avatar);
+
+		// Резолвер контрнавыка: до списания Charges/КД (ability_system.md §2, clanhall_claude_code_counter.md).
+		// Совпал CounterTag этого навыка с открытым окном цели → навык цели сбит + получает полный КД,
+		// а этот навык не коммитится вовсе — без стоимости, без КД, без урона.
+		if (Target && UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag))
+		{
+			EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+			return;
+		}
 
 		// Charges списываются на активацию, а не на попадание — в отличие от КД (см. CanActivateAbility).
-		if (!bIsCounterActivation && Data->ChargeCost > 0)
+		if (Data->ChargeCost > 0)
 		{
 			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(Data->ChargeCost));
 		}
@@ -135,7 +136,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		// собственного навыка. Нужна для переноса своей метки на врага при попадании (правка 1.2).
 		UClanhallMarkComponent* SelfMarkComponent = Avatar->FindComponentByClass<UClanhallMarkComponent>();
 
-		if (AActor* Target = FindMeleeTarget(Avatar))
+		if (Target)
 		{
 			IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
 			UAbilitySystemComponent* TargetASC = TargetInterface ? TargetInterface->GetAbilitySystemComponent() : nullptr;
@@ -175,8 +176,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 				}
 
 				// КД только при подтверждённом попадании — CLAUDE.md, "ЗАБЛОКИРОВАННЫЙ КАНОН".
-				// При контрнавыке (bIsCounterActivation) КД не ставится.
-				if (!bIsCounterActivation && Data->CooldownTag.IsValid())
+				if (Data->CooldownTag.IsValid())
 				{
 					ClanhallGameplayEffects::ApplyTimedTag(SourceASC, Data->CooldownTag, Data->Cooldown);
 				}
@@ -184,10 +184,9 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 #if !UE_BUILD_SHIPPING
 				if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
 				{
-					const FString Prefix = bIsCounterActivation ? TEXT("[COUNTER] ") : TEXT("");
 					GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, FString::Printf(
-						TEXT("%s%s hit | AP %.0f/%.0f  Charges %.0f/%.0f  Balance %.1f"),
-						*Prefix, *Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
+						TEXT("%s hit | AP %.0f/%.0f  Charges %.0f/%.0f  Balance %.1f"),
+						*Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
 						SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
 				}
 #endif

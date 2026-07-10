@@ -1,6 +1,7 @@
 #include "GA_EnemyActiveSkill.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
+#include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -27,7 +28,9 @@ void UGA_EnemyActiveSkill::ActivateAbility(
 	const FGameplayEventData* TriggerEventData)
 {
 	UAbilitySystemComponent* SelfASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr;
-	if (!SelfASC)
+	AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
+	UClanhallCounterComponent* CounterComp = Avatar ? Avatar->FindComponentByClass<UClanhallCounterComponent>() : nullptr;
+	if (!SelfASC || !CounterComp)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
@@ -35,13 +38,14 @@ void UGA_EnemyActiveSkill::ActivateAbility(
 
 #if !UE_BUILD_SHIPPING
 	GEngine->AddOnScreenDebugMessage(-1, CounterWindowDuration + 0.2f, FColor::Orange,
-		FString::Printf(TEXT("⚡ ENEMY SKILL — Ctrl+E чтобы прервать! (%.1f сек)"), CounterWindowDuration));
+		FString::Printf(TEXT("⚡ ENEMY SKILL — тот же навык, чтобы прервать! (%.1f сек)"), CounterWindowDuration));
 #endif
 
-	// Открыть окно контрнавыка: тег на ASC врага — игрок его детектирует.
-	ClanhallGameplayEffects::ApplyTimedTag(SelfASC, ClanhallGameplayTags::State_CounterWindow.GetTag(), CounterWindowDuration);
+	// Открыть окно контрнавыка на своём UClanhallCounterComponent (interim: код, не AnimNotifyState —
+	// реальных монтажей у врага пока нет). Игрок контрит, активировав навык с тем же CounterTag.
+	CounterComp->OpenWindow(CounterTag, Handle, CooldownTag, Cooldown);
 
-	// Таймер удара. Если CancelAbility вызван извне — WaitDelay-задача снимается,
+	// Таймер удара. Если ConsumeCounter вызвал CancelAbilityHandle извне — WaitDelay-задача снимается,
 	// OnHitDelayExpired не вызовется, урон не применяется.
 	UAbilityTask_WaitDelay* HitTask = UAbilityTask_WaitDelay::WaitDelay(this, CounterWindowDuration);
 	HitTask->OnFinish.AddDynamic(this, &UGA_EnemyActiveSkill::OnHitDelayExpired);
@@ -52,6 +56,13 @@ void UGA_EnemyActiveSkill::OnHitDelayExpired()
 {
 	// Этот метод срабатывает только если контрнавык НЕ прервал способность.
 	UAbilitySystemComponent* SelfASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
+	AActor* SelfAvatar = CurrentActorInfo ? CurrentActorInfo->AvatarActor.Get() : nullptr;
+
+	// Окно не было прервано контром — закрываем его сами (иначе State.CounterWindow повиснет навсегда).
+	if (UClanhallCounterComponent* CounterComp = SelfAvatar ? SelfAvatar->FindComponentByClass<UClanhallCounterComponent>() : nullptr)
+	{
+		CounterComp->CloseWindow();
+	}
 
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	if (!PlayerPawn || !SelfASC)
@@ -89,8 +100,14 @@ void UGA_EnemyActiveSkill::OnHitDelayExpired()
 
 UGA_Enemy_PowerStrike::UGA_Enemy_PowerStrike()
 {
-	// Тот же тег, что у Knight E (Power Strike) — контрнавык находит через CancelAbilities(Ability.Skill.*).
+	// Тот же тег, что у Knight E (Power Strike) — как AbilityTags (идентичность способности для GAS),
+	// так и CounterTag (идентичность для резолвера контрнавыка) намеренно совпадают.
 	AbilityTags.AddTag(ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag());
+	CounterTag = ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag();
+
+	// Knight E — тир 10 сек (ability_system.md §3, CLAUDE.md "КД физнавыков").
+	CooldownTag = ClanhallGameplayTags::Cooldown_Slot_E.GetTag();
+	Cooldown = 10.0f;
 
 	CounterWindowDuration = 1.2f;
 	HitDamage = 40.0f;

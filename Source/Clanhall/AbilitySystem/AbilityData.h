@@ -37,6 +37,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Class"))
 	FGameplayTag RequiredClass;
 
+	/** Идентичность навыка для контрнавыка — Ability.Skill.Knight.PowerStrike и т.д.
+	 *  Тот же тег на навыке врага = «тот же навык» → контр (clanhall_claude_code_counter.md). */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Skill"))
+	FGameplayTag CounterTag;
+
 	/** Стоимость в Charges. Канон: Q/E=0, R/F=2, Z/X=4, C/V=6 (combat_system.md §1). */
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	int32 ChargeCost = 0;

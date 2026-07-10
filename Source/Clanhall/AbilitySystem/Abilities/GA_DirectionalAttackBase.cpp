@@ -5,8 +5,6 @@
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
-#include "Animation/AnimInstance.h"
-#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "Engine/Engine.h"
 
@@ -57,20 +55,6 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 						SelfAttributes->GetMP(), SelfAttributes->GetMaxMP(), SelfAttributes->GetBalance()));
 				}
 #endif
-			}
-		}
-
-		// Раздел 6.5: монтаж воспроизводится как косметика. AnimNotify_WeaponTraceStart/End
-		// в нём открывают/закрывают weapon trace независимо от жизненного цикла этой абилки.
-		if (AttackMontage)
-		{
-			ACharacter* Char = Cast<ACharacter>(Avatar);
-			if (Char && Char->GetMesh())
-			{
-				if (UAnimInstance* AnimInst = Char->GetMesh()->GetAnimInstance())
-				{
-					AnimInst->Montage_Play(AttackMontage);
-				}
 			}
 		}
 	}
