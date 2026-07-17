@@ -1,9 +1,18 @@
-// Единственный источник истины для чейна WASD-ударов (combo_system_redesign.md). Ворота ввода,
-// не буфер: до открытия окна чтения ввод отбрасывается целиком, ничего не копится; в открытом
-// окне действует "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_*
-// (Часть B1: инверсия потока — активация идёт через этот валидатор, невалидный ввод не доходит
-// до урона/MP/Balance) и сам проигрывает монтаж конкретного шага пути (per-path, UComboFragment) —
-// GA_DirectionalAttackBase собственного монтажа больше не играет. Живёт на AClanhallCharacter.
+// Единственный источник истины для чейна WASD-ударов (combo_fragments_redesign_task.md, ранее
+// combo_system_redesign.md). Ворота ввода, не буфер: до открытия окна чтения ввод отбрасывается
+// целиком, ничего не копится; в открытом окне действует "последнее нажатие решает". Сам решает,
+// когда активировать GA_DirectionalAttack_* (Часть B1: инверсия потока — активация идёт через
+// этот валидатор, невалидный ввод не доходит до урона/MP/Balance) и сам проигрывает монтаж
+// конкретного шага пути — GA_DirectionalAttackBase собственного монтажа больше не играет.
+// Живёт на AClanhallCharacter.
+//
+// Резолв данных (combo_datatable_picker_task.md, combo_fragments_redesign_task.md, "Резолв шага"):
+// направление ВАЛИДИРУЕТ путь (префиксный поиск по UComboData::Chains, направление шага =
+// Move.Direction хода по Chain.Steps[i].MoveId), MoveId ВЫБИРАЕТ клип (строка UComboData::MovesTable).
+// Урон берётся из UComboData::FindDamageByDirection (4 именованных поля профиля) по направлению
+// шага и передаётся в GA_DirectionalAttackBase через FGameplayEventData
+// (TriggerAbilityFromGameplayEvent) — Handle-активация сохраняется, тег события служебный.
+// Потолок длины серии = AClanhallCharacter::ClassRank, а не поле ассета.
 
 #pragma once
 
@@ -13,7 +22,8 @@
 #include "UObject/WeakObjectPtr.h"
 #include "ClanhallComboComponent.generated.h"
 
-class UComboFragment;
+struct FComboChain;
+class UComboData;
 class UAbilitySystemComponent;
 class UAnimMontage;
 class UAnimInstance;
@@ -47,31 +57,47 @@ public:
 	void OnStanceExit();
 
 private:
-	/** Пусто = нейтраль. Полный путь направлений от опенера — "полная последовательность,
-	 *  а не (шаг, направление)" (combo_system_redesign.md). */
-	TArray<EClanhallAttackDirection> ActiveSequence;
+	/** Пусто = нейтраль. Направления УЖЕ сыгранных шагов (направление = Move.Direction хода по
+	 *  Chain.Steps[i] выбранной цепочки), не индексы/MoveId — резолв ищет по направлениям. */
+	TArray<EClanhallAttackDirection> ActiveDirections;
+
+	/** Цепочка, к которой резолвнулся текущий ActiveDirections (для RecoveryMontage на
+	 *  завершении). Указывает внутрь UComboData::Chains — валиден, пока жив ComboData
+	 *  персонажа (данные ассета не мутируются в рантайме). */
+	const FComboChain* CurrentChain = nullptr;
 
 	bool bReadWindowOpen = false;
 	TOptional<EClanhallAttackDirection> LatestInWindow;
 	TWeakObjectPtr<UAnimMontage> LastPlayedMontage;
 
-	/** Нейтраль + валидный опенер по данным -> активировать и стартовать ActiveSequence. */
+	/** Нейтраль + валидный опенер по данным -> активировать и стартовать ActiveDirections. */
 	void TryStartSequence(EClanhallAttackDirection Direction);
 
-	/** Активирует GA_DirectionalAttack_* для Direction через ASC (формулы урона/MP/Balance не
-	 *  тронуты, только точка вызова). На успехе играет Montage. Возвращает успех активации —
-	 *  вызывающий код фиксирует состояние (ActiveSequence) только если true. */
-	bool ActivateDirection(EClanhallAttackDirection Direction, UAnimMontage* Montage);
+	/** Резолв шага (combo_fragments_redesign_task.md): префиксный поиск всех FComboChain, чья
+	 *  последовательность направлений (через UComboData::Moves) совпадает с CandidateDirections.
+	 *  Совпадения делятся на ExactMatches (цепочка длиной ровно N — терминируется на кандидате) и
+	 *  PrefixMatches (цепочка длиннее — кандидат её промежуточный узел, дальше идёт ветвление).
+	 *  Ветвление — не коллизия: если ExactMatches больше одной записи — это ошибка данных (разрешить
+	 *  нечем), берётся первая + UE_LOG Warning вне shipping; если есть только PrefixMatches,
+	 *  возвращается первая (без Warning — несколько длинных веток с общим префиксом это норма).
+	 *  Явно не падает — nullptr, если совпадений нет вообще. */
+	const FComboChain* ResolveChain(const TArray<EClanhallAttackDirection>& CandidateDirections) const;
+
+	/** Активирует GA_DirectionalAttack_* для Direction через ASC, передавая BaseDamage профиля
+	 *  (по направлению шага StepIndex цепочки Chain) в FGameplayEventData::EventMagnitude
+	 *  (формулы урона/MP/Balance в GA не тронуты, только источник числа). На успехе играет клип
+	 *  хода. Возвращает успех активации — вызывающий код фиксирует состояние только если true. */
+	bool ActivateStep(EClanhallAttackDirection Direction, const FComboChain* Chain, int32 StepIndex);
 
 	void PlayMontage(UAnimMontage* Montage);
 	void ResetCombo();
 
-	/** Вешает State.ComboRecovery (лок-аут ввода) при достижении MaxComboLength. Состояние
-	 *  (ActiveSequence) НЕ трогает — сброс и Recovery-анимация делает EndSequenceWithRecovery по
+	/** Вешает State.ComboRecovery (лок-аут ввода) при достижении потолка ClassRank. Состояние
+	 *  (ActiveDirections) НЕ трогает — сброс и Recovery-анимация делает EndSequenceWithRecovery по
 	 *  завершении терминального удар-монтажа; тег живёт своим таймером параллельно. */
 	void ApplyComboRecovery();
 
-	/** Делегат конца УДАР-монтажа. Подстраховка от залипания ActiveSequence, если на монтаже
+	/** Делегат конца УДАР-монтажа. Подстраховка от залипания ActiveDirections, если на монтаже
 	 *  нет/не сработал AnimNotifyState_ComboWindow. bInterrupted==false (доиграл сам) ->
 	 *  EndSequenceWithRecovery(); bInterrupted==true (чейн прервал новым Montage_Play, либо
 	 *  OnStanceExit) -> ничего не делать, чейн/стойку уже отработал соответствующий путь. */
@@ -79,12 +105,13 @@ private:
 
 	/** Единственная точка завершения серии — вызывается и из fall-through OnComboWindowClose
 	 *  (терминальный удар без чейна), и из OnAttackMontageEnded (страховка без окна). Guard от
-	 *  повторного входа (ActiveSequence уже пуст) не даёт сыграть Recovery дважды на одну серию —
-	 *  не путать Recovery-анимацию (играет всегда после терминального удара) с State.ComboRecovery
-	 *  (лок-аут только по MaxComboLength, вешается отдельно в ApplyComboRecovery). */
+	 *  повторного входа (ActiveDirections уже пуст) не даёт сыграть Recovery дважды на одну серию —
+	 *  не путать Recovery-анимацию (играет всегда после терминального удара, из RecoveryMontage
+	 *  завершившейся CurrentChain) с State.ComboRecovery (лок-аут только по ClassRank). */
 	void EndSequenceWithRecovery();
 
-	const UComboFragment* GetActiveFragment() const;
+	const UComboData* GetComboData() const;
+	int32 GetClassRank() const;
 	UAbilitySystemComponent* GetASC() const;
 	UAnimInstance* GetAnimInstance() const;
 };

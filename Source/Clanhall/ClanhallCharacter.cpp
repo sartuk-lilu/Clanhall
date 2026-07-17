@@ -91,7 +91,8 @@ AClanhallCharacter::AClanhallCharacter()
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
 	// WASD-классы дефолтно равны C++ классам; Blueprint персонажа может переопределить их
-	// на BP-наследников (см. GA_DirectionalAttackBase.h). Монтажи — per-path в ComboData/UComboFragment.
+	// на BP-наследников (см. GA_DirectionalAttackBase.h). Монтажи — per-move в UComboData
+	// (Moves/Chains).
 	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
 	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
 	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();

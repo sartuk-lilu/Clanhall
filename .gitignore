@@ -13,6 +13,7 @@ Plugins/
 package/
 Saved/
 FeaturePacks/
+CLAUDE.md
 
 #Unreal Engine auto-generated files
 *.uproject
@@ -33,7 +34,7 @@ FeaturePacks/
 *.dbproj
 
 # Text editor files
-*.md
+
 
 # Compiled files
 *.exe

@@ -49,6 +49,13 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP/Balance)");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_ApplyMark, "Event.ApplyMark", "AnimNotify_ApplyMark отправляет этот GameplayEvent — GA_PhysicalSkill может слушать его для async-подтверждения хита");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_DirectionalAttack, "Event.DirectionalAttack", "Служебный тег для TriggerAbilityFromGameplayEvent — несёт BaseDamage (EventMagnitude) от UClanhallComboComponent к GA_DirectionalAttackBase, не гейтит выбор способности");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Slash, "Damage.Type.Slash", "Тип урона — рубящий (заглушка, в расчёте не используется)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Pierce, "Damage.Type.Pierce", "Тип урона — колющий (заглушка, в расчёте не используется)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Blunt, "Damage.Type.Blunt", "Тип урона — дробящий (заглушка, в расчёте не используется)");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk, "Perk", "Корень будущей перк/условной-разблокировки системы — задел, перк-системы ещё нет");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Materia, "Magic.School.Materia", "Школа Материи (Q/A) — класс Artisan");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Elemental, "Magic.School.Elemental", "Школа Стихий (W/S)");

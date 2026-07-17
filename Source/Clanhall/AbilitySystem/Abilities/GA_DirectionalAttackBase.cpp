@@ -36,7 +36,8 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 			IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
 			UAbilitySystemComponent* TargetASC = TargetInterface ? TargetInterface->GetAbilitySystemComponent() : nullptr;
 
-			if (ResolveStandardDamage(SourceASC, TargetASC, RawDamage))
+			const float BaseDamage = TriggerEventData ? TriggerEventData->EventMagnitude : 0.0f;
+			if (ResolveStandardDamage(SourceASC, TargetASC, BaseDamage))
 			{
 				// combat_system.md §4: STR-удар → MP +10, Balance +5..+15; DEX-удар → MP +5, Balance -5..-15.
 				const bool bIsSTR = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());

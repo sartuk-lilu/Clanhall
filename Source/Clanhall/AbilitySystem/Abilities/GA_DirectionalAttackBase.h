@@ -1,10 +1,12 @@
 // Базовый класс для 4 направленных WASD-ударов. Канон: combat_system.md §4.
 // Урон резолвится мгновенно при активации (прямой sphere hit). Активация идёт только через
-// UClanhallComboComponent (combo_system_redesign.md, Часть B1 — валидатор комбо гейтит вызов
-// TryActivateAbility, формулы урона/MP/Balance ниже не тронуты). Монтаж играет сам комбо-компонент
-// per-path (UComboFragment) — эта абилка своего монтажа не проигрывает. Weapon trace
-// (AnimNotify_WeaponTraceStart/End) в монтаже работает независимо и обеспечивает парирование
-// (development_plan.md, Раздел 6.5).
+// UClanhallComboComponent (combo_fragments_redesign_task.md, Часть B1 — валидатор комбо гейтит
+// вызов активации, формулы урона/MP/Balance ниже не тронуты). Величина урона (BaseDamage профиля
+// по направлению шага) приходит в TriggerEventData->EventMagnitude — компонент резолвит её из
+// UComboData::FindDamageByDirection ДО активации, эта абилка своего числа урона больше не хранит.
+// Монтаж играет сам комбо-компонент per-move — эта абилка своего монтажа не проигрывает. Weapon
+// trace (AnimNotify_WeaponTraceStart/End) в монтаже работает независимо и обеспечивает
+// парирование (development_plan.md, Раздел 6.5).
 
 #pragma once
 
@@ -26,9 +28,4 @@ public:
 
 	/** W/A/S/D — направление удара. Используется WeaponTraceComponent для проверки парирования. */
 	virtual EClanhallAttackDirection GetDirection() const PURE_VIRTUAL(UGA_DirectionalAttackBase::GetDirection, return EClanhallAttackDirection::Overhead;);
-
-protected:
-	/** Плейсхолдер урона WASD-удара — канон фиксирует числа только для активных навыков. */
-	UPROPERTY(EditDefaultsOnly, Category = "Attack")
-	float RawDamage = 10.0f;
 };

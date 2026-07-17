@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayAbilitySpecHandle.h"
+#include "GameplayTagContainer.h"
 #include "ClanhallCombatTypes.h"
 #include "ClanhallCharacter.generated.h"
 
@@ -24,6 +25,7 @@ class UClanhallWeaponTraceComponent;
 class UClanhallTargetingComponent;
 class UClanhallBossSensorComponent;
 class UAbilityData;
+class UComboData;
 class UGA_DirectionalAttackBase;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -128,8 +130,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* AttackLowSweepAction;
 
-	/** Blueprint-наследники позволяют переопределить RawDamage и т.п. в редакторе. Монтажи
-	 *  теперь per-path в UComboFragment (ComboData), не на этих классах.
+	/** Blueprint-наследники позволяют переопределить TraceRange/TraceRadius и т.п. в редакторе.
+	 *  Монтажи и урон — per-move в UComboData (MovesTable/профиль урона 4 поля), не на этих классах.
 	 *  По умолчанию — соответствующий C++ класс (работает без Blueprint). */
 	UPROPERTY(EditAnywhere, Category="Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
@@ -143,11 +145,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackLowSweepClass;
 
-	/** «Данные оружия» для комбо (Раздел 6.5): переиспользует UAbilityData — значимо только поле
-	 *  Fragments с одним UComboFragment внутри (таблица переходов + MaxComboLength). Назначается
-	 *  в Blueprint-наследнике персонажа, по образцу KnightSkill*. */
+	/** «Данные оружия» для комбо (combo_fragments_redesign_task.md): профиль урона, база ходов и
+	 *  дерево цепочек одним ассетом — без фрагментов-обёрток (состав комбо-данных фиксирован, в
+	 *  отличие от опциональных Fragments у UAbilityData). Назначается в Blueprint-наследнике
+	 *  персонажа, по образцу KnightSkill*. */
 	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
-	TObjectPtr<UAbilityData> ComboData;
+	TObjectPtr<UComboData> ComboData;
 
 	FGameplayAbilitySpecHandle StanceAbilityHandle;
 	FGameplayAbilitySpecHandle AttackOverheadHandle;
@@ -262,11 +265,24 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-	/** Данные комбо текущего оружия — читает UClanhallComboComponent::GetActiveFragment(). */
-	FORCEINLINE const UAbilityData* GetComboData() const { return ComboData; }
+	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
+	FORCEINLINE const UComboData* GetComboData() const { return ComboData; }
 
 	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
 	 *  активировать (combo_system_redesign.md, Часть B1: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
+
+	// TODO: вынести в общий предок с классом врага, когда враги поедут на общий исполнитель
+	// комбо-дерева (сейчас враги используют отдельный GA_EnemyWASDSeries, в этом резолве не
+	// участвуют — combo_fragments_redesign_task.md, ответ на вопрос 3).
+
+	/** Тег класса персонажа (Ability.Class.Knight и т.д.). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (Categories = "Ability.Class"))
+	FGameplayTag ClassTag;
+
+	/** Потолок длины серии WASD-комбо (0-4). Плейсхолдер до системы прокачки —
+	 *  combo_fragments_redesign_task.md, "Ранг / потолок длины комбо". */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (ClampMin = "0", ClampMax = "4"))
+	int32 ClassRank = 1;
 };
 
