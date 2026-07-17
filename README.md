@@ -758,5 +758,8 @@ WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame 
 - ASC/атрибуты в переиспользуемые суб-виджеты (`AttributeBar`, `ChargesPanel`) задаёт **родитель**, сами они ASC не достают.
 
 ## License
-lilu_dev
-MIT
+Copyright © 2026 Lilu Dev
+
+This source code is provided for portfolio and review purposes only.
+You may view the code on GitHub.
+You may not copy, modify, redistribute, or use this code in any project without explicit written permission from the author.
