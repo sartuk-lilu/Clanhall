@@ -53,9 +53,9 @@ class UAbilityData : public UPrimaryDataAsset
 
     // Фрагменты — только то что нужно конкретной абилке
     UPROPERTY(EditAnywhere, Instanced)
-    TArray<TObjectPtr<UAbilityFragment>> Fragments;
+    TArray<TObjectPtr<UAbilityFragment Fragments;
 
-    template<typename T>
+    template<typename T
     T* FindFragment() const;  // запрос фрагмента по типу → nullptr если нет
 };
 ```
@@ -77,7 +77,7 @@ class UAbilityFragment : public UObject {};
 | `USFXFragment` | CastSound, ImpactSound | У всех со звуком |
 | `UDamageFragment` | BaseDamage, DamageEffect (GE) | У наносящих урон |
 | `UMarkApplyFragment` | MarkTag, MarkEffect (GE 5 сек) | У накладывающих метку |
-| `UMarkTriggerFragment` | TArray\<FMarkSynergy\> | У потребляющих метки |
+| `UMarkTriggerFragment` | TArray\<FMarkSynergy\ | У потребляющих метки |
 | `UBalanceFragment` | Shift (float) | У всех физических навыков |
 ### FMarkSynergy — структура внутри UMarkTriggerFragment
 
@@ -86,33 +86,33 @@ USTRUCT()
 struct FMarkSynergy
 {
     FGameplayTag RequiredMark;          // метка-условие на цели
-    TSubclassOf<UGameplayEffect> EffectOnTarget;  // дебафф на врага
-    TSubclassOf<UGameplayEffect> EffectOnSelf;    // бафф на себя
+    TSubclassOf<UGameplayEffect EffectOnTarget;  // дебафф на врага
+    TSubclassOf<UGameplayEffect EffectOnSelf;    // бафф на себя
     // Только одно из двух заполнено — никогда оба
 };
 ```
 ### Как GameplayAbility читает фрагменты
 
-Абилка данных не содержит — только запрашивает через `FindFragment<T>()`:
+Абилка данных не содержит — только запрашивает через `FindFragment<T()`:
 
 ```cpp
 void UGA_ShieldSlam::ActivateAbility(...)
 {
-    if (auto* Anim = AbilityData->FindFragment<UAnimationFragment>())
-        PlayMontage(Anim->CastMontage);
+    if (auto* Anim = AbilityData-FindFragment<UAnimationFragment())
+        PlayMontage(Anim-CastMontage);
 
     // При confirmed hit:
-    if (auto* Dmg = AbilityData->FindFragment<UDamageFragment>())
-        ApplyGameplayEffectToTarget(Target, Dmg->DamageEffect);
+    if (auto* Dmg = AbilityData-FindFragment<UDamageFragment())
+        ApplyGameplayEffectToTarget(Target, Dmg-DamageEffect);
 
-    if (auto* Mark = AbilityData->FindFragment<UMarkApplyFragment>())
-        ApplyGameplayEffectToTarget(Target, Mark->MarkEffect);
+    if (auto* Mark = AbilityData-FindFragment<UMarkApplyFragment())
+        ApplyGameplayEffectToTarget(Target, Mark-MarkEffect);
 
-    if (auto* Trigger = AbilityData->FindFragment<UMarkTriggerFragment>())
-        CheckAndActivateSynergy(Target, Trigger->Synergies);
+    if (auto* Trigger = AbilityData-FindFragment<UMarkTriggerFragment())
+        CheckAndActivateSynergy(Target, Trigger-Synergies);
 
-    if (auto* Balance = AbilityData->FindFragment<UBalanceFragment>())
-        ShiftBalance(Balance->Shift);
+    if (auto* Balance = AbilityData-FindFragment<UBalanceFragment())
+        ShiftBalance(Balance-Shift);
 }
 ```
 
@@ -224,7 +224,7 @@ Cooldown.Slot.V
 **Что делаем:**
 - `UAbilityData` (DataAsset) и `UAbilityFragment` (базовый класс)
 - Все фрагменты из таблицы выше: Animation, VFX, SFX, Damage, MarkApply, MarkTrigger, Balance
-- `FindFragment<T>()` хелпер
+- `FindFragment<T()` хелпер
 - Грант навыков с DataAsset на Character через GAS
 - Knight Ранг 1–2: Shield Slam (Q), Power Strike (E), Shield Charge (R), Retribution (F).«КД по тиру: Q/E=10, R/F=20 (для прототипа Knight Q/E/R/F → 10/10/20/20)».
 - КД только при confirmed hit (не при активации)
@@ -270,62 +270,61 @@ weapon trace врага в активном окне анимации (AnimNotif
 
 #### Комбо-система WASD (монтажи, окна, ворота ввода)
 
-> **Комбо-система WASD — реализована в C++. Полный канон механики — `combo_system.md`.
-> Ниже — актуальный канон.**
->
-> - **Модель данных — один Data Asset `UComboData` с тремя прямыми полями (не фрагменты, не единая таблица путей):**
->   - `DamageProfile` (`FDirectionalDamage`) — `BaseDamage` + `DamageType`-
->     заглушка на НАПРАВЛЕНИЕ (не на комбо-запись — не дублируется по цепочкам).
->   - `Moves` (`FComboMove`) — база ходов класса: `MoveId` (стабильный идентификатор,
->     НЕ индекс массива) → `Direction` + `Montage`. Несколько ходов могут делить одно `Direction` (общий
->     и уникальный удар одного направления — различаются `MoveId`).
->   - `Chains` (`FComboChain`) — цепочки: `Steps` — массив `MoveId` (не направлений).
->     Последовательность направлений выводится из `Move.Direction` каждого шага. `RecoveryMontage` — свой
->     на КАЖДУЮ цепочку (не общий на весь ассет). `RequiredUnlock` — задел на перки.
-> - **Резолв шага** (`UClanhallComboComponent::ResolveChain`) — направление ВАЛИДИРУЕТ путь, `MoveId`
->   ВЫБИРАЕТ клип (инвариант, не сводить обратно к «клип по направлению»). По кандидат-пути направлений
->   ищутся все цепочки дерева с совпадающим префиксом, результат делится на `ExactMatches` (цепочка длиной
->   ровно N — терминируется на этом шаге) и `PrefixMatches` (цепочка длиннее — кандидат её промежуточный
->   узел, дальше идёт ветвление).
-> - **Коллизия vs ветвление — не путать.** Несколько `PrefixMatches` с общим префиксом, расходящихся
->   дальше по дереву, — нормальное ветвление, не ошибка данных (Warning на каждом шаге ветвления был бы
->   багом). Коллизия (несколько цепочек с ПОЛНОСТЬЮ одинаковой последовательностью направлений) разрешается
->   ТОЛЬКО среди `ExactMatches`: приоритет у записи с непустым И выполненным `RequiredUnlock` (перк-системы
->   нет — заглушка: непустой тег всегда «не выполнен», на практике выигрывает первая запись с пустым
->   условием) + `UE_LOG` Warning при реальной неоднозначности (вне shipping, явно не падает).
-> - **Потолок длины серии = `AClanhallCharacter::ClassRank`** (0–4, плейсхолдер до системы прокачки, живёт
->   на персонаже, не общий предок с врагом — враг использует отдельный `GA_EnemyWASDSeries`), не поле
->   ассета, как раньше. Дерево может содержать записи длиннее ранга — они просто недоступны.
-> - **Урон — из профиля, не с абилки.** `RawDamage` на `GA_DirectionalAttackBase` убран. Компонент
->   резолвит `BaseDamage` по направлению шага ДО активации и передаёт через
->   `ASC->TriggerAbilityFromGameplayEvent(Handle, ActorInfo, Event.DirectionalAttack, &EventData, *ASC)` —
->   `EventData.EventMagnitude` = урон, `InstigatorTags` несёт `DamageType` (задел, в расчёте пока не
->   читается). Handle-активация (Часть B1, инверсия потока) сохранена — тег события служебный, не гейтит
->   выбор абилки.
-> - **Ворота ввода, не буфер:** до окна чтения нажатия отбрасываются и не копятся; в окне запоминается
->   только последнее («последнее решает»). Нет накопления → нет залипания отзывчивости.
-> - **Опенер / продолжение / игнор:** из нейтрали любое нажатие — опенер, если есть цепочка из одного шага
->   с этим направлением (по соглашению `Steps[0]` каждой цепочки — «из стойки», отдельного значения enum
->   для стойки нет). В живом комбо нажатие валидируется по дереву: валидное — монтаж + урон/MP/Balance;
->   невалидное — игнор без урона и сдвига шкал, серия завершается. Лок-аута за ошибку нет.
-> - **Recovery-анимация ≠ тег `State.ComboRecovery`.** Recovery-анимация теперь берётся из КОНКРЕТНОЙ
->   завершившейся цепочки (`FComboChain.RecoveryMontage`, опционально; nullptr = хвост запечён в
->   удар-монтаж), не из общего поля фрагмента, как раньше — играет ВСЕГДА после терминального удара серии.
->   Чтобы остановка на промежуточном узле имела свой recovery, этот узел должен быть задан отдельной
->   `ExactMatch`-записью в данных — иначе recovery возьмётся из чужой длинной ветки (заметка по данным, не
->   по коду). Тег `State.ComboRecovery` — геймплейный лок-аут ввода, вешается ТОЛЬКО после удара на
->   потолке ранга. Единая точка завершения — `EndSequenceWithRecovery`.
-> - **Страховка состояния:** серия сбрасывается и по концу окна, и по естественному концу удар-монтажа
->   (делегат) — даже если на монтаже нет/не сработал `AnimNotifyState_ComboWindow`. `ResetCombo` также
->   гасит `bReadWindowOpen` (упрочнение против незакрытого окна при форс-сбросе, напр. `OnStanceExit`).
-> - **Гейт на данные:** пока в `ComboData` нет цепочек-опенеров на все 4 направления, соответствующий
->   WASD НЕ БЬЁТ вообще. `Montage` хода может быть nullptr — удар/урон сработают без анимации.
-> - **Класс-нейтральность данных (задел под ИИ босса):** все три фрагмента не содержат ничего
->   player-специфичного (`UInputAction`, ссылок на `AClanhallCharacter`) — ключ хода `EClanhallAttackDirection`,
->   нейтральный к источнику ввода (клавиша игрока или решение ИИ). Общий исполнитель для врага — отдельная
->   будущая задача (ИИ босса), сейчас враг в этом резолве не участвует.
-> - **ОСТАЁТСЯ (B2, deferred):** перенести фиксацию урона с активации (frame 0) на окно контакта weapon
->   trace (~20–80%) — закрывает «ударил мгновенно → тут же увернулся». Пока урон на активации валидного удара.
+ **Комбо-система WASD — реализована в C++. Полный канон механики — `combo_system.md`.
+ 
+ - **Модель данных — один Data Asset `UComboData` с тремя прямыми полями (не фрагменты, не единая таблица путей):**
+   - `DamageProfile` (`FDirectionalDamage`) — `BaseDamage` + `DamageType`-
+     заглушка на НАПРАВЛЕНИЕ (не на комбо-запись — не дублируется по цепочкам).
+   - `Moves` (`FComboMove`) — база ходов класса: `MoveId` (стабильный идентификатор,
+     НЕ индекс массива) → `Direction` + `Montage`. Несколько ходов могут делить одно `Direction` (общий
+     и уникальный удар одного направления — различаются `MoveId`).
+   - `Chains` (`FComboChain`) — цепочки: `Steps` — массив `MoveId` (не направлений).
+     Последовательность направлений выводится из `Move.Direction` каждого шага. `RecoveryMontage` — свой
+     на КАЖДУЮ цепочку (не общий на весь ассет). `RequiredUnlock` — задел на перки.
+ - **Резолв шага** (`UClanhallComboComponent::ResolveChain`) — направление ВАЛИДИРУЕТ путь, `MoveId`
+   ВЫБИРАЕТ клип (инвариант, не сводить обратно к «клип по направлению»). По кандидат-пути направлений
+   ищутся все цепочки дерева с совпадающим префиксом, результат делится на `ExactMatches` (цепочка длиной
+   ровно N — терминируется на этом шаге) и `PrefixMatches` (цепочка длиннее — кандидат её промежуточный
+   узел, дальше идёт ветвление).
+ - **Коллизия vs ветвление — не путать.** Несколько `PrefixMatches` с общим префиксом, расходящихся
+   дальше по дереву, — нормальное ветвление, не ошибка данных (Warning на каждом шаге ветвления был бы
+   багом). Коллизия (несколько цепочек с ПОЛНОСТЬЮ одинаковой последовательностью направлений) разрешается
+   ТОЛЬКО среди `ExactMatches`: приоритет у записи с непустым И выполненным `RequiredUnlock` (перк-системы
+   нет — заглушка: непустой тег всегда «не выполнен», на практике выигрывает первая запись с пустым
+   условием) + `UE_LOG` Warning при реальной неоднозначности (вне shipping, явно не падает).
+ - **Потолок длины серии = `AClanhallCharacter::ClassRank`** (0–4, плейсхолдер до системы прокачки, живёт
+   на персонаже, не общий предок с врагом — враг использует отдельный `GA_EnemyWASDSeries`), не поле
+   ассета, как раньше. Дерево может содержать записи длиннее ранга — они просто недоступны.
+ - **Урон — из профиля, не с абилки.** `RawDamage` на `GA_DirectionalAttackBase` убран. Компонент
+   резолвит `BaseDamage` по направлению шага ДО активации и передаёт через
+   `ASC-TriggerAbilityFromGameplayEvent(Handle, ActorInfo, Event.DirectionalAttack, &EventData, *ASC)` —
+   `EventData.EventMagnitude` = урон, `InstigatorTags` несёт `DamageType` (задел, в расчёте пока не
+   читается). Handle-активация (Часть B1, инверсия потока) сохранена — тег события служебный, не гейтит
+   выбор абилки.
+ - **Ворота ввода, не буфер:** до окна чтения нажатия отбрасываются и не копятся; в окне запоминается
+   только последнее («последнее решает»). Нет накопления → нет залипания отзывчивости.
+ - **Опенер / продолжение / игнор:** из нейтрали любое нажатие — опенер, если есть цепочка из одного шага
+   с этим направлением (по соглашению `Steps[0]` каждой цепочки — «из стойки», отдельного значения enum
+   для стойки нет). В живом комбо нажатие валидируется по дереву: валидное — монтаж + урон/MP/Balance;
+   невалидное — игнор без урона и сдвига шкал, серия завершается. Лок-аута за ошибку нет.
+ - **Recovery-анимация ≠ тег `State.ComboRecovery`.** Recovery-анимация теперь берётся из КОНКРЕТНОЙ
+   завершившейся цепочки (`FComboChain.RecoveryMontage`, опционально; nullptr = хвост запечён в
+   удар-монтаж), не из общего поля фрагмента, как раньше — играет ВСЕГДА после терминального удара серии.
+   Чтобы остановка на промежуточном узле имела свой recovery, этот узел должен быть задан отдельной
+   `ExactMatch`-записью в данных — иначе recovery возьмётся из чужой длинной ветки (заметка по данным, не
+   по коду). Тег `State.ComboRecovery` — геймплейный лок-аут ввода, вешается ТОЛЬКО после удара на
+   потолке ранга. Единая точка завершения — `EndSequenceWithRecovery`.
+ - **Страховка состояния:** серия сбрасывается и по концу окна, и по естественному концу удар-монтажа
+   (делегат) — даже если на монтаже нет/не сработал `AnimNotifyState_ComboWindow`. `ResetCombo` также
+   гасит `bReadWindowOpen` (упрочнение против незакрытого окна при форс-сбросе, напр. `OnStanceExit`).
+ - **Гейт на данные:** пока в `ComboData` нет цепочек-опенеров на все 4 направления, соответствующий
+   WASD НЕ БЬЁТ вообще. `Montage` хода может быть nullptr — удар/урон сработают без анимации.
+ - **Класс-нейтральность данных (задел под ИИ босса):** все три фрагмента не содержат ничего
+   player-специфичного (`UInputAction`, ссылок на `AClanhallCharacter`) — ключ хода `EClanhallAttackDirection`,
+   нейтральный к источнику ввода (клавиша игрока или решение ИИ). Общий исполнитель для врага — отдельная
+   будущая задача (ИИ босса), сейчас враг в этом резолве не участвует.
+ - **ОСТАЁТСЯ (B2, deferred):** перенести фиксацию урона с активации (frame 0) на окно контакта weapon
+   trace (~20–80%) — закрывает «ударил мгновенно → тут же увернулся». Пока урон на активации валидного удара.
 
 Мувсет — направленное дерево (W/A/S/D = разные удары), длина комбо = `ClassRank` персонажа (0–4, плейсхолдер).
 Не строить единый монтаж с внутренними прыжками — ветвление по направлению делает его нечитаемым.
@@ -518,9 +517,9 @@ MIT
 
 # План Разработки HUD — Рабочий трекер
 
-> Живой документ. Отражает **что сделано, как именно, и что дальше**.
-> Стек: Unreal Engine 5.8, GAS. ASC живёт на `AClanhallCharacter`, атрибуты — в `UClanhallAttributeSet` на этом ASC.
-> Собираем UMG поверх готового C++
+ Живой документ. Отражает **что сделано, как именно, и что дальше**.
+ Стек: Unreal Engine 5.8, GAS. ASC живёт на `AClanhallCharacter`, атрибуты — в `UClanhallAttributeSet` на этом ASC.
+ Собираем UMG поверх готового C++
 
 ---
 
@@ -584,7 +583,7 @@ MIT
 
 **Иерархия:** `Overlay` → `ProgressBar` "Bar" (Fill/Fill) + `TextBlock` "ValueText" (center). Оба — `Is Variable`. Дефолтный Canvas удалён.
 
-**Percent биндинг (`GetBarPercent`):** `IsValid(TargetASC)?` → False: return `0.0`. True: `Cur = GetGameplayAttributeValue(TrackedAttribute)`, `Max = GetGameplayAttributeValue(MaxAttribute)`, `Max > 0?` → False: `0.0`, True: `Cur/Max` → `Clamp 0..1` → return. (Clamp страхует от перелива AP >max.)
+**Percent биндинг (`GetBarPercent`):** `IsValid(TargetASC)?` → False: return `0.0`. True: `Cur = GetGameplayAttributeValue(TrackedAttribute)`, `Max = GetGameplayAttributeValue(MaxAttribute)`, `Max  0?` → False: `0.0`, True: `Cur/Max` → `Clamp 0..1` → return. (Clamp страхует от перелива AP max.)
 
 **Text биндинг (`GetBarText`):** `Cur`/`Max` → `Round` → `Format Text "{0}/{1}"`.
 
@@ -644,7 +643,7 @@ MIT
 **Статус:** ✅ Готово.
 Обычный ProgressBar не годится — нужен центр-якорь. `Horizontal Box` → два `ProgressBar` по 50% ширины:
 - левый: `Bar Fill Type = Right To Left`, `Percent = (Balance < 0) ? -Balance/100 : 0`, синий (DEX)
-- правый: `Bar Fill Type = Left To Right`, `Percent = (Balance > 0) ? Balance/100 : 0`, красный (STR)
+- правый: `Bar Fill Type = Left To Right`, `Percent = (Balance  0) ? Balance/100 : 0`, красный (STR)
 Стык = ноль. Сверху вертикальная риска в центре + отметки на ±60 (граница перегруза, `combat_system.md`).
 
 **Расположение:** шкала вынесена из `PlayerFrame` в `WBP_HUD` с якорем низ-центр экрана (глобальное состояние боя логично держать по центру, как индикатор стойки, а не в углу с ресурсами).
@@ -675,7 +674,7 @@ WBP_EnemyFrame — «тупая», без сенсора и без логики 
 - WBP_ChargesPanel.Refresh: в начале гард IsValid(TargetASC) (при churn рамок ASC часто невалиден).
   Подписки WaitAttributeChanged гасятся при удалении рамки (иначе утечка).
 
-WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame> (Frames):
+WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame (Frames):
 - Event Construct: BossSensorComponent → Bind OnFrameUnitEntered/OnFrameUnitExited.
 - OnFrameUnitEntered(Unit): Get ASC (Ability System BP Library, Actor=Unit) → null-check →
   Create Widget(WBP_EnemyFrame) → SetupForUnit(ASC) → Add Child(FramesBox) → Frames.Add(Unit).
