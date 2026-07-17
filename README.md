@@ -181,81 +181,108 @@ Cooldown.Slot.V
 ```
 
 ---
-
 ### Раздел 1 — Фундамент GAS и атрибуты
+**Статус:** ✅ Готово.
 
+**Итог:** GAS подключён, `AbilitySystemComponent` живёт на Character и Enemy, все пять ресурсов существуют как атрибуты и клампятся в каноничных границах, полная таксономия тегов заложена одним файлом.
 
-- Подключение плагина GAS
-- `AbilitySystemComponent`на Character и Enemy
-- `UClanhallAttributeSet`: AP, HP, MP, Charges, Balance (float −100..+100)
-- Таксономия GameplayTags (таблица выше)
-- Минимальный HUD
+**Реализация (по факту):**
+- `UClanhallAttributeSet` (`AbilitySystem/ClanhallAttributeSet.h/.cpp`) — девять `FGameplayAttributeData`: AP/MaxAP, HP/MaxHP, MP/MaxMP, Charges/MaxCharges и Balance. У Balance намеренно нет MaxBalance — диапазон жёстко зашит −100..+100 прямо в клампе. Комбинированный макрос `ATTRIBUTE_ACCESSORS` (getter + value getter/setter/initter) объявлен в проекте сам, т.к. движок даёт только четыре отдельных «кирпича» (паттерн Lyra / GASDocumentation).
+- **Кламп в двух точках, а не в одной.** `PreAttributeChange` ловит мгновенные правки из кода (напр. `SetHP`). Но модификаторы `GameplayEffect` идут через Aggregator и могут на шаг обогнать пересчёт лимита, поэтому `PostGameplayEffectExecute` повторно клампит итоговое значение. Ресурсы → `[0, Max]`, Balance → `[−100, 100]`.
+- **Репликация заложена сразу** (задел под мультиплеер, хотя прототип однопользовательский): все девять атрибутов через `DOREPLIFETIME_CONDITION_NOTIFY(COND_None, REPNOTIFY_Always)` + свой `OnRep_*` на каждом (`GAMEPLAYATTRIBUTE_REPNOTIFY`).
+- **Таксономия GameplayTags** — `AbilitySystem/ClanhallGameplayTags.h`, нативные теги через `UE_DECLARE_GAMEPLAY_TAG_EXTERN` (не DataTable). Заложены полностью и сразу: `Ability.Class.*`, `Ability.Skill.*` (листья Knight — под Разделы 4/6), `State.*`, `Weapon.Type.*`, `Balance.Overload.*`, `Parry.Incoming.*`, `Cooldown.Slot.*`, `SetByCaller.Magnitude`, `Event.*`, `Damage.Type.*`, `Perk`, `Magic.School.*` (только корни — ранги отложены до Раздела 9), `Unit.Role.*`, `Mark.*` (полные 33 метки + `Compressed`).
+- Часть тегов объявлена «на вырост»: листья `Ability.Skill.Knight.*` нужны детектору контрнавыка в Разделе 6, `State.CounterActive` — тоже задел под Раздел 6 (см. примечание там).
+
+**Правило (соблюдается):** дописывать теги можно, переименовывать — нет, это ломает весь GAS-граф.
+
+**Проверка:** атрибуты создаются на обоих ASC, значения держатся в границах при любом источнике изменения, HUD-минимум читает AP/HP/MP.
 
 ---
 ### Раздел 2 — Боевая стойка и WASD-удары
+**Статус:** ✅ Готово.
 
-- Переключение стойки: LMB hold = стойка, release = обычное движение
-- 4-directional WASD как атаки в стойке (W/A/S/D = 4 направления удара)
-- AP-обмен: снимаешь AP врага → 50% возвращается в свой AP
-- MP восстановление: STR-удар +10, DEX-удар +5
-- Сдвиг Balance: STR-удар +5..+15, DEX-удар −5..−15
-- Пассивный дрейф Balance к 0: 2 ед/сек без активных ударов
+**Итог:** LMB-hold переводит в боевую стойку, в стойке W/A/S/D — четыре направленных удара с AP-обменом, регеном MP и сдвигом Balance; вне стойки те же клавиши просто двигают персонажа.
+
+**Реализация (по факту):**
+- **Стойка** — `UGA_CombatStance` (`Abilities/GA_CombatStance.h/.cpp`), `InstancedPerActor`. Пока активна, вешает `State.InStance` (`ActivationOwnedTags`); повторный вход заблокирован тем же тегом в `ActivationBlockedTags`. Привязка LMB-hold/release — на стороне персонажа/контроллера.
+- **Гейт на стойку для всех физдействий.** Общий предок `UGA_ClanhallAbilityBase` ставит `ActivationRequiredTags = State.InStance`. Поэтому вне стойки WASD-абилки просто не активируются (`TryActivateAbility` отказывает), и клавиши работают как движение — без отдельной ветки кода.
+- **WASD-удары** — база `UGA_DirectionalAttackBase` (`InstancedPerExecution`) + четыре тонких наследника (`GA_DirectionalAttacks.h`), каждый переопределяет только `GetDirection()` → `Overhead(W)/RightSlash(D)/LeftSlash(A)/LowSweep(S)`. Enum `EClanhallAttackDirection` вынесён в `ClanhallCombatTypes.h`, чтобы не плодить взаимозависимости заголовков (его же читают Parry- и WeaponTrace-компоненты).
+- **Поиск цели (placeholder до анимации Раздела 6.5)** — `FindMeleeTarget` в базовом классе: `SphereOverlapActors` сферой перед персонажем (`TraceRange 200`, `TraceRadius 75`), берётся первый актор с `IAbilitySystemInterface`.
+- **AP-обмен** — `ResolveStandardDamage` (в базовом классе): у цели снимается `min(урон, AP цели)`, 50 % снятого возвращается атакующему в свой AP, переполнение (урон больше остатка AP) идёт прямо в HP. Возврат `true` = «confirmed hit» — на нём завязаны КД и синергии. Всё через generic-эффекты `GE_Modify*` с SetByCaller-магнитудой.
+- **MP и Balance на удар** (`GA_DirectionalAttackBase::ActivateAbility`): STR-оружие (`Weapon.Type.STR` на ASC) → MP +10, Balance +5..+15; DEX → MP +5, Balance −5..−15 (сдвиг рандомный в диапазоне). Само число урона теперь приходит из комбо-компонента через `TriggerEventData->EventMagnitude` (редизайн Раздела 6.5) — но STR/DEX-логика MP/Balance осталась здесь.
+- **Пассивный дрейф Balance к нулю** — `GE_BalanceDrift` (Infinite, `Period 1.0` сек, без execute-on-application) + `ExecCalc_BalanceDrift`: шаг 2 ед/тик к центру, с клампом `Sign*Drift` в пределах `±|текущее|`, чтобы не проскочить ноль на другую сторону.
+- Экранный дебаг AP/MP/Balance на каждый удар (non-shipping).
+
+**Проверка:** в стойке удар по болванчику — AP уходит туда-обратно (−цель/+50 % себе), MP растёт, Balance ползёт от направления оружия и сам возвращается к нулю в простое.
 
 ---
 ### Раздел 3 — Система меток
+**Статус:** ✅ Готово.
 
+**Итог:** у каждого бойца свой независимый трек метки — таймер-тег на компоненте, максимум одна метка, с различением «своя/чужая» по источнику.
 
-- Наложение метки: `GameplayEffect` с Duration 5 сек, тег на `ActorComponent`. **GameplayEffect метки должен хранить SourceASC (владельца)** — для различения собственной метки игрока (можно перенести попаданием) и вражеской (атакой не снимается, см. mark_system.md §3).
-- Максимум 1 метка на участника: новая перезаписывает старую (RemoveEffect старой, ApplyEffect новой)
-- Проверка синергии при попадании навыка: есть ли нужный тег на цели
-- Активация: метка сгорает → эффект срабатывает → навык кладёт свою новую метку
-- Генерация +2 Charge при успешной синергии
-- Метка на игроке как независимый трек: босс попал активкой → тег на игроке, второй удар → дебафф
-- HUD: цветной индикатор типа метки + таймер 5 сек над врагом
+**Реализация (по факту):**
+- **`UClanhallMarkComponent`** (`AbilitySystem/ClanhallMarkComponent.h/.cpp`) — по одному экземпляру на игрока и на каждого врага (два независимых трека, `mark_system.md §3, §5`).
+- **Метка = таймер-тег на ASC** через `ClanhallGameplayEffects::ApplyTimedTag`, длительность 5 сек (`MarkDurationSeconds`). Максимум одна: `ApplyMark` сначала зовёт `ClearMark` (`RemoveActiveGameplayEffect` старого хендла), стека нет.
+- **Источник метки** — `CurrentMarkSourceASC` (`TWeakObjectPtr`). `IsOwnMark(QueryASC)` различает свою метку игрока (осталась от промаха — переносится на врага следующим попаданием) и чужую (наложена активкой босса — атакой НЕ снимается). Это и есть правило «двух треков».
+- **Кэш ≠ истина.** `CachedMarkTag` — только подсказка «какой тег проверять»; истина всегда в теге на ASC. `GetCurrentMark()` каждый раз перепроверяет `HasMatchingGameplayTag`, потому что по истечении 5 сек GE снимает тег сам, а кэш мог не узнать об этом мгновенно.
+- **Проверка синергии, активация и генерация заряда** живут в `GA_PhysicalSkill` (Раздел 4), метод `ResolveMarkLogic`: метка на цели сгорает → эффект срабатывает (бафф на себя ИЛИ дебафф на цель, никогда оба) → навык кладёт свою новую метку.
+- HUD: цветной индикатор типа метки + таймер 5 сек над врагом.
+
+> ⚠️ **Расхождение план ↔ код:** в плане было «+2 Charge при успешной синергии», но реализовано **+1** (`ApplyModifyEffect(... UGE_ModifyCharges, 1.0f)` в `ResolveMarkLogic`). Нужно решить, какое значение каноничное, и свести план с кодом.
+
+**Проверка:** вручную повесить метку, вторым навыком активировать синергию — эффект срабатывает, заряд добавляется, новая метка ложится.
 
 ---
 ### Раздел 4 — DataAsset, Fragments, первые навыки Knight
+**Статус:** ✅ Готово.
 
-- `UAbilityData` (DataAsset) и `UAbilityFragment` (базовый класс)
-- Все фрагменты из таблицы выше: Animation, VFX, SFX, Damage, MarkApply, MarkTrigger, Balance
-- `FindFragment<T()` хелпер
-- Грант навыков с DataAsset на Character через GAS
-- Knight Ранг 1–2: Shield Slam (Q), Power Strike (E), Shield Charge (R), Retribution (F).«КД по тиру: Q/E=10, R/F=20 (для прототипа Knight Q/E/R/F → 10/10/20/20)».
-- КД только при confirmed hit (не при активации)
-- Charges cost для R/F = 2
+**Итог:** один класс-навык `UGA_PhysicalSkill` обслуживает все физические активки; всё их содержание (урон/метка/синергия/баланс/КД/стоимость) — данные в `UAbilityData`, меняются без перекомпиляции.
+
+**Реализация (по факту):**
+- **`UAbilityData`** (`AbilitySystem/AbilityData.h`) : `UPrimaryDataAsset`. Заголовок: `DisplayName`, `Icon`, `Cooldown` (по умолч. 10), `CooldownTag` (`Cooldown.Slot.*`), `RequiredClass` (`Ability.Class.*`), `CounterTag` (`Ability.Skill.*` — идентичность для контрнавыка), `ChargeCost` (0), массив `Fragments` (Instanced). Шаблон `FindFragment<T>()` возвращает первый фрагмент типа T или nullptr.
+- **Фрагменты.** База `UAbilityFragment` (`Abstract, DefaultToInstanced, EditInlineNew` — массив полиморфных подобъектов, редактируемых прямо внутри ассета). Механические (`GameplayFragments.h`): `UDamageFragment`(BaseDamage), `UMarkApplyFragment`(MarkTag), `UMarkTriggerFragment`(TArray\<FMarkSynergy\>), `UBalanceFragment`(Shift). Презентационные (Animation/VFX/SFX) вынесены в `PresentationFragments.h`.
+- **Один класс на все активки.** `UGA_PhysicalSkill` (`InstancedPerExecution`) гранится 4 раза (Shield Slam / Power Strike / Shield Charge / Retribution), каждый раз со своим `SourceObject` (=`UAbilityData`) через `FGameplayAbilitySpec::SourceObject`. `GetAbilityData` достаёт `SourceObject` через `Handle`, а не `GetCurrentSourceObject()` — у `InstancedPerExecution` на момент `CanActivateAbility` персистентного инстанса ещё нет (метод может вызваться на CDO).
+- **Стоимость и КД разведены.** `CanActivateAbility` проверяет тег КД (он есть только после подтверждённого попадания) и наличие Charges. Charges списываются на активацию; тег КД вешается только на confirmed hit (`ApplyTimedTag` на `Data->Cooldown`). Это канон «КД только при confirmed hit».
+- **Порядок в `ActivateAbility`:** резолвер контрнавыка (до любой стоимости) → списание Charges → поиск цели → урон через `UDamageFragment`/`ResolveStandardDamage` (утил-навык без урона считается попавшим по факту найденной цели) → перенос своей метки с игрока на врага (если висела от промаха) → `ResolveMarkLogic` (синергия + новая метка) → сдвиг Balance → тег КД → опциональный косметический монтаж. Ветка промаха: метка навыка остаётся на игроке 5 сек как «своя», переносимая следующим попаданием.
+- **Knight Ранг 1–2:** Q Shield Slam, E Power Strike, R Shield Charge, F Retribution. КД по тиру Q/E=10, R/F=20 (прототип). Charges: Q/E=0, R/F=2. Все числа — в DataAsset'ах.
+
+**Проверка:** нажатие Q → Shield Slam, метка ложится, синергия из Раздела 3 срабатывает; правка цифр в DataAsset меняет поведение без перекомпиляции.
 
 ---
 ### Раздел 5 — Парирование (placeholder)
+**Статус:** ✅ Готово.
 
-**Канонический дизайн (combat_system.md §5):** Clash Detection — weapon trace игрока пересекается с
-weapon trace врага в активном окне анимации (AnimNotify 20–80%), без UI-индикаторов, только чтение анимации.
-Полная реализация — в Разделе 6.5 (AnimNotify_ParryWindowStart/End).
+**Канонический дизайн** (`combat_system.md §5`): Clash Detection — weapon-trace игрока пересекается с weapon-trace врага в активном окне анимации, без UI-индикаторов. **Полная trace-версия — в Разделе 6.5.** Ниже — то, что реализовано в этом разделе как placeholder до готовых монтажей.
 
-**Что делаем в этом разделе (placeholder до Раздела 6.5):**
-- `UGA_EnemyWASDSeries` — AI-способность серии ударов с задержкой между шагами (AbilityTask_WaitDelay)
-- `UClanhallParryComponent` на Character — флаг `bParrySuccessful`, `TryParry(tag)`, `ResetParry()`
-- Placeholder-окно: фиксированные `WindowDuration = 0.5 сек` вместо AnimNotify-фреймов
-- Placeholder-проверка: WASD-клавиша игрока в обработчике ввода вместо weapon trace пересечения
-- `ApplyTimedTagToTarget(SourceASC, TargetASC, Tag, Duration)` — AI вешает `State.Parrying` + `Parry.Incoming.*` на игрока
-- Успех: AI оглушён (`State.Stunned` 2 сек) + КД навыков игрока −5 сек (`ReducePlayerCooldowns` через `MakeQuery_MatchAnyOwningTags`)
-- Неуспех: урон по AP игрока (`ResolveStandardDamage`)
-- Правило «всё или ничего»: серия 1–4 удара; `State.ComboRecovery` после завершения серии
-- `UGA_Series_Crosscut` — конкретная серия A→D Часового, гранится Training Dummy с таймером 4 сек
+**Реализация (по факту):**
+- **`UClanhallParryComponent`** (`AbilitySystem/ClanhallParryComponent.h/.cpp`) на Character: флаг `bParrySuccessful`, `ResetParry()`, `TryParry(HitEnemy, PlayerDirection, HitLocation)`. Маппинг направления удара игрока → парируемый тег `Parry.Incoming.*` по правилу «обратное направление»: W парирует входящий S, S→W, D→A, A→D. Проверяет, что нужный `Parry.Incoming.*` висит на ASC игрока, ставит флаг, играет clash-звук.
+  - *Placeholder-точка вызова:* в Разделе 5 `TryParry` дёргался из обработчиков ввода WASD; в Разделе 6.5 переносится на коллбэк weapon-trace (`UClanhallWeaponTraceComponent::CheckAndHandleParry`).
+- **`UGA_EnemyWASDSeries`** (`Abilities/GA_EnemyWASDSeries.h/.cpp`) — AI-серия ударов, `InstancedPerExecution`, снимает требование стойки, заблокирована `State.Stunned` и `State.ComboRecovery`. Шагает по `AttackDirections` через `AbilityTask_WaitDelay`. На каждый удар (`PrepareHit`): сброс парирования, `State.Parrying` на СЕБЯ (враг — паррируемый актор) на `WindowDuration`, `Parry.Incoming.*` на игрока на то же окно, ожидание. По истечении окна (`OnWindowExpired`): парировано → счётчик; иначе → `ResolveStandardDamage` по игроку (AI получает свои 50 % AP). Между ударами — пауза `DelayBetweenHits`.
+  - *Интерим-нюанс:* `State.Parrying` тут вешается кодом — это временная замена `AnimNotify_ParryWindowStart/End`. Когда монтажи врага будут готовы, эту строку убирают (блок F.15 Раздела 6.5), иначе окно откроется дважды.
+- **Правило «всё или ничего»** — `FinalizeSeries`: полное парирование (`ParriedCount == число ударов`) → AI оглушён (`State.Stunned` на `StunDuration`) + КД игрока сокращаются на `CDReduction`. Пропустил хоть один — эффекта нет. После серии — `State.ComboRecovery` против мгновенного перезапуска (длительность: при полном парировании `Stun+0.5`, иначе 1.0 сек).
+- **Сокращение КД игрока** — `ReducePlayerCooldowns`: запрос активных эффектов по родительскому тегу `Cooldown` (`MakeQuery_MatchAnyOwningTags` — в UE 5.3+ смотрит и asset-, и granted-теги; наш `GE_ApplyTimedTag` кладёт тег в `DynamicGrantedTags`), считает `остаток − CDReduction`, снимает все КД-эффекты и перевешивает ещё не истёкшие с укороченной длительностью.
+- **Конкретная серия** — `UGA_Series_Crosscut`:  «Перекрёстный» Часового A→D (ответ игрока D→A). Гранится Training Dummy по таймеру 4 сек.
 
-**Результат:** болванчик делает A→D, игрок жмёт D→A — парирует. Пропустил один — нет эффекта.
+**Проверка:** болванчик делает A→D, игрок жмёт D→A — парирует и оглушает; пропустил один — эффекта нет.
 
 ---
 ### Раздел 6 — Контрнавык
+**Статус:** ✅ Готово.
 
-**Что делаем:**
-- Распознавание контратаки по совпадению навыка в окне State.CounterWindow активки врага (без модификатора)
-- Детектор активной `GameplayAbility` врага по тегу навыка
-- Окно контратаки: открывается в начале анимации навыка врага
-- Успех: `CancelAbility` врага без применения Cost и Cooldown Effect
-- Успех для игрока: Charges не расходуются, КД не уходит, навык можно применить сразу
-- Неуспех: навык игрока активируется обычным образом, врага не прерывает
+**Итог:** активка врага, начатая в открытом окне, прерывается тем же навыком игрока (совпадение `CounterTag`) — активка врага уходит на полный КД, а навык игрока при этом не тратит ни стоимости, ни КД.
 
-**Результат:** враг начинает Power Strike → игрок LMB+E → навык врага прерван, у игрока он готов.
+**Реализация (по факту):**
+- **`UClanhallCounterComponent`** (`AbilitySystem/ClanhallCounterComponent.h/.cpp`) — на обоих бойцах, симметрично. `OpenWindow(CounterTag, CounteredHandle, CooldownTag, CooldownDuration)` запоминает идентичность контримой активки, её хендл и КД, вешает `State.CounterWindow` (loose-тег) на владельца. `IsCounterableBy(Tag)` = окно открыто И тег совпал с `ActiveCounterTag`. `ConsumeCounter` → `CancelAbilityHandle` активки врага + полный КД на неё + закрытие окна. Статический `TryResolveCounter(Target, Tag)` — общий резолвер, который дёргают навыки игрока.
+- **Сторона игрока** (`GA_PhysicalSkill::ActivateAbility`): ДО списания Charges/КД зовётся `TryResolveCounter(Target, Data->CounterTag)`. Успех → активка врага сбита + полный КД, а навык игрока не коммитится вовсе (ранний `EndAbility` — без стоимости, без КД, без урона). Это и есть «Charges не расходуются, КД не уходит, навык готов сразу».
+- **Сторона врага** (`GA_EnemyActiveSkill.h/.cpp`): `InstancedPerExecution`, без требования стойки, заблокирован `Stunned`/`ComboRecovery`. `ActivateAbility` открывает окно контрнавыка на своём CounterComponent и запускает `WaitDelay(CounterWindowDuration)` до удара. Если снаружи `ConsumeCounter` вызвал `CancelAbilityHandle` — задача `WaitDelay` снимается, `OnHitDelayExpired` не вызовется, урона нет. Если окно не прервали — по истечении: враг сам закрывает своё окно, `ResolveStandardDamage` по игроку, наложение `HitMarkTag` (если задан).
+  - *Интерим-нюанс:* окно врага открывается кодом — временная замена `AnimNotifyState_CounterWindow` (реальных монтажей пока нет). Убирается в блоке F.16 Раздела 6.5, иначе окно задвоится.
+- **Конкретная активка** — `UGA_Enemy_PowerStrike`: и `AbilityTags`, и `CounterTag` = `Ability.Skill.Knight.PowerStrike` (намеренно тот же тег, что у Knight E — иначе контр не сматчится). `Cooldown.Slot.E`, 10 сек, `CounterWindowDuration 1.2`, `HitDamage 40`. (`HitMarkTag = Mark.BrokenGuard` отложен до Раздела 7 вместе с полным Часовым.)
+
+> ⚠️ **Расхождение план/заголовок ↔ код:** тег `State.CounterActive` объявлен с комментарием «вешается на игрока на 0.1 сек и читается `GA_PhysicalSkill` → пропускает Charges/КД», но по факту навык игрока обходит стоимость через ранний `EndAbility` в резолвере контра, а `State.CounterActive` в `GA_PhysicalSkill` **не читается**. Тег сейчас объявлен, но не используется — либо перевести пропуск стоимости на него, либо убрать тег/комментарий.
+
+**Проверка:** враг начинает Power Strike → игрок LMB+E → навык врага прерван, у игрока он остаётся готовым.
+
 
 ---
 ### Раздел 6.5 — Animation Setup
