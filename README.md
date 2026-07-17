@@ -10,9 +10,9 @@
 **Язык:** C++ для ядра, Blueprint для быстрого прототипирования навыков
 
 ---
-## Статус виджетов
+## Статус
 
-| #   | Виджет                                     | Статус      | Держит |
+| #   | Система                                    | Статус      | Держит |
 | --- | ------------------------------------------ | ----------- | ------ |
 | 1   | Фундамент GAS и атрибуты                   | ✅ Готово    |        |
 | 2   | Боевая стойка и WASD-удары                 | ✅ Готово    |        |
@@ -402,8 +402,8 @@ EndSequenceWithRecovery, делегат-страховка), инверсия а
 14. `[Редактор]` На ударах серий врага: `AnimNotify_ParryWindowStart` (~20%) / `ParryWindowEnd` (~80%).
 
 **Блок F — Переключение интеримов код↔нотифай (тут работаю я)**  
-15. `[C++ — я]` Когда монтажи врага с Parry-нотифаями из п.14 готовы → убрать интерим-строку `ApplyTimedTag(SelfASC, State_Parrying, WindowDuration)` в `GA_EnemyWASDSeries::PrepareHit`. Иначе окно `State.Parrying` откроется дважды.  
-16. `[C++ — я]` Когда появится реальный монтаж Power Strike с `AnimNotifyState_CounterWindow` → убрать интерим `OpenWindow/CloseWindow` из `GA_EnemyActiveSkill.cpp`. Иначе окно контрнавыка задвоится.
+15. `[C++]` Когда монтажи врага с Parry-нотифаями из п.14 готовы → убрать интерим-строку `ApplyTimedTag(SelfASC, State_Parrying, WindowDuration)` в `GA_EnemyWASDSeries::PrepareHit`. Иначе окно `State.Parrying` откроется дважды.  
+16. `[C++]` Когда появится реальный монтаж Power Strike с `AnimNotifyState_CounterWindow` → убрать интерим `OpenWindow/CloseWindow` из `GA_EnemyActiveSkill.cpp`. Иначе окно контрнавыка задвоится.
 
 **Блок G — Чистка**  
 **Статус:** ✅ Готово.
@@ -511,9 +511,6 @@ WASD-серии:
 - **Хардкод допустим в Разделах 1–3** — DataAsset появляется в Разделе 4, до этого можно проверять логику напрямую
 
 
-## License
-lilu_dev
-MIT
 
 # План Разработки HUD — Рабочий трекер
 
@@ -573,8 +570,8 @@ MIT
 ---
 ## 1. WBP_AttributeBar 
 **Статус:** ✅ Готово.
-Универсальный (один класс на HP / AP / MP). ASC приходит снаружи от родителя.
 
+Универсальный (один класс на HP / AP / MP). ASC приходит снаружи от родителя.
 **Переменные (все Instance Editable где нужно):**
 - `TargetASC` — `AbilitySystemComponent` (Object Ref), Instance Editable
 - `TrackedAttribute` — `Gameplay Attribute`
@@ -641,6 +638,7 @@ MIT
 
 ### 4. Шкала Balance (−100..+100, центр 0)
 **Статус:** ✅ Готово.
+
 Обычный ProgressBar не годится — нужен центр-якорь. `Horizontal Box` → два `ProgressBar` по 50% ширины:
 - левый: `Bar Fill Type = Right To Left`, `Percent = (Balance < 0) ? -Balance/100 : 0`, синий (DEX)
 - правый: `Bar Fill Type = Left To Right`, `Percent = (Balance  0) ? Balance/100 : 0`, красный (STR)
@@ -652,6 +650,7 @@ MIT
 
 ### 5. WBP_PlayerFrame
 **Статус:** ✅ Готово.
+
 ASC: `Get Owning Player Pawn → Cast ClanhallCharacter → Get Ability System Component`. `Event Construct`: `IsValid(PlayerASC)?` → True → `Set Target ASC` на HP/AP/MP барах (они на поллинге, сеттера достаточно) → `InitWithASC(PlayerASC)` на `ChargesPanel` (Custom Event). Цвета/`TrackedAttribute`/`MaxAttribute` баров задаются в Details каждого инстанса, НЕ из родителя.
 - AP → `AP`/`MaxAP`, жёлто-золотой
 - HP → `HP`/`MaxHP`, оранжево-красный
@@ -684,6 +683,7 @@ WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame 
 
 ### 7. WBP_Crosshair
 **Статус:** ✅ Готово.
+
 - Иерархия: `Size Box` (Width/Height Override, напр. 12×12, иначе схлопывается) → `Image` "Dot" (браш-точка; временно однотонный, если текстуры нет). Дефолтный Canvas удалён. Центрирование делает родитель (`WBP_HUD`, якорь center, alignment 0.5/0.5) — внутри самого виджета не центрируем.
 - Переменная: `TargetASC` (AbilitySystemComponent, Object Ref, Instance Editable).
 - **ASC приходит от родителя `WBP_HUD` через Function `SetCrosshairASC(NewASC)`** — самозахват в `Event Construct` НЕ используется (убран). Функция обычная (не Custom Event): виджет на поллинге, async-подписок нет.
@@ -738,14 +738,14 @@ WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame 
 
 Заметка: `Is Under Location` на `BossFrameContainer` даёт True только когда контейнер непустой (есть босс в радиусе → есть площадь `Vertical Box`). Пустой контейнер не хватается — таскать нечего, это корректно.
 
-### 10. Alt-режим — 🟡 курсор готов, тултипы отложены
+### 10. Alt-режим 
 **Курсор по Alt — ✅ готово.** 
 
 Логика на PlayerController (методы `Set Input Mode` / `Show Mouse Cursor` — его). `IA_HUDCursor` (Digital bool) с двумя маппингами `Left Alt` + `Right Alt` в существующем IMC (новый контекст не добавляли). Через события Enhanced Input `Started` / `Completed` (one-shot, БЕЗ опроса в Tick и без ручного bool-флага):
 - `Started` (Alt зажали): `Show Mouse Cursor = true`; `Set Input Mode Game and UI` с параметрами: **In Widget to Focus = пусто** (иначе крадёт клавиатурный фокус, глохнет WASD), **Mouse Lock Mode = Do Not Lock**, **Hide Cursor During Capture = false** (иначе курсор мигает/пропадает при клике).
 - `Completed` (Alt отпустили): `Set Input Mode Game Only`; `Show Mouse Cursor = false`.
 
-### **Тултипы
+### 11. **Тултипы
 ⬜ отложено (заметка на будущее):** 
 
 `On Mouse Enter` на иконках атрибутов/навыков → `Show Tooltip Widget`. Фундамент готов — у рамок уже `Visibility = Visible`, хит-тест под курсором работает.
