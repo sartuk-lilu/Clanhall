@@ -393,6 +393,7 @@ EndSequenceWithRecovery, делегат-страховка), инверсия а
 
 **Блок A — Фундамент**
 **Статус:** ✅ Готово.
+
 1. `[Редактор]` Сокет `WeaponSocket` на скелете оружия игрока (и врага, если у него отдельная модель оружия) — его ждёт `WeaponTraceComponent`.
 2. `[Редактор]` ABP: Locomotion state machine + слои UpperBody / FullBody / Cast.
 
@@ -425,6 +426,7 @@ EndSequenceWithRecovery, делегат-страховка), инверсия а
 16. `[C++]` Когда появится реальный монтаж Power Strike с `AnimNotifyState_CounterWindow` → убрать интерим `OpenWindow/CloseWindow` из `GA_EnemyActiveSkill.cpp`. Иначе окно контрнавыка задвоится.
 
 **Блок G — Чистка**  
+
 **Статус:** ✅ Готово.
 17. `[Редактор]` Удалить орфанный `IA_CounterMode` Input Action (Ctrl-путь контрнавыка убран).
 
@@ -555,7 +557,7 @@ WASD-серии:
 | 1   | `WBP_AttributeBar`                          | ✅ Готово    |
 | 2   | `WBP_Diamond`                               | ✅ Готово    |
 | 3   | `WBP_ChargesPanel`                          | ✅ Готово    |
-| 4   | Шкала Balance                               | ✅ Готово    |
+| 4   | `WBP_Balance`                               | ✅ Готово    |
 | 5   | `WBP_PlayerFrame`                           | ✅ Готово    |
 | 6   | `WBP_EnemyFrame` + `WBP_BossFrameContainer` | ✅ Готово    |
 | 7   | `WBP_Crosshair`                             | ✅ Готово    |
@@ -630,7 +632,7 @@ WASD-серии:
 **Event Construct:** пустой. Вся инициализация (build + refresh + подписки) переехала в Custom Event `InitWithASC`, который вызывает родитель. Временный прокид ASC в Construct (использовался при отладке) — удалён, иначе панель инициализируется на невалидном ASC раньше времени.
 
 ---
-### 4. Шкала Balance (−100..+100, центр 0)
+### 5. WBP_Balance (−100..+100, центр 0)
 **Статус:** ✅ Готово.
 
 Обычный ProgressBar не годится — нужен центр-якорь. `Horizontal Box` → два `ProgressBar` по 50% ширины:
@@ -656,18 +658,16 @@ ASC: `Get Owning Player Pawn → Cast ClanhallCharacter → Get Ability System C
 ### 6. WBP_EnemyFrame + WBP_BossFrameContainer
 **Статус:** ✅ Готово.
 
-Рамку порождает/удаляет WBP_BossFrameContainer, по одной на каждого босса в радиусе (драйвер — UClanhallBossSensorComponent, двойной радиус EnterRadius/ExitRadius; НЕ рейкаст).
+Рамку порождает/удаляет `WBP_BossFrameContainer`, по одной на каждого босса в радиусе (драйвер — `UClanhallBossSensorComponent`, двойной радиус EnterRadius/ExitRadius; НЕ рейкаст).
 N боссов = N рамок.
 
 WBP_EnemyFrame — «тупая», без сенсора и без логики видимости:
 - Event Construct пустой.
-- SetupForUnit(NewASC: AbilitySystemComponent) — Custom Event: Set Target ASC на HP/AP/MP →
-  InitWithASC(NewASC) на ChargesPanel → HideNotUsedBars(NewASC).
-- HideNotUsedBars(NewASC) — функция, Sequence 1–3: GetGameplayAttributeValue(MaxAP/MaxMP/MaxCharges)<=0
-  ? Collapsed : Visible на AP-бар / MP-бар / ChargesPanel. HP всегда виден.
-  Так одна рамка показывает Boss.Humanoid (HP+AP+MP+Charges), Boss.Monster (HP±Charges), Часового (MP скрыт).
-- WBP_ChargesPanel.Refresh: в начале гард IsValid(TargetASC) (при churn рамок ASC часто невалиден).
-  Подписки WaitAttributeChanged гасятся при удалении рамки (иначе утечка).
+- `SetupForUnit(NewASC: AbilitySystemComponent)` — `Custom Event: Set Target ASC` на HP/AP/MP → `` InitWithASC(NewASC)` на ChargesPanel →` HideNotUsedBars(NewASC)`.
+- `HideNotUsedBars(NewASC)` — функция, Sequence 1–3: `GetGameplayAttributeValue(MaxAP/MaxMP/MaxCharges)<=0 ? Collapsed : Visible` на AP-бар / MP-бар / ChargesPanel. HP всегда виден.
+  Так одна рамка показывает `Boss.Humanoid` (HP+AP+MP+Charges), `Boss.Monster` (HP±Charges), Часового (MP скрыт).
+- `WBP_ChargesPanel.Refresh`: в начале гард `IsValid(TargetASC)` (при churn рамок ASC часто невалиден).
+  Подписки `WaitAttributeChanged` гасятся при удалении рамки (иначе утечка).
 
 WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame (Frames):
 - Event Construct: BossSensorComponent → Bind OnFrameUnitEntered/OnFrameUnitExited.
@@ -704,6 +704,7 @@ WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame 
 ---
 ### 9. Перетаскивание + сохранение (централизовано в `WBP_HUD`)
 **Статус:** ✅ Готово.
+
 Изначальный план предполагал оверрайды мыши в каждой рамке — сделано иначе. Вся drag-логика живёт в `WBP_HUD` (там же, где ASC и сейв). Перетаскиваемые рамки — `WBP_PlayerFrame` и `WBP_BossFrameContainer` — **оверрайдов мыши НЕ имеют** («тупые»). Требование к ним одно: `Visibility = Visible` (иначе не хит-тестятся). Базовый класс `WBP_DraggableFrame` не создавался — не нужен.
 
 Переменные в `WBP_HUD`:
@@ -741,12 +742,12 @@ WBP_BossFrameContainer — Vertical Box (FramesBox) + Map<Actor, WBP_EnemyFrame 
 ### 10. Alt-режим 
 **Курсор по Alt — ✅ готово.** 
 
-Логика на PlayerController (методы `Set Input Mode` / `Show Mouse Cursor` — его). `IA_HUDCursor` (Digital bool) с двумя маппингами `Left Alt` + `Right Alt` в существующем IMC (новый контекст не добавляли). Через события Enhanced Input `Started` / `Completed` (one-shot, БЕЗ опроса в Tick и без ручного bool-флага):
+Логика на `PlayerController` (методы `Set Input Mode` / `Show Mouse Cursor` — его). `IA_HUDCursor` (Digital bool) с двумя маппингами `Left Alt` + `Right Alt` в существующем IMC (новый контекст не добавляли). Через события Enhanced Input `Started` / `Completed` (one-shot, БЕЗ опроса в Tick и без ручного bool-флага):
 - `Started` (Alt зажали): `Show Mouse Cursor = true`; `Set Input Mode Game and UI` с параметрами: **In Widget to Focus = пусто** (иначе крадёт клавиатурный фокус, глохнет WASD), **Mouse Lock Mode = Do Not Lock**, **Hide Cursor During Capture = false** (иначе курсор мигает/пропадает при клике).
 - `Completed` (Alt отпустили): `Set Input Mode Game Only`; `Show Mouse Cursor = false`.
 
 ---
-### 11. **Тултипы
+### 11. Тултипы
 🟡 отложено (заметка на будущее):** 
 
 `On Mouse Enter` на иконках атрибутов/навыков → `Show Tooltip Widget`. Фундамент готов — у рамок уже `Visibility = Visible`, хит-тест под курсором работает.
