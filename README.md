@@ -400,6 +400,21 @@ EndSequenceWithRecovery, делегат-страховка), инверсия а
 **Блок B — Монтажи игрока и базовые нотифаи**  
 
 3. `[Редактор]` 4 базовых монтажа WASD-ударов (W=Overhead, D=RightSlash, A=LeftSlash, S=LowSweep) — это опенеры: по ходу (`FComboMove`) в `UComboMovesFragment.Moves` на каждое направление + по цепочке из одного шага (`FComboChain.Steps = [MoveId]`) в `UComboTreeFragment.Chains`.  
+
+##### Статус Комбо Анимаций Knight
+
+| col/row | Stance |  W  |  A  |  S  |  D  |
+| :------ | :----: | :-: | :-: | :-: | :-: |
+| Stance  |   ❌    |  ✅  |  ✅  |  ✅  |  ✅  |
+| W       |   ✅    |  ❌  |  ✅  |  ✅  |     |
+| A       |   ✅    |  ✅  |  ❌  |  ✅  |  ✅  |
+| S       |   ✅    |  ✅  |  ✅  |  ❌  |     |
+| D       |   ✅    |  ✅  |  ✅  |  ✅  |  ❌  |
+#### Mocap
+https://github.com/user-attachments/assets/1a1860be-d227-4b33-a482-516d13a3bf6f
+#### Sequencer
+https://github.com/user-attachments/assets/30800fd3-17b4-4992-8a20-a2b77ff6b3f6
+
 4. `[Редактор]` На каждом из 4: `AnimNotify_WeaponTraceStart` (~20%) / `WeaponTraceEnd` (~80%) вокруг фазы контакта.  
 5. `[Редактор]` На каждом из 4: `AnimNotifyState_ComboWindow` (Begin ~60%, End ~90%, после конца контакта).  
 6. `[Редактор]` Монтажи продолжений комбо (2-й удар и далее по направлениям), с теми же двумя наборами нотифаев из п.4–5.
