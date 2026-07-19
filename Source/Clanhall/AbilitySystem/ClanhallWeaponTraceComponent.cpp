@@ -21,6 +21,13 @@ void UClanhallWeaponTraceComponent::SetCurrentDirection(EClanhallAttackDirection
 
 void UClanhallWeaponTraceComponent::BeginTrace()
 {
+	if (bTraceActive)
+	{
+		// Повторный NotifyBegin в пределах одного окна — не сбрасываем AlreadyHit,
+		// иначе одна цель получит урон дважды за взмах.
+		return;
+	}
+
 	bTraceActive = true;
 	AlreadyHit.Empty();
 	SetComponentTickEnabled(true);

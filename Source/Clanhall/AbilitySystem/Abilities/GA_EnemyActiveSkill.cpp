@@ -102,7 +102,7 @@ UGA_Enemy_PowerStrike::UGA_Enemy_PowerStrike()
 {
 	// Тот же тег, что у Knight E (Power Strike) — как AbilityTags (идентичность способности для GAS),
 	// так и CounterTag (идентичность для резолвера контрнавыка) намеренно совпадают.
-	AbilityTags.AddTag(ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag());
+	SetAssetTags(FGameplayTagContainer(ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag()));
 	CounterTag = ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag();
 
 	// Knight E — тир 10 сек (ability_system.md §3, CLAUDE.md "КД физнавыков").

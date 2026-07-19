@@ -4,8 +4,10 @@
 // затем — OnWeaponHit для обработки урона от способностей.
 //
 // Жизненный цикл:
-//   AnimNotify_WeaponTraceStart → BeginTrace()   (≈20% монтажа)
-//   AnimNotify_WeaponTraceEnd   → EndTrace()     (≈80% монтажа)
+//   AnimNotifyState_WeaponTrace: NotifyBegin → BeginTrace()   (≈20% монтажа)
+//                                 NotifyEnd   → EndTrace()     (≈80% монтажа)
+// Страховка: UClanhallComboComponent::ForceEndWeaponTrace() зовёт EndTrace() ещё раз на
+// прерванном удар-монтаже (чейн/OnStanceExit) — на случай, если NotifyEnd не успел прийти.
 //
 // SetCurrentDirection() должен быть вызван до BeginTrace() из GA_DirectionalAttackBase::ActivateAbility.
 
@@ -43,10 +45,11 @@ public:
 	/** Установить направление текущего удара — вызывается из GA_DirectionalAttackBase до BeginTrace. */
 	void SetCurrentDirection(EClanhallAttackDirection Dir);
 
-	/** Вызывается из AnimNotify_WeaponTraceStart. */
+	/** Вызывается из AnimNotifyState_WeaponTrace::NotifyBegin. */
 	void BeginTrace();
 
-	/** Вызывается из AnimNotify_WeaponTraceEnd. */
+	/** Вызывается из AnimNotifyState_WeaponTrace::NotifyEnd (и из страховки
+	 *  UClanhallComboComponent::ForceEndWeaponTrace — повторный вызов безвреден). */
 	void EndTrace();
 
 	bool IsTracing() const { return bTraceActive; }

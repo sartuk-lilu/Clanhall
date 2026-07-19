@@ -5,7 +5,7 @@
 // по направлению шага) приходит в TriggerEventData->EventMagnitude — компонент резолвит её из
 // UComboData::FindDamageByDirection ДО активации, эта абилка своего числа урона больше не хранит.
 // Монтаж играет сам комбо-компонент per-move — эта абилка своего монтажа не проигрывает. Weapon
-// trace (AnimNotify_WeaponTraceStart/End) в монтаже работает независимо и обеспечивает
+// trace (AnimNotifyState_WeaponTrace) в монтаже работает независимо и обеспечивает
 // парирование (development_plan.md, Раздел 6.5).
 
 #pragma once

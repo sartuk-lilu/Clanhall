@@ -56,7 +56,7 @@ void AClanhallTrainingDummy::BeginPlay()
 		AttributeSet->InitMaxAP(150.0f);
 		AttributeSet->InitAP(150.0f);
 		AttributeSet->InitMaxHP(300.0f);
-		AttributeSet->InitHP(300.0f);
+		AttributeSet->InitHP(300.0f);	
 	}
 }
 

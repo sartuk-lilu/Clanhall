@@ -21,7 +21,7 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 	if (SourceASC && Avatar)
 	{
 		// Раздел 6.5: сообщаем WeaponTraceComponent направление до BeginTrace (который придёт
-		// из AnimNotify_WeaponTraceStart во время монтажа).
+		// из AnimNotifyState_WeaponTrace::NotifyBegin во время монтажа).
 		if (ACharacter* Char = Cast<ACharacter>(Avatar))
 		{
 			if (UClanhallWeaponTraceComponent* TraceComp = Char->FindComponentByClass<UClanhallWeaponTraceComponent>())

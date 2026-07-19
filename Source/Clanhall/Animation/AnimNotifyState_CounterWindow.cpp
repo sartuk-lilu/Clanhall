@@ -20,7 +20,7 @@ void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshCom
 	// хендл и КД которой запоминает окно.
 	for (const FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
 	{
-		if (!Spec.IsActive() || !Spec.Ability || !Spec.Ability->AbilityTags.HasTagExact(CounterTag))
+		if (!Spec.IsActive() || !Spec.Ability || !Spec.Ability->GetAssetTags().HasTagExact(CounterTag))
 		{
 			continue;
 		}

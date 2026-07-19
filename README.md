@@ -10,6 +10,11 @@
 **Язык:** C++ для ядра, Blueprint для быстрого прототипирования навыков
 
 ---
+## Design-docs 
+
+[design-doc](https://github.com/user-attachments/assets/fae4721f-fc54-47a4-b6cb-4d64d4d72d8e)
+
+---
 ## Статус
 
 | #   | Система                                    | Статус      |
@@ -179,6 +184,11 @@ Cooldown.Slot.C
 Cooldown.Slot.V
 
 ```
+
+---
+### Симуляция боевой системы
+
+[prototype_fight](https://github.com/user-attachments/assets/7fdae2e5-2c25-4e8f-8ab0-0ca7204c0ef7)
 
 ---
 ### Раздел 1 — Фундамент GAS и атрибуты
@@ -436,13 +446,14 @@ https://github.com/user-attachments/assets/30800fd3-17b4-4992-8a20-a2b77ff6b3f6
 13. `[Редактор]` На ударах серий врага: `WeaponTraceStart/End` (для клэша парирования через trace игрока).  
 14. `[Редактор]` На ударах серий врага: `AnimNotify_ParryWindowStart` (~20%) / `ParryWindowEnd` (~80%).
 
-**Блок F — Переключение интеримов код↔нотифай (тут работаю я)**  
+**Блок F — Переключение интеримов код↔нотифай
 15. `[C++]` Когда монтажи врага с Parry-нотифаями из п.14 готовы → убрать интерим-строку `ApplyTimedTag(SelfASC, State_Parrying, WindowDuration)` в `GA_EnemyWASDSeries::PrepareHit`. Иначе окно `State.Parrying` откроется дважды.  
 16. `[C++]` Когда появится реальный монтаж Power Strike с `AnimNotifyState_CounterWindow` → убрать интерим `OpenWindow/CloseWindow` из `GA_EnemyActiveSkill.cpp`. Иначе окно контрнавыка задвоится.
 
 **Блок G — Чистка**  
 
 **Статус:** ✅ Готово.
+
 17. `[Редактор]` Удалить орфанный `IA_CounterMode` Input Action (Ctrl-путь контрнавыка убран).
 
 ---
@@ -489,8 +500,12 @@ WASD-серии:
 После победы: кат-сцена → гримуар открывается → слоги Wîn (W) и Sîl (S) записываются → разблокировано Ранг 1 Стихий.
 
 ---
-### Раздел 9 — Магическая система
+### Прототип магической системы
 
+[spells_prototype](https://github.com/user-attachments/assets/803f0b62-b4fe-444a-9b50-458adc5a9422)  
+
+---
+### Раздел 9 — Магическая система
 
 - RMB зажат = режим каста, движение заблокировано
 - 8 клавиш как syllable input (Q/A/W/S/E/D/R/F в режиме каста)
@@ -511,6 +526,11 @@ WASD-серии:
 - Эффекты перегруза Balance: при выходе за ±60 → GameplayEffect: навыки перегруженной стороны ×2 Charges
 - Добавить второе оружие (Warrior / Assassin) для теста свопа
 - Сквозной тест всего цикла: два оружия, два противника, метки в обе стороны, магия
+
+---
+### Раздел 11 — Колесо классов и перков
+
+[progression_wheel](https://github.com/user-attachments/assets/c09dd0a4-9abd-4eab-a133-e9ab79f5f77a)  
 
 ---
 ## Бэклог пост-прототипа

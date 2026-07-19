@@ -78,8 +78,8 @@ void UGA_EnemyWASDSeries::PrepareHit()
 #endif
 
 	// Раздел 6.5: State.Parrying вешается на SELF (враг — паррируемый актор).
-	// Это interim-замена AnimNotify_ParryWindowStart/End — когда animation setup будет готов
-	// в редакторе, этот вызов можно убрать, и тег будет управляться только нотифаями.
+	// Это interim-замена AnimNotifyState_ParryWindow — когда animation setup будет готов
+	// в редакторе, этот вызов можно убрать, и тег будет управляться только нотифай-стейтом.
 	ClanhallGameplayEffects::ApplyTimedTag(SelfASC, ClanhallGameplayTags::State_Parrying.GetTag(), WindowDuration);
 	// Parry.Incoming.* по-прежнему вешается на игрока — он должен знать, какое направление контрить.
 	ClanhallGameplayEffects::ApplyTimedTagToTarget(SelfASC, TargetASC.Get(), IncomingTag, WindowDuration);
@@ -155,6 +155,13 @@ void UGA_EnemyWASDSeries::FinalizeSeries()
 	{
 		const float RecoveryDuration = bFullParry ? StunDuration + 0.5f : 1.0f;
 		ClanhallGameplayEffects::ApplyTimedTag(SelfASC, ClanhallGameplayTags::State_ComboRecovery.GetTag(), RecoveryDuration);
+	}
+
+	// notify_state_migration_task.md §2.3: страховка окна парирования — снимает только
+	// loose-счётчик, интерим-тег от ApplyTimedTag выше (GE-таймер) не трогает, конфликта нет.
+	if (SelfASC)
+	{
+		SelfASC->RemoveLooseGameplayTag(ClanhallGameplayTags::State_Parrying.GetTag());
 	}
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);

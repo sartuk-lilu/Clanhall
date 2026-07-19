@@ -3,6 +3,7 @@
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
+#include "AbilitySystem/ClanhallWeaponTraceComponent.h"
 #include "ClanhallCharacter.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -274,6 +275,10 @@ void UClanhallComboComponent::PlayMontage(UAnimMontage* Montage)
 
 void UClanhallComboComponent::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
+	// Прерванный монтаж — основной кейс залипшего трейса (нотифай WeaponTraceEnd не успел
+	// сработать): страховка идёт до раннего return по bInterrupted.
+	ForceEndWeaponTrace();
+
 	if (bInterrupted)
 	{
 		// Чейн прервал монтаж новым Montage_Play, либо OnStanceExit остановил стойку — в обоих
@@ -282,6 +287,14 @@ void UClanhallComboComponent::OnAttackMontageEnded(UAnimMontage* Montage, bool b
 	}
 
 	EndSequenceWithRecovery();
+}
+
+void UClanhallComboComponent::ForceEndWeaponTrace()
+{
+	if (UClanhallWeaponTraceComponent* TraceComp = GetOwner() ? GetOwner()->FindComponentByClass<UClanhallWeaponTraceComponent>() : nullptr)
+	{
+		TraceComp->EndTrace();
+	}
 }
 
 void UClanhallComboComponent::EndSequenceWithRecovery()
@@ -341,6 +354,7 @@ void UClanhallComboComponent::OnStanceExit()
 		AnimInst->Montage_Stop(StanceExitBlendOutTime, LastPlayedMontage.Get());
 	}
 
+	ForceEndWeaponTrace();
 	ResetCombo();
 }
 

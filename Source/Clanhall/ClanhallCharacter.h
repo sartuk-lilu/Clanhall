@@ -66,7 +66,7 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallComboComponent> ComboComponent;
 
-	/** Раздел 6.5: sweep-трейс оружия, открывается AnimNotify_WeaponTraceStart/End.
+	/** Раздел 6.5: sweep-трейс оружия, открывается AnimNotifyState_WeaponTrace.
 	 *  При попадании во врага со State.Parrying вызывает ParryComponent->TryParry(). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallWeaponTraceComponent> WeaponTraceComponent;

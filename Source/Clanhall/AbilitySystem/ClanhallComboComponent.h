@@ -92,6 +92,12 @@ private:
 	void PlayMontage(UAnimMontage* Montage);
 	void ResetCombo();
 
+	/** Страховка от залипшего weapon trace (notify_state_migration_task.md §2.2): комбо-компонент
+	 *  владеет жизненным циклом удар-монтажа, поэтому страховка идёт сюда, а не в GA (тот
+	 *  InstancedPerExecution и заканчивается синхронно до начала монтажа). Двойной вызов
+	 *  EndTrace() (нотифай + страховка) безвреден. */
+	void ForceEndWeaponTrace();
+
 	/** Вешает State.ComboRecovery (лок-аут ввода) при достижении потолка ClassRank. Состояние
 	 *  (ActiveDirections) НЕ трогает — сброс и Recovery-анимация делает EndSequenceWithRecovery по
 	 *  завершении терминального удар-монтажа; тег живёт своим таймером параллельно. */
