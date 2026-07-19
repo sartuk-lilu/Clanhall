@@ -12,7 +12,7 @@
 ---
 ## Design-docs 
 
-[design-doc](https://github.com/user-attachments/assets/fae4721f-fc54-47a4-b6cb-4d64d4d72d8e)
+![design-doc](https://github.com/user-attachments/assets/fae4721f-fc54-47a4-b6cb-4d64d4d72d8e)
 
 ---
 ## Статус
@@ -188,7 +188,7 @@ Cooldown.Slot.V
 ---
 ### Симуляция боевой системы
 
-[prototype_fight](https://github.com/user-attachments/assets/7fdae2e5-2c25-4e8f-8ab0-0ca7204c0ef7)
+![prototype_fight](https://github.com/user-attachments/assets/7fdae2e5-2c25-4e8f-8ab0-0ca7204c0ef7)
 
 ---
 ### Раздел 1 — Фундамент GAS и атрибуты
@@ -502,7 +502,7 @@ WASD-серии:
 ---
 ### Прототип магической системы
 
-[spells_prototype](https://github.com/user-attachments/assets/803f0b62-b4fe-444a-9b50-458adc5a9422)  
+![spells_prototype](https://github.com/user-attachments/assets/803f0b62-b4fe-444a-9b50-458adc5a9422)  
 
 ---
 ### Раздел 9 — Магическая система
@@ -530,7 +530,8 @@ WASD-серии:
 ---
 ### Раздел 11 — Колесо классов и перков
 
-[progression_wheel](https://github.com/user-attachments/assets/c09dd0a4-9abd-4eab-a133-e9ab79f5f77a)  
+![progression_wheel](https://github.com/user-attachments/assets/c09dd0a4-9abd-4eab-a133-e9ab79f5f77a)  
+
 
 ---
 ## Бэклог пост-прототипа
