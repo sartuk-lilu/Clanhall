@@ -24,14 +24,13 @@
 | 3   | Система меток                              | ✅ Готово    |
 | 4   | DataAsset, Fragments, первые навыки Knight | ✅ Готово    |
 | 5   | Парирование (placeholder)                  | ✅ Готово    |
-| 6   | Контрнавык                                 | ✅ Готово    |
-| 7   | Animation Setup                            | ✅ Готово    |
-| 8   | Комбо-система WASD                         | In Progress |
-| 9   | Рядовой противник                          |             |
-| 10  | Стартовый босс                             |             |
-| 11  | Магическая система                         |             |
-| 12  | Смена оружия                               |             |
-|     |                                            |             |
+| 6   | Контр-навык                                | ✅ Готово    |
+| 6.5 | Animation Setup / Комбо-система WASD       | In Progress |
+| 7   | Рядовой противник                          |             |
+| 8   | Стартовый босс                             |             |
+| 9   | Магическая система                         |             |
+| 10  | Смена оружия                               |             |
+| 11  | Колесо умений                              |             |
 
 ---
 ## Архитектура DataAsset + Fragments
@@ -188,7 +187,7 @@ Cooldown.Slot.V
 ---
 ### Симуляция боевой системы
 
-![prototype_fight](https://github.com/user-attachments/assets/7fdae2e5-2c25-4e8f-8ab0-0ca7204c0ef7)
+![prototype_fight](https://github.com/user-attachments/assets/efa74915-a4a9-48dc-af5b-1831a61b71c3)
 
 ---
 ### Раздел 1 — Фундамент GAS и атрибуты
@@ -502,7 +501,7 @@ WASD-серии:
 ---
 ### Прототип магической системы
 
-![spells_prototype](https://github.com/user-attachments/assets/803f0b62-b4fe-444a-9b50-458adc5a9422)  
+![spells_prototype](https://github.com/user-attachments/assets/82a408f8-28a7-425d-aa9c-2fc725c807c9)
 
 ---
 ### Раздел 9 — Магическая система
@@ -530,8 +529,7 @@ WASD-серии:
 ---
 ### Раздел 11 — Колесо классов и перков
 
-![progression_wheel](https://github.com/user-attachments/assets/c09dd0a4-9abd-4eab-a133-e9ab79f5f77a)  
-
+![progression_wheel](https://github.com/user-attachments/assets/e188554d-f339-4724-95f7-a9533642664e)
 
 ---
 ## Бэклог пост-прототипа
