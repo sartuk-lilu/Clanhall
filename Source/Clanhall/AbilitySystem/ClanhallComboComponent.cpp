@@ -325,6 +325,22 @@ void UClanhallComboComponent::EndSequenceWithRecovery()
 	}
 }
 
+void UClanhallComboComponent::CancelSequenceForExternalMontage()
+{
+	if (ActiveDirections.IsEmpty())
+	{
+		// Нейтраль — прерывать нечего.
+		return;
+	}
+
+	ForceEndWeaponTrace();
+	ResetCombo();
+	// Монтаж НЕ останавливаем: Montage_Play вызывающего сам его перебьёт.
+	// Прилетит OnAttackMontageEnded(bInterrupted=true) -> ранний return -> состояние уже чистое.
+	// LastPlayedMontage намеренно не трогаем: если игрок отпустит ЛКМ во время каста, OnStanceExit
+	// вызовет Montage_Stop по уже мёртвому удар-монтажу (no-op) вместо живого каста.
+}
+
 void UClanhallComboComponent::ResetCombo()
 {
 	ActiveDirections.Empty();

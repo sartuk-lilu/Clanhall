@@ -6,6 +6,7 @@
 #include "AbilitySystem/ClanhallMarkTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
+#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
@@ -218,6 +219,14 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 				{
 					if (UAnimInstance* AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr)
 					{
+						// notify_state_migration_task.md Фаза 4: upperbody/fullbody делят DefaultGroup —
+						// этот Montage_Play сейчас перебьёт живой удар-монтаж комбо. Погасить его состояние
+						// заранее, иначе HandleAttackInput намертво отбрасывает WASD после каста.
+						if (UClanhallComboComponent* Combo = Char->FindComponentByClass<UClanhallComboComponent>())
+						{
+							Combo->CancelSequenceForExternalMontage();
+						}
+
 						AnimInst->Montage_Play(AnimFrag->CastMontage);
 					}
 				}
