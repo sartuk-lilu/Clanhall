@@ -179,6 +179,16 @@ void AClanhallCharacter::BeginPlay()
 	}
 }
 
+bool AClanhallCharacter::CanJumpInternal_Implementation() const
+{
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	{
+		return false;
+	}
+
+	return Super::CanJumpInternal_Implementation();
+}
+
 void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings

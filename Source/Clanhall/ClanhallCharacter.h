@@ -215,6 +215,9 @@ protected:
 	/** Initializes the ASC actor info and grants starting attribute values (hardcoded placeholders, see combat_system.md) */
 	virtual void BeginPlay() override;
 
+	/** Прыжок запрещён, пока игрок в боевой стойке (State.InStance) — см. GA_CombatStance. */
+	virtual bool CanJumpInternal_Implementation() const override;
+
 protected:
 
 	/** Called for movement input */

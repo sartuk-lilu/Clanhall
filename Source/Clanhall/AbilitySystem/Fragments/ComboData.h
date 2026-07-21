@@ -14,6 +14,7 @@
 #include "ComboData.generated.h"
 
 class UAnimMontage;
+class UAnimSequence;
 
 /** Базовый урон и тип на направление — направление задаётся именем поля-владельца в UComboData,
  *  в самой структуре не хранится. */
@@ -104,6 +105,12 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Combo")
 	FDirectionalDamage LowSweep;
+
+	/** Loop-поза боевой стойки класса. ABP тянет её в Sequence Player состояния CombatStance
+	 *  (Main States) через переменную CurrentStanceAnim. Именно UAnimSequence, не UAnimMontage:
+	 *  стойка — поза в state machine, а не монтаж через слот. */
+	UPROPERTY(EditAnywhere, Category = "Combo")
+	TObjectPtr<UAnimSequence> StanceAnim;
 
 	/** База ходов класса — одна Data Table на ассет, строки типа FComboMove. Фильтр пикера
 	 *  таблиц по типу строки (RowStructure — Engine/Private/DataTable.cpp, формат подтверждён

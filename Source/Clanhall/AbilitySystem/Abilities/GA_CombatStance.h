@@ -19,4 +19,7 @@ class CLANHALL_API UGA_CombatStance : public UGameplayAbility
 
 public:
 	UGA_CombatStance();
+
+	/** Обнуляет скорость персонажа при входе в стойку — резкий стоп вместо доката (combat_system.md §3). */
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 };
