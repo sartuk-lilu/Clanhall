@@ -27,6 +27,7 @@ class UClanhallBossSensorComponent;
 class UAbilityData;
 class UComboData;
 class UGA_DirectionalAttackBase;
+class UAnimSequence;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -131,7 +132,7 @@ protected:
 	UInputAction* AttackLowSweepAction;
 
 	/** Blueprint-наследники позволяют переопределить TraceRange/TraceRadius и т.п. в редакторе.
-	 *  Монтажи и урон — per-move в UComboData (MovesTable/профиль урона 4 поля), не на этих классах.
+	 *  Монтажи и урон — в UComboData (переходы FComboTransitionSet/профиль урона 4 поля), не на этих классах.
 	 *  По умолчанию — соответствующий C++ класс (работает без Blueprint). */
 	UPROPERTY(EditAnywhere, Category="Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
@@ -270,6 +271,14 @@ public:
 
 	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
 	FORCEINLINE const UComboData* GetComboData() const { return ComboData; }
+
+	/** Loop-поза боевой стойки текущего оружия (UComboData::StanceAnim). Статичная и берёт ACharacter,
+	 *  а не член AClanhallCharacter: в Event Blueprint Update Animation обычно уже есть закэшированная
+	 *  и провалидированная (IsValid) переменная Character как ACharacter — так не нужен второй Cast
+	 *  To Clanhall Character поверх неё, каст на AClanhallCharacter делается внутри. nullptr, если
+	 *  Character не этого класса или ComboData не назначен. */
+	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
+	static UAnimSequence* GetStanceAnim(const ACharacter* Character);
 
 	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
 	 *  активировать (combo_system_redesign.md, Часть B1: инверсия потока активации). */

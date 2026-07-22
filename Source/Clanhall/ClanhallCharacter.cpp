@@ -21,6 +21,7 @@
 #include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
 #include "AbilitySystem/AbilityData.h"
+#include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/Effects/GE_BalanceDrift.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
@@ -251,7 +252,12 @@ void AClanhallCharacter::Look(const FInputActionValue& Value)
 void AClanhallCharacter::DoMove(float Right, float Forward)
 {
 	// В боевой стойке WASD = направление удара, а не движение (combat_system.md §3-4).
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	// Стойка наземная: тег State.InStance может висеть и в воздухе (держим ЛКМ при прыжке/падении),
+	// поэтому здесь дополнительно спрашиваем IsFalling() — тем же предикатом, что гейтит позу
+	// стойки в ABP. В воздухе air control не режем; тег сам "включит" стойку в кадре приземления.
+	if (AbilitySystemComponent
+		&& AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag())
+		&& GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
 		return;
 	}
@@ -367,6 +373,12 @@ FGameplayAbilitySpecHandle AClanhallCharacter::GetAttackHandle(EClanhallAttackDi
 	case EClanhallAttackDirection::LowSweep:   return AttackLowSweepHandle;
 	default:                                   return FGameplayAbilitySpecHandle();
 	}
+}
+
+UAnimSequence* AClanhallCharacter::GetStanceAnim(const ACharacter* Character)
+{
+	const AClanhallCharacter* ClanhallCharacter = Cast<AClanhallCharacter>(Character);
+	return ClanhallCharacter && ClanhallCharacter->ComboData ? ClanhallCharacter->ComboData->StanceAnim : nullptr;
 }
 
 // ---------------------------------------------------------------------------
