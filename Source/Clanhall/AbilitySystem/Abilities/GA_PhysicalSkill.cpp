@@ -1,7 +1,6 @@
 #include "GA_PhysicalSkill.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Fragments/GameplayFragments.h"
-#include "AbilitySystem/Fragments/PresentationFragments.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallMarkTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
@@ -171,9 +170,10 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 					ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
 				}
 
-				if (const UBalanceFragment* Balance = Data->FindFragment<UBalanceFragment>())
+				if (!FMath::IsNearlyZero(Data->BalanceShift))
 				{
-					ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), Balance->Shift);
+					const float Shift = GetBalanceSign(SourceASC) * Data->BalanceShift;
+					ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), Shift);
 				}
 
 				// КД только при подтверждённом попадании — CLAUDE.md, "ЗАБЛОКИРОВАННЫЙ КАНОН".
@@ -208,27 +208,24 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			}
 		}
 
-		// Раздел 6.5: воспроизводим монтаж если AnimationFragment заполнен (косметика).
+		// Раздел 6.5: воспроизводим монтаж если CastMontage заполнен (косметика).
 		// Урон и метка уже применены выше мгновенно. AnimNotify_ApplyMark в монтаже
 		// отправит Event.ApplyMark — будущая async-версия способности будет ждать его.
-		if (const UAnimationFragment* AnimFrag = Data->FindFragment<UAnimationFragment>())
+		if (Data->CastMontage)
 		{
-			if (AnimFrag->CastMontage)
+			if (ACharacter* Char = Cast<ACharacter>(Avatar))
 			{
-				if (ACharacter* Char = Cast<ACharacter>(Avatar))
+				if (UAnimInstance* AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr)
 				{
-					if (UAnimInstance* AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr)
+					// notify_state_migration_task.md Фаза 4: upperbody/fullbody делят DefaultGroup —
+					// этот Montage_Play сейчас перебьёт живой удар-монтаж комбо. Погасить его состояние
+					// заранее, иначе HandleAttackInput намертво отбрасывает WASD после каста.
+					if (UClanhallComboComponent* Combo = Char->FindComponentByClass<UClanhallComboComponent>())
 					{
-						// notify_state_migration_task.md Фаза 4: upperbody/fullbody делят DefaultGroup —
-						// этот Montage_Play сейчас перебьёт живой удар-монтаж комбо. Погасить его состояние
-						// заранее, иначе HandleAttackInput намертво отбрасывает WASD после каста.
-						if (UClanhallComboComponent* Combo = Char->FindComponentByClass<UClanhallComboComponent>())
-						{
-							Combo->CancelSequenceForExternalMontage();
-						}
-
-						AnimInst->Montage_Play(AnimFrag->CastMontage);
+						Combo->CancelSequenceForExternalMontage();
 					}
+
+					AnimInst->Montage_Play(Data->CastMontage);
 				}
 			}
 		}

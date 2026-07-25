@@ -42,14 +42,3 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Mark")
 	TArray<FMarkSynergy> Synergies;
 };
-
-/** У всех физических навыков — сдвиг шкалы DEX↔STR (combat_system.md §2). */
-UCLASS()
-class CLANHALL_API UBalanceFragment : public UAbilityFragment
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, Category = "Balance")
-	float Shift = 0.0f;
-};

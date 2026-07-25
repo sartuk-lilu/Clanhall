@@ -1,5 +1,3 @@
-# Clanhall
-
 # План Разработки Прототипа — Технический документ
 
 ## Стек и архитектурные решения
@@ -15,7 +13,7 @@
 ![design-doc](https://github.com/user-attachments/assets/fae4721f-fc54-47a4-b6cb-4d64d4d72d8e)
 
 ---
-## Статус
+## Статус разработки прототипа
 
 | #   | Система                                    | Статус      |
 | --- | ------------------------------------------ | ----------- |
@@ -24,10 +22,9 @@
 | 3   | Система меток                              | ✅ Готово    |
 | 4   | DataAsset, Fragments, первые навыки Knight | ✅ Готово    |
 | 5   | Парирование (placeholder)                  | ✅ Готово    |
-| 6   | Контр-навык                                | ✅ Готово    |
-| 6.5 | Animation Setup / Комбо-система WASD       | In Progress |
-| 7   | Рядовой противник                          |             |
-| 8   | Стартовый босс                             |             |
+| 6   | Контрнавык                                 | ✅ Готово    |
+| 7   | Animation Setup / Комбо-система WASD       | In Progress |
+| 8   | Противники                                 |             |
 | 9   | Магическая система                         |             |
 | 10  | Смена оружия                               |             |
 | 11  | Колесо умений                              |             |
@@ -54,12 +51,14 @@ class UAbilityData : public UPrimaryDataAsset
     float Cooldown;
     FGameplayTag RequiredClass;   // Ability.Class.Knight и т.д.
     int32 ChargeCost;             // 0 / 2 / 4 / 6
+    UAnimMontage* CastMontage;    // nullptr законен — механика работает без монтажа
+    float BalanceShift;           // МОДУЛЬ сдвига шкалы; знак — из Weapon.Type.*
 
     // Фрагменты — только то что нужно конкретной абилке
     UPROPERTY(EditAnywhere, Instanced)
-    TArray<TObjectPtr<UAbilityFragment Fragments;
+    TArray<TObjectPtr<UAbilityFragment>> Fragments;
 
-    template<typename T
+    template<typename T>
     T* FindFragment() const;  // запрос фрагмента по типу → nullptr если нет
 };
 ```
@@ -72,17 +71,23 @@ class UAbilityFragment : public UObject {};
 // DefaultToInstanced — каждый экземпляр в массиве уникален
 // EditInlineNew    — редактор разворачивает содержимое прямо внутри DataAsset
 ```
+### Граница «заголовок или фрагмент»
+
+Фрагмент оправдан тогда, когда его **отсутствие** несёт смысл, невыразимый дефолтным значением поля. Нет такого смысла — поле идёт в заголовок: фрагмент дал бы только лишний клик в редакторе и молчаливый баг «забыл добавить».
+
+Поэтому `CastMontage` (отсутствие ≡ `nullptr`) и `BalanceShift` (отсутствие ≡ `0`) живут в заголовке, а `UDamageFragment` — фрагмент: его отсутствие означает «утилитарный навык, попадание подтверждается фактом найденной цели», чего `BaseDamage = 0` не выражает.
+
+**Знак сдвига баланса в данных не хранится.** По `combat_system.md §2` он однозначно следует из типа оружия (STR → вправо, DEX → влево) и резолвится из `Weapon.Type.*` на ASC одной функцией `UGA_ClanhallAbilityBase::GetBalanceSign` — общей для WASD-ударов и активок. В ассете лежит только модуль (`ClampMin = 0`).
+
 ### Фрагменты проекта
 
 | Фрагмент | Поля | Когда добавлять |
 |---|---|---|
-| `UAnimationFragment` | CastMontage, ImpactMontage | У всех видимых навыков |
 | `UVFXFragment` | CastEffect, ImpactEffect | У всех с визуалом |
 | `USFXFragment` | CastSound, ImpactSound | У всех со звуком |
 | `UDamageFragment` | BaseDamage, DamageEffect (GE) | У наносящих урон |
 | `UMarkApplyFragment` | MarkTag, MarkEffect (GE 5 сек) | У накладывающих метку |
-| `UMarkTriggerFragment` | TArray\<FMarkSynergy\ | У потребляющих метки |
-| `UBalanceFragment` | Shift (float) | У всех физических навыков |
+| `UMarkTriggerFragment` | TArray\<FMarkSynergy\> | У потребляющих метки |
 ### FMarkSynergy — структура внутри UMarkTriggerFragment
 
 ```cpp
@@ -90,48 +95,48 @@ USTRUCT()
 struct FMarkSynergy
 {
     FGameplayTag RequiredMark;          // метка-условие на цели
-    TSubclassOf<UGameplayEffect EffectOnTarget;  // дебафф на врага
-    TSubclassOf<UGameplayEffect EffectOnSelf;    // бафф на себя
+    TSubclassOf<UGameplayEffect> EffectOnTarget;  // дебафф на врага
+    TSubclassOf<UGameplayEffect> EffectOnSelf;    // бафф на себя
     // Только одно из двух заполнено — никогда оба
 };
 ```
 ### Как GameplayAbility читает фрагменты
 
-Абилка данных не содержит — только запрашивает через `FindFragment<T()`:
+Абилка данных не содержит — только запрашивает через `FindFragment<T>()`:
 
 ```cpp
 void UGA_ShieldSlam::ActivateAbility(...)
 {
-    if (auto* Anim = AbilityData-FindFragment<UAnimationFragment())
-        PlayMontage(Anim-CastMontage);
-
     // При confirmed hit:
-    if (auto* Dmg = AbilityData-FindFragment<UDamageFragment())
-        ApplyGameplayEffectToTarget(Target, Dmg-DamageEffect);
+    if (auto* Dmg = AbilityData->FindFragment<UDamageFragment>())
+        ApplyGameplayEffectToTarget(Target, Dmg->DamageEffect);
 
-    if (auto* Mark = AbilityData-FindFragment<UMarkApplyFragment())
-        ApplyGameplayEffectToTarget(Target, Mark-MarkEffect);
+    if (auto* Mark = AbilityData->FindFragment<UMarkApplyFragment>())
+        ApplyGameplayEffectToTarget(Target, Mark->MarkEffect);
 
-    if (auto* Trigger = AbilityData-FindFragment<UMarkTriggerFragment())
-        CheckAndActivateSynergy(Target, Trigger-Synergies);
+    if (auto* Trigger = AbilityData->FindFragment<UMarkTriggerFragment>())
+        CheckAndActivateSynergy(Target, Trigger->Synergies);
 
-    if (auto* Balance = AbilityData-FindFragment<UBalanceFragment())
-        ShiftBalance(Balance-Shift);
+    if (!FMath::IsNearlyZero(AbilityData->BalanceShift))
+        ShiftBalance(GetBalanceSign(SourceASC) * AbilityData->BalanceShift);
+
+    // Косметика последней — механика уже посчитана:
+    if (AbilityData->CastMontage)
+        PlayMontage(AbilityData->CastMontage);
 }
 ```
 
 Логика абилки не меняется при изменении данных — только DataAsset.
 ### Порядок добавления фрагментов (не всё сразу)
 
-1. Заголовок + `UDamageFragment` — навык наносит урон
+1. Заголовок + `UDamageFragment` — навык наносит урон и двигает шкалу (`BalanceShift` — тоже заголовок)
 2. `UMarkApplyFragment` + `UMarkTriggerFragment` — система меток работает
-3. `UAnimationFragment`, `UVFXFragment`, `USFXFragment` — визуал и звук
-4. `UBalanceFragment` — шкала STR/DEX подключена
+3. `CastMontage`, `UVFXFragment`, `USFXFragment` — визуал и звук
 
-**Правило:** сначала механика работает, потом она красиво выглядит.
+**Правило:** сначала механика работает, потом она красиво выглядит. `CastMontage` в заголовке этому не мешает: `nullptr` — законное состояние до нарезки монтажей.
 
 ---
-## Таксономия GameplayTags (закладывается в Разделе 1)
+### Таксономия GameplayTags (закладывается в Разделе 1)
 
 Теги закладываются **один раз и полностью** — переименование тегов в середине разработки ломает весь GAS-граф.
 
@@ -185,11 +190,386 @@ Cooldown.Slot.V
 ```
 
 ---
+
+## Структура 
+
+
+### Locomotion и слои боевых анимаций
+
+#### 1. Решение по базовому ассету
+
+Расширен существующий `ABP_Unarmed`, а не создан новый с нуля.
+
+**Обоснование.** Slot-нода не влияет на входящую позу, пока в неё не играет монтаж —
+она пропускает её насквозь. Значит добавление слотов к рабочему locomotion не может
+его сломать, и дублирование ассета не требуется.
+
+Отдельные ABP под разные типы оружия (разные боевые стойки) — возможный вариант
+на будущее (Раздел 10, свап оружия). Пока один ABP на игрока: правка бага локомоции
+делается в одном месте, рассинхрон между копиями невозможен.
+
+---
+
+#### 2. Структура AnimGraph
+
+Поток позы сверху вниз:
+
+```
+Locomotion SM  ->  cached pose 'locomotion'
+                        |
+                        v
+                   Main States           (locomotion + jumping)
+                        |
+                        v
+                cached pose 'lowerbody'
+                    |          |
+                    |          +--------------------------+
+                    v                                     |
+          Slot 'upperbody'                                |
+                    |                                     |
+                    v                                     |
+          cached pose 'upperbody'                         |
+                    |                                     |
+                    |  (Blend Poses[0])   (Base Pose)     |
+                    +------> Layered Blend Per Bone <-----+
+                                     |
+                                     v
+                            Slot 'fullbody'
+                                     |
+                                     v
+                              Control Rig
+                                     |
+                                     v
+                              Output Pose
+```
+
+##### Назначение узлов
+
+| Узел | Роль |
+|---|---|
+| `cached pose 'locomotion'` | Базовая локомоция (ходьба/бег), переиспользуется внутри Main States |
+| `Main States` | Locomotion + jumping. Итоговое состояние «нижней половины» |
+| `cached pose 'lowerbody'` | Кэш Main States. Используется дважды — потому и кэш, чтобы SM не считалась повторно |
+| `Slot 'upperbody'` | Приёмник монтажей WASD и Q/E. Источник — `lowerbody` |
+| `cached pose 'upperbody'` | Кэш результата верхнего слота |
+| `Layered Blend Per Bone` | Склейка: низ из `lowerbody`, верх из `upperbody` |
+| `Slot 'fullbody'` | Приёмник монтажей R/F (root motion). Перекрывает всё тело |
+| `Control Rig` | Пост-обработка поверх финальной позы (foot IK и т.п.) |
+
+##### Критичные детали подключения
+
+- **Порядок пинов Layered Blend Per Bone:** `Base Pose = lowerbody`, `Blend Poses[0] = upperbody`.
+  При перестановке фильтр по кости положит монтаж на ноги вместо верха.
+- **Branch Filter:** `Bone Name = spine_01`, `Blend Depth = 1`.
+  Всё от spine_01 и выше (грудь, руки, шея, голова) берётся из blend pose, остальное — из base.
+- **Alpha блендера = 2.0 постоянно, гейтинг не нужен.** В покое слот `upperbody`
+  пропускает `lowerbody` насквозь, обе позы идентичны, блендинг — no-op.
+- **`Slot 'fullbody'` стоит ПОСЛЕ Layered Blend, не до.** Иначе верхний слой затирал бы
+  full-body атаку.
+- **Control Rig — последним, перед Output.** Стандартная точка для full-body пост-обработки.
+
+---
+
+#### 3. Слоты: создание и назначение
+
+Слоты созданы в `Anim Slot Manager` (открывается из любого Animation Montage:
+дропдаун слота на треке -> `Anim Slot Manager`). Привязаны к скелету — создаются
+один раз на весь проект.
+
+| Слот | Группа | Кому назначается |
+|---|---|---|
+| `upperbody` | DefaultGroup | Монтажи WASD-ударов (опенеры и переходы), **Recovery-хвосты** (`UComboData.Recovery`), Q/E |
+| `fullbody` | DefaultGroup | Монтажи R/F (Shield Charge, Overhead Slam, Aerial Lunge) |
+
+Recovery играется тем же `Montage_Play` из `UClanhallComboComponent::EndSequenceWithRecovery`, что и
+удары — слот у него обязан быть тот же, иначе хвост не перебьёт терминальный удар, а заиграет поверх него.
+
+##### Оба слота в одной группе — последствия
+
+Монтажи внутри одной slot-группы **перебивают друг друга**. Это выбрано намеренно (альтернатива —
+разные группы — дала бы параллельно тикающий комбо-монтаж со стреляющими нотифаями под видимым
+`fullbody`-рывком: невидимые удары и открытое окно чтения посреди Shield Charge).
+
+**Следствие:** любая активка Q/E/R/F, сыгранная посреди живого комбо, прерывает удар-монтаж, и
+`UClanhallComboComponent::OnAttackMontageEnded` получает `bInterrupted = true`.
+
+**Слот назначается в самом монтаже**, не в ABP. ABP только предоставляет приёмники.
+При создании нового боевого монтажа обязательно выставить слот на его треке.
+
+Типовая ошибка: монтаж остался в `DefaultSlot` -> анимация не проигрывается,
+но логика (трейсы, метки, урон) работает штатно, т.к. AnimNotify живут на монтаже
+независимо от того, виден он или нет. Симптом «логика есть, анимации нет» =
+почти всегда несовпадение слота.
+
+---
+
+#### 4. Обоснование разделения upper/full
+
+Стандартная причина слоёв (бежать и бить одновременно) **в этом проекте не работает**:
+в боевой стойке при зажатой ЛКМ игрок не перемещается, WASD = удары.
+Фактические причины разделения другие:
+
+**FullBody для R/F — обязателен.** Это целотельные движения с root motion.
+Положить их только на верх нельзя: ноги застрянут в idle, пока корпус летит вперёд.
+
+**UpperBody для WASD/Q/E — про авторинг, не про механику.** Даёт:
+- «прибитые» стопы при спаме лёгких ударов (нет проскальзывания на стыках
+  idle -> удар -> idle);
+- экономию анимаций — не нужно анимировать ноги в каждом ударе, они держат общую стойку;
+- задел под реакции на удар: вне стойки игрок бегает, и флинч на верх тела поверх
+  локомоции даст ему дёрнуться, продолжая движение. Сейчас этот кейс не задействован.
+
+---
+### Комбо-система WASD
+
+#### 1. Что это и зачем
+
+В боевой стойке (ЛКМ зажат) клавиши W/A/S/D — не движение, а четыре направленных удара (`EClanhallAttackDirection`: Overhead / RightSlash / LeftSlash / LowSweep). Из них игрок набирает серию. Система отвечает за три вещи: какие продолжения вообще существуют, какой клип и урон играет каждый шаг, и как серия завершается.
+
+Два принципа из `combat_system.md §3`: **приоритет отзывчивости над анимацией** (ввод всегда читается, игрок не заперт в анимации) и наказание за **решения**, а не за криворукость (ошибочный ввод не карается лок-аутом сверх обычного — он просто не продолжает серию).
+
+---
+
+#### 2. Архитектура: данные + два исполнителя
+
+**Данные** — один Data Asset на класс (`UComboData`), назначается в поле `ComboData` персонажа.
+Класс-нейтральны (§11).
+
+**Рантайм** — два объекта с разной ответственностью:
+
+- `UClanhallComboComponent` — ворота ввода и единственный источник истины «что играть». Живёт на персонаже. Решает опенер / продолжение / игнор, резолвит клип и урон, ведёт состояние серии, завершает её через Recovery и сам проигрывает монтажи.
+- `GA_DirectionalAttackBase` (+ 4 подкласса по направлениям) — тонкий исполнитель. Активируется ТОЛЬКО компонентом, получает урон в событии, применяет урон/MP/Balance, сообщает направление weapon-trace, выходит. Собственного монтажа не играет.
+
+---
+
+#### 3. Модель данных — `UComboData : UPrimaryDataAsset`
+
+Состав комбо-данных фиксирован (всегда урон + стойка + переходы), поэтому обёртки-фрагменты не нужны — в отличие от `UAbilityData` навыков, где состав опциональный.
+
+**Ключевая модель — пары переходов, а не пути.** Ход определяется ТОЛЬКО парой «предыдущее направление → новое». История серии до предыдущего шага в резолве не участвует: `A→W` один и тот же клип, откуда бы в `A` ни пришли. Компонент хранит лишь `LastDirection`, не список шагов.
+
+##### 3.1 Профиль урона — 4 именованных поля
+
+Базовый урон и тип задаются на **направление**, не на шаг серии. У игрока направления есть всегда, поэтому не массив с поиском по ключу, а четыре обязательных поля («не задал» не бывает):
+
+```
+FDirectionalDamage { float BaseDamage; FGameplayTag DamageType; }   // Direction в структуре не хранится
+UComboData: FDirectionalDamage Overhead, RightSlash, LeftSlash, LowSweep;
+FindDamageByDirection(Direction) -> const FDirectionalDamage&        // switch, ссылка — урон всегда есть
+```
+
+`DamageType` (`Damage.Type.Slash/Pierce/Blunt`) — тег-заглушка, в расчёте не участвует (задел под DT/резисты). Это источник истины `BaseDamage` для WASD; поля `RawDamage` на абилке нет.
+
+##### 3.2 Поза боевой стойки — `StanceAnim`
+
+`UAnimSequence` (не монтаж): стойка — поза в state machine, а не монтаж через слот. ABP забирает её статичным `AClanhallCharacter::GetStanceAnim(Character)` (`BlueprintPure`, принимает `ACharacter`, каст внутри) в `Event Blueprint Update Animation` и кладёт в переменную состояния `CombatStance`, которую читает Sequence Player. Per-class: позиция оружия своя у каждого класса, при свапе оружия меняется вместе с `ComboData`.
+
+##### 3.3 Переходы — пять наборов + Recovery
+
+Направление выводится из **имени поля**, отдельного поля `Direction` в структурах нет: дублировать его значило бы завести источник рассинхрона с профилем урона.
+
+```
+FComboTransitionSet          { ToOverhead; ToLeftSlash; ToRightSlash; ToLowSweep; }   // 4 — из стойки
+FComboTransitionsFromOverhead{ ToLeftSlash; ToRightSlash; ToLowSweep; }               // 3 — без ToOverhead
+FComboTransitionsFromLeftSlash / ...FromRightSlash / ...FromLowSweep                  // по 3, аналогично
+FComboRecoveryAnimations     { AfterOverhead; AfterLeftSlash; AfterRightSlash; AfterLowSweep; }
+
+UComboData: FromStance, FromOverhead, FromLeftSlash, FromRightSlash, FromLowSweep, Recovery
+```
+
+**Повтор направления непредставим на уровне типа.** У `From*`-наборов нет слота на своё же
+направление: `W→W` требует нового полноценного замаха, то есть Recovery, а не продолжения. Слот не «оставлен пустым» — его нет вообще, поэтому заполнить его по ошибке невозможно.
+
+Итого 20 слотов: 4 опенера + 12 переходов + 4 Recovery.
+
+**`nullptr` — легальное состояние с тремя разными смыслами:**
+
+| Где | Что значит |
+|---|---|
+| `FromStance.To*` | Этим направлением серию не начать — WASD в нейтрали не бьёт вообще |
+| `From*.To*` | Продолжение запрещено → терминал, серия уходит в Recovery |
+| `Recovery.After*` | Хвост возврата запечён в сам удар-монтаж, отдельно не играется |
+
+**Recovery — монтаж, не Sequence.** `PlaySlotAnimationAsDynamicMontage` всё равно создаёт
+`UAnimMontage` в рантайме: монтаж не устраняется, он становится неавторируемым, а
+BlendIn/BlendOut/BlendOutTriggerTime переезжают из ассета в дефолты аргументов C++-функции — одно значение на все четыре направления, ноль настройки в редакторе. Аналогия со `StanceAnim` здесь неверна: стойка играется Sequence Player'ом в state machine (монтажа нет), Recovery играется через слот (монтаж есть).
+
+**Резолв — простой switch,** без поиска и без логов конфликтов: слот либо заполнен, либо пуст,
+конфликтовать нечему.
+
+```
+FindOpenerMontage(To)            -> UAnimMontage*    // FromStance
+FindTransitionMontage(From, To)  -> UAnimMontage*    // From*, повтор направления -> nullptr
+FindRecoveryMontage(LastDir)     -> UAnimMontage*    // Recovery
+```
+
+**Именование ассетов:** `Stance_W` / `Stance_A` / `Stance_D` / `Stance_S`; переходы `W_A`, `W_D`,
+`W_S`, `A_W`, … ; хвосты `W_Recovery` / `A_Recovery` / `D_Recovery` / `S_Recovery`.
+
+---
+
+#### 4. Ввод: ворота, не буфер
+
+Ключевое отличие от классического буфера — чтобы не терять отзывчивость.
+
+- Пока **окно чтения** закрыто (фаза замаха), нажатия WASD **отбрасываются и не копятся**.
+- Окно открывает/закрывает `AnimNotifyState_ComboWindow` на монтаже текущего удара
+  (`OnComboWindowOpen` / `OnComboWindowClose`). В открытом окне действует **«последнее нажатие решает»**: хранится только последний ввод (`LatestInWindow`, overwrite), накопления нет.
+- Нет буферизации → нет «подсасывания» устаревшего намерения; мэш не собирает комбо сам, тайминг окна обязателен.
+
+Окно по умолчанию: Begin ≈ 60%, End ≈ 90% монтажа. End стоит ПОСЛЕ окна контакта (~80%), иначе следующий удар срежет собственное попадание. Разрешение (проигрыш следующего шага) — на закрытии окна. Позиция End — ручка «отзывчивость ↔ коммит», крутится в редакторе.
+
+**Два гейта на входе в компонент, до всякого резолва:**
+
+- висит `State.ComboRecovery` → ввод игнорируется (дублирует `ActivationBlockedTags` на
+  `UGA_ClanhallAbilityBase`: тот гейтит активацию абилки, этот — вход раньше, до попытки);
+- персонаж в воздухе (`IsFalling`) → удара нет. Стойка наземная; ЛКМ можно держать в падении, и тег
+  `State.InStance` при этом висит, но удар-монтаж посреди падения играть нельзя.
+
+Выход из стойки (отпуск ЛКМ) работает в ЛЮБОЙ фазе, вне ворот: `Montage_Stop` с блендаутом (`StanceExitBlendOutTime`, 0.18 с), принудительное закрытие weapon-trace, сброс серии. Ворота гейтят только продолжение, не отмену.
+
+---
+
+#### 5. Опенер / продолжение / игнор
+
+- **Нейтраль** (`StepCount == 0`): нажатие = опенер. Валиден, если занят соответствующий слот
+  `FromStance`. Активирует удар (урон/MP/Balance) и стартует серию.
+- **Серия живёт**: нажатие в открытом окне — продолжение, валидируется слотом `From*`. Валидное играет свой клип и применяет урон; невалидное — **игнор без урона и сдвига шкал**, серия завершается через Recovery. Вне окна ввод отбрасывается.
+- Добавочного штрафа за ошибку нет: базовый лок-аут (`State.ComboRecovery` на время
+  Recovery-анимации, §7) вешается на ЛЮБОМ терминале одинаково. Цена ошибки в том, что решает последнее нажатие в окне: мусор в конце окна уводит серию в Recovery, успел поправиться валидным до закрытия — валидное перезаписывает.
+
+---
+
+#### 6. Резолв шага
+
+Состояние серии — два поля: `LastDirection` (последнее сыгранное направление, не задано = нейтраль) и `StepCount` (длина серии, 0 = нейтраль). Оба меняются только вместе.
+
+На **закрытии окна** (`OnComboWindowClose`) по порядку:
+
+1. Ввода в окне не было → терминал (§7).
+2. `StepCount + 1 > ClassRank` → терминал, даже если слот перехода занят (§8).
+3. `LastDirection` не задан при `StepCount > 0` → рассинхрон состояния, защитный терминал.
+4. `FindTransitionMontage(LastDirection, Dir)` вернул `nullptr` → невалидное продолжение, терминал.
+5. Активация шага не прошла (например, стойку сняли между вводом и разрешением окна) → терминал,
+   состояние не фиксируется.
+6. Иначе: `LastDirection = Dir`, `++StepCount`. Если `StepCount >= ClassRank` — взводится
+   `bCeilingReached` (§7, §8).
+
+Клип и урон берутся по одному и тому же направлению шага: клип — из слота перехода, урон — из профиля (`FindDamageByDirection`).
+
+---
+
+#### 7. Завершение серии и Recovery
+
+**Recovery-анимация ≠ тег `State.ComboRecovery`** — две разные сущности, путать нельзя.
+
+- **Recovery-анимация** — визуальный возврат к стойке, играет ВСЕГДА после терминального удара (и одиночного опенера, и последнего в серии). Берётся по `LastDirection` из `Recovery`. `nullptr` =  хвост запечён в удар-монтаж, отдельный клип не играется.
+- **Тег `State.ComboRecovery`** — геймплейный лок-аут НОВЫХ атак (WASD и физактивки Q/E/R/F, `ActivationBlockedTags` на `UGA_ClanhallAbilityBase`). Вешается на КАЖДОМ терминале. Длительность: `Recovery->GetPlayLength() * RecoveryLockFraction` (0, если Recovery-монтажа нет), плюс  `ComboRecoveryDuration` сверху, если серия упёрлась в потолок `ClassRank`.
+
+**Единая точка завершения — `EndSequenceWithRecovery()`.** Вызывается из fall-through
+`OnComboWindowClose` и из делегата конца удар-монтажа. Порядок внутри критичен:
+
+1. Guard: `StepCount == 0` → выход. Не даёт сыграть Recovery дважды на одну серию.
+2. Резолв Recovery-анимации и чтение `bCeilingReached` — **до** `ResetCombo()`: сброс обнуляет `LastDirection` и гасит флаг.
+3. `ResetCombo()`.
+4. Расчёт и наложение лок-аута.
+5. Проигрыш Recovery-монтажа **без делегата конца** — иначе его собственный конец снова вызвал бы
+   завершение серии (петля). По этой же причине здесь не используется хелпер `PlayMontage()`: он
+   вешает делегат.
+
+**Почему тег вешается здесь, а не при достижении потолка.** `ApplyComboRecovery()` только взводит `bCeilingReached`. Повесь тег там — таймер стартовал бы, пока терминальный удар-монтаж ещё доигрывает, и к возврату в стойку лок-аут был бы почти израсходован.
+
+**Выход из стойки тег не снимает.** `ResetCombo()` намеренно его не трогает: иначе «выйти из стойки и сразу войти обратно» бесплатно отменяло бы лок-аут. Сам выход из стойки при этом остаётся бесплатным всегда — блокируются новые атаки, не отмена. `UGA_CombatStance` этой блокировкой не затронута.
+
+**Страховка состояния (важно при расстановке нотифаев).** Серия завершается и по закрытию окна, и по естественному концу удар-монтажа (делегат `OnMontageEnded`, `bInterrupted == false`). Это спасает от залипания, если на монтаже нет или не сработал `AnimNotifyState_ComboWindow`. Weapon-trace принудительно закрывается в делегате ДО раннего return по `bInterrupted` — прерванный монтаж и есть основной кейс залипшего трейса.
+
+**Прерывание чужим монтажом** — `CancelSequenceForExternalMontage()`, зовётся активкой Q/E/R/F перед
+своим `Montage_Play` (оба слота в одной группе, `locomotion_structure.md §3`). Гасит trace и
+сбрасывает серию, но БЕЗ Recovery-анимации и БЕЗ тега: чужой монтаж уже занимает слот, Recovery дрался бы с ним за него, а наказания за прерывание нет — тот же принцип, что у невалидного продолжения. Сам монтаж не останавливается: `Montage_Play` вызывающего перебьёт его, прилетит `OnAttackMontageEnded(bInterrupted = true)` → ранний return → состояние уже чистое. `LastPlayedMontage` намеренно не обнуляется: если игрок отпустит ЛКМ во время каста, `OnStanceExit` сделает `Montage_Stop` по мёртвому удар-монтажу (безвредный no-op) вместо живого каста.
+
+---
+
+#### 8. Ранг и длина комбо
+
+Потолок длины серии = `AClanhallCharacter::ClassRank` (0–4, `BlueprintReadWrite`, плейсхолдер до системы прокачки; рядом `ClassTag` из `Ability.Class.*`). Потолок живёт на персонаже, а не в ассете: длина зависит от бойца, а не от оружия. Фолбэк компонента при отсутствии персонажа — 1.
+
+Заполненные переходы существуют независимо от ранга, ранг лишь ограничивает глубину: кандидат длиннее ранга → продолжение запрещено → терминал + Recovery. Отдельных наборов данных под ранги не нужно.
+
+`ClassRank = 0` (будущее): отдельная деградированная ветка — более «корявый» удар с долгим Recovery, в духе безоружного замаха как в Gothic. Не реализовано. Сейчас опенер ранг не проверяет, поэтому при 0 одиночный удар всё равно проходит — при реализации нулевого ранга опенер нужно будет направить на эту ветку.
+
+---
+
+#### 9. Цена модели пар
+
+Модель пар обменивает выразительность на простоту, и обмен нужно помнить.
+
+**Чего в ней нет.** Уникального клипа на конкретной глубине или в конкретной ветке. Переход `A→W` один на всё дерево: нельзя дать особую анимацию для «`D` → `A` → `W`», отличную от «`S` → `A` → `W`» — в резолв приходит только `(A, W)`. Раньше это выражалось ссылкой на другую строку таблицы ходов (`Special_D_W`); вместе с путями ушло и это.
+
+**Что получено взамен.** Невозможные состояния непредставимы (повтор направления), коллизий данных не существует в принципе, резолв — switch без поиска, а редактор показывает ровно 20 слотов вместо дерева цепочек с ручным вводом идентификаторов.
+
+**Задел.** Корень тега `Perk` (`ClanhallGameplayTags`) оставлен под будущую условную разблокировку. Если она понадобится, вешать её планируется фрагментом на уровне конкретного навыка/хода, которому условие реально нужно (паттерн DataAsset + Fragments), а не полем на каждой записи данных.
+
+---
+
+#### 10. Урон — канал до абилки
+
+Компонент резолвит `BaseDamage` через `FindDamageByDirection` ДО активации и кладёт в
+`FGameplayEventData::EventMagnitude`; `DamageType`-тег — в `InstigatorTags` события (пока не читается). Активация — `TriggerAbilityFromGameplayEvent` по хэндлу из
+`AClanhallCharacter::GetAttackHandle(Direction)`, тег события `Event.DirectionalAttack` служебный. `GA_DirectionalAttackBase::ActivateAbility` берёт урон из `TriggerEventData->EventMagnitude`, применяет `ResolveStandardDamage` + MP/Balance по `combat_system.md §4`. Монтаж проигрывается компонентом только при успешной активации — вызывающий код фиксирует состояние серии лишь по `true`.
+
+Компонент — единственный владелец решения «что играть и сколько урона»; абилка в данные не лезет.
+
+---
+
+#### 11. Класс-нейтральность и переиспользование врагом
+
+Данные не содержат ничего player-специфичного: ключ — `EClanhallAttackDirection` (доменное «тип удара», нейтрально к источнику: клавиша игрока или выбор ИИ). Никаких `UInputAction`, ссылок на игрока.
+
+Это задел: враги (Часовой, Страж) на этапе ИИ смогут переиспользовать те же клипы и тот же ассет через свой исполнитель `GA_EnemyWASDSeries` — БЕЗ этого реактивного компонента (врагу не нужны ворота, окна и резолв ввода, он исполняет выбранную ИИ серию по скрипту). Общий предок игрока и врага, ранг врага и общий исполнитель — отдельная задача этапа ИИ; сейчас `ClassTag`/`ClassRank` живут только на `AClanhallCharacter` (с TODO).
+
+---
+
+#### 12. Нарезка анимаций (узловые позы)
+
+Модель клипов — **граф узловых поз**, и она ложится на модель пар один в один.
+
+- **Узлы:** `Stance` (якорь) и по одному «после удара»: `after-W`, `after-A`, `after-D`, `after-S`.
+- **Клип = ребро:** переход из узла в узел с анимацией ОДНОГО удара. Ребро адресуется парой «входной узел, удар» — ровно то, что хранит `UComboData`.
+- **Резать из самой длинной связки:** удары внутри ветки брать из одного mocap-дубля (`W` из `DAW`  несёт реальную инерцию серии), точки реза ставить по узловым позам — тогда конец `D→A` совпадает со стартом `A→W`, стык внутри одного дубля, без рывка. Собирать удары из разных дублей хуже — рвётся инерция тела.
+- **Согласованные узлы:** все клипы, входящие в узел, и все выходящие из него должны сходиться в ОДНОЙ каноничной позе этого узла. Расхождение между дублями — подчистить концы или микро-бленд 0.05–0.08 с на узле (там скорость минимальна, бленд невидим).
+- **Опенер** — ребро `Stance→X`, стартует из стойки. Брать `W` из `DAW` как опенер нельзя: он
+  начинается не из стойки и валиден только как `A→W`.
+- **Recovery** — ребро `узел→Stance`, своё на каждый узел. Разные, потому что меч остаётся слева или справа: общий бленд между несовместимыми позами даёт кашу. Четыре узла — четыре хвоста.
+
+Именование сырых mocap-дублей — `AS_Mocap_..._Raw`, отдельно от нарезки; имена нарезанных монтажей — §3.3.
+
+---
+
+#### 13. Карта кода
+
+- `ComboData.h/.cpp` — `FDirectionalDamage`, `FComboTransitionSet`, `FComboTransitionsFrom*` (×4),
+  `FComboRecoveryAnimations`, `UComboData` (поля профиля, `StanceAnim`, `FromStance`, `From*`,
+  `Recovery`; `FindDamageByDirection` / `FindOpenerMontage` / `FindTransitionMontage` /
+  `FindRecoveryMontage`).
+- `ClanhallComboComponent.h/.cpp` — ворота ввода, `HandleAttackInput`, `TryStartSequence`,
+  `OnComboWindowOpen/Close`, `ActivateStep` (канал урона), `EndSequenceWithRecovery`,
+  `CancelSequenceForExternalMontage`, `OnStanceExit`, делегат-страховка, потолок `ClassRank`.
+  Настройки: `ComboRecoveryDuration`, `RecoveryLockFraction`, `StanceExitBlendOutTime`.
+- `GA_DirectionalAttackBase.h/.cpp` — исполнитель: урон из `EventMagnitude`, MP/Balance, направление в weapon-trace.
+- `AClanhallCharacter` — `ComboData`, `GetComboData()`, `GetStanceAnim()`, `GetAttackHandle()`, `ClassTag`/`ClassRank`, `OnAttackX` → `HandleAttackInput`, `OnStanceReleased` → `OnStanceExit`.
+- `AnimNotifyState_ComboWindow`, `AnimNotifyState_WeaponTrace` — окна на монтажах.
+- Теги: `State.ComboRecovery`, `Damage.Type.*`, `Perk.*`, `Event.DirectionalAttack`
+  (`ClanhallGameplayTags`).
+
+---
 ### Симуляция боевой системы
 
 ![prototype_fight](https://github.com/user-attachments/assets/efa74915-a4a9-48dc-af5b-1831a61b71c3)
 
 ---
+
+## Реализация 
+
 ### Раздел 1 — Фундамент GAS и атрибуты
 **Статус:** ✅ Готово.
 
@@ -249,8 +629,8 @@ Cooldown.Slot.V
 **Итог:** один класс-навык `UGA_PhysicalSkill` обслуживает все физические активки; всё их содержание (урон/метка/синергия/баланс/КД/стоимость) — данные в `UAbilityData`, меняются без перекомпиляции.
 
 **Реализация (по факту):**
-- **`UAbilityData`** (`AbilitySystem/AbilityData.h`) : `UPrimaryDataAsset`. Заголовок: `DisplayName`, `Icon`, `Cooldown` (по умолч. 10), `CooldownTag` (`Cooldown.Slot.*`), `RequiredClass` (`Ability.Class.*`), `CounterTag` (`Ability.Skill.*` — идентичность для контрнавыка), `ChargeCost` (0), массив `Fragments` (Instanced). Шаблон `FindFragment<T>()` возвращает первый фрагмент типа T или nullptr.
-- **Фрагменты.** База `UAbilityFragment` (`Abstract, DefaultToInstanced, EditInlineNew` — массив полиморфных подобъектов, редактируемых прямо внутри ассета). Механические (`GameplayFragments.h`): `UDamageFragment`(BaseDamage), `UMarkApplyFragment`(MarkTag), `UMarkTriggerFragment`(TArray\<FMarkSynergy\>), `UBalanceFragment`(Shift). Презентационные (Animation/VFX/SFX) вынесены в `PresentationFragments.h`.
+- **`UAbilityData`** (`AbilitySystem/AbilityData.h`) : `UPrimaryDataAsset`. Заголовок: `DisplayName`, `Icon`, `Cooldown` (по умолч. 10), `CooldownTag` (`Cooldown.Slot.*`), `RequiredClass` (`Ability.Class.*`), `CounterTag` (`Ability.Skill.*` — идентичность для контрнавыка), `ChargeCost` (0), `CastMontage`, `BalanceShift` (модуль, `ClampMin = 0`), массив `Fragments` (Instanced). Шаблон `FindFragment<T>()` возвращает первый фрагмент типа T или nullptr.
+- **Фрагменты.** База `UAbilityFragment` (`Abstract, DefaultToInstanced, EditInlineNew` — массив полиморфных подобъектов, редактируемых прямо внутри ассета). Механические (`GameplayFragments.h`): `UDamageFragment`(BaseDamage), `UMarkApplyFragment`(MarkTag), `UMarkTriggerFragment`(TArray\<FMarkSynergy\>). Презентационные (VFX/SFX) вынесены в `PresentationFragments.h`.
 - **Один класс на все активки.** `UGA_PhysicalSkill` (`InstancedPerExecution`) гранится 4 раза (Shield Slam / Power Strike / Shield Charge / Retribution), каждый раз со своим `SourceObject` (=`UAbilityData`) через `FGameplayAbilitySpec::SourceObject`. `GetAbilityData` достаёт `SourceObject` через `Handle`, а не `GetCurrentSourceObject()` — у `InstancedPerExecution` на момент `CanActivateAbility` персистентного инстанса ещё нет (метод может вызваться на CDO).
 - **Стоимость и КД разведены.** `CanActivateAbility` проверяет тег КД (он есть только после подтверждённого попадания) и наличие Charges. Charges списываются на активацию; тег КД вешается только на confirmed hit (`ApplyTimedTag` на `Data->Cooldown`). Это канон «КД только при confirmed hit».
 - **Порядок в `ActivateAbility`:** резолвер контрнавыка (до любой стоимости) → списание Charges → поиск цели → урон через `UDamageFragment`/`ResolveStandardDamage` (утил-навык без урона считается попавшим по факту найденной цели) → перенос своей метки с игрока на врага (если висела от промаха) → `ResolveMarkLogic` (синергия + новая метка) → сдвиг Balance → тег КД → опциональный косметический монтаж. Ветка промаха: метка навыка остаётся на игроке 5 сек как «своя», переносимая следующим попаданием.
@@ -292,9 +672,8 @@ Cooldown.Slot.V
 
 **Проверка:** враг начинает Power Strike → игрок LMB+E → навык врага прерван, у игрока он остаётся готовым.
 
-
 ---
-### Раздел 6.5 — Animation Setup / Комбо-система WASD
+### Раздел 7 — Animation Setup / Комбо-система WASD
 **Статус:** In Progress — C++ готов, идут редакторные ассеты (Этапы ниже).
 
 **Итог:** WASD-удары стали направленным деревом комбо: `UClanhallComboComponent` сам валидирует ввод по
@@ -302,7 +681,7 @@ Cooldown.Slot.V
 Анимационный слой навешивается поверх готовой механики.
 
 **Канон:** механика комбо и нарезка узловыми позами — `combo_system.md`; направления, парирование,
-clash detection — `combat_system.md §4/§5`; AnimGraph, слои и слоты — `Advanced/locomotion structure.md`.
+clash detection — `combat_system.md §4/§5`; AnimGraph, слои и слоты — `locomotion_structure.md`.
 
 **Ключевой инвариант:** **ни один Notify не решает урон/КД/Charges** — всё посчитано в момент нажатия, до
 анимации. Механика работает без единого монтажа, поэтому монтажи можно тестировать по отдельности, не
@@ -324,8 +703,9 @@ clash detection — `combat_system.md §4/§5`; AnimGraph, слои и слот�
   `DamageType` — задел, в расчёте не читается). Формулы MP/Balance в GA не тронуты.
 - **Recovery-анимация ≠ тег `State.ComboRecovery`.** Анимация берётся из завершившейся цепочки
   (`RecoveryMontage`, nullptr = хвост запечён в удар) и играет всегда после терминального удара. Тег —
-  геймплейный лок-аут ввода, только после удара на потолке ранга. Единая точка завершения —
-  `EndSequenceWithRecovery`.
+  геймплейный лок-аут НОВЫХ атак (не выхода из стойки), вешается на КАЖДОМ терминале: база = доля
+  длительности Recovery-анимации (`RecoveryLockFraction`), плюс `ComboRecoveryDuration` сверху только
+  если удар на потолке ранга. Единая точка завершения — `EndSequenceWithRecovery`.
 - **Страховки состояния.** Серия сбрасывается и по концу окна, и по концу удар-монтажа (делегат) — даже
   если нотифая на монтаже нет. `ResetCombo` гасит `bReadWindowOpen`. Weapon trace принудительно
   закрывается из компонента при конце/прерывании монтажа и при выходе из стойки.
@@ -333,42 +713,38 @@ clash detection — `combat_system.md §4/§5`; AnimGraph, слои и слот�
 - **Класс-нейтральность данных** (задел под ИИ босса): ключ хода `EClanhallAttackDirection` нейтрален к
   источнику ввода, player-специфики в `UComboData` нет. Враг сейчас идёт через `GA_EnemyWASDSeries`.
 
-**Служебные теги раздела:** `State.ComboRecovery` (лок-аут после потолка ранга), `Event.DirectionalAttack`
+**Служебные теги раздела:** `State.ComboRecovery` (лок-аут новых атак на время Recovery-анимации, добавочно после потолка ранга), `Event.DirectionalAttack`
 (несёт `BaseDamage` от компонента к абилке — не notify, выбор способности не гейтит).
 
-**Разметка нотифай-стейтов (общее для всех окон):** Montage Tick Type = **Branching Point** — обычные
-нотифаи обрабатываются на границе тика и на низком FPS съедают кадры, что заметно на окнах в 0.2–0.5 сек.
+**Разметка нотифай-стейтов (общее для всех окон):** Montage Tick Type = **Branching Point** — обычные нотифаи обрабатываются на границе тика и на низком FPS съедают кадры, что заметно на окнах в 0.2–0.5 сек.
 Конец стейта не ставить впритык к концу монтажа — 1–2 кадра запаса, иначе `NotifyEnd` попадёт в блендаут.
 
-**Рабочее правило:** числа в доках — плейсхолдеры, менять свободно. Структура и архитектура — нет. Если
-для монтажа нужно то, чего нет в коде (новый Notify, поле, сигнал) — не собирать в BP втихую, а вернуться
-с конкретным вопросом. Анимация и код переключаются с интерима на финал одновременно (Блок F).
+**Рабочее правило:** числа в доках — плейсхолдеры, менять свободно. Структура и архитектура — нет. Если для монтажа нужно то, чего нет в коде (новый Notify, поле, сигнал) — не собирать в BP втихую, а вернуться с конкретным вопросом. Анимация и код переключаются с интерима на финал одновременно (Блок F).
 
-**Проверка:** в стойке W→A играет цепочку с разными клипами; невалидное продолжение гасит серию без урона
-и сдвига шкал; удар на потолке `ClassRank` вешает лок-аут; правка `UComboData` меняет дерево без
-перекомпиляции.
+**Проверка:** в стойке W→A играет цепочку с разными клипами; невалидное продолжение гасит серию без урона и сдвига шкал; удар на потолке `ClassRank` вешает лок-аут; правка `UComboData` меняет дерево без перекомпиляции.
 
 #### Этапы
 
-**Блок A — Фундамент**
+##### Блок A — Фундамент
 **Статус:** ✅ Готово.
 
 1. `[Редактор]` Сокет `WeaponSocket` на скелете оружия игрока (и врага, если у него отдельная модель оружия) — его ждёт `WeaponTraceComponent`.
-2. `[Редактор]` ABP: Locomotion state machine + слои UpperBody / FullBody / Cast.
-3. `[Редактор]` Выставление pelvis кости в root X/Y из motion capture 
+2. `[Редактор]` ABP: `Main States` (локомоция + прыжок) и два слота — `upperbody` и `fullbody`, склейка `Layered Blend Per Bone` по `spine_01`. Слота `Cast` НЕТ — решение отложено (п.22), Q/E идут через `upperbody`. Канон структуры — `locomotion_structure.md`.
+3. `[Редактор]` Центровка pelvis по X/Y относительно root на mocap-клипах — свой `UAnimationModifier` (`AM_CenterPelvisXY`), прогоняется на клипе. По Z общего модификатора нет — только визуальная проверка поклипно. 
 
-**Блок B — Монтажи игрока и базовые нотифаи**
-**Статус:** ✅ Готово.
+##### Блок B — Монтажи игрока и нотифаи
+**Статус:** 🔜 — по таблице ниже остались два перехода.
 
-4. `[Редактор]` 4 базовых монтажа WASD-ударов (W=Overhead, D=RightSlash, A=LeftSlash, S=LowSweep) — это опенеры: по ходу (`FComboMove`) в `UComboData.Moves` на каждое направление + по цепочке из одного шага (`FComboChain.Steps = [MoveId]`) в `UComboData.Chains`.  
+4. `[Редактор]` Четыре монтажа-опенера из стойки (W=Overhead, D=RightSlash, A=LeftSlash, S=LowSweep) — строка `Stance` в таблице ниже. Опенер режется именно из стойки: удар из середины дубля на эту роль не годится.  
 
-#### Mocap
+**Mocap**
 https://github.com/user-attachments/assets/1a1860be-d227-4b33-a482-516d13a3bf6f
-#### Sequencer
+
+**Sequencer**
 https://github.com/user-attachments/assets/30800fd3-17b4-4992-8a20-a2b77ff6b3f6
 
-
-##### Статус Комбо Анимаций Knight
+**Статус Комбо Анимаций Knight**
+Строка = откуда, колонка = куда. Строка `Stance` — опенеры (`FromStance`), колонка `Stance` — возврат в стойку (`Recovery`), остальное — переходы между ударами (`From*`). ✅ готово · 🔜 в работе · ❌ невозможно по дизайну (повтор направления не представлен в типах, заполнять нечего). Таблица — прямая карта слотов `UComboData` для п.9.
 
 | col/row | Stance |  W  |  A  |  S  |  D  |
 | :------ | :----: | :-: | :-: | :-: | :-: |
@@ -378,61 +754,73 @@ https://github.com/user-attachments/assets/30800fd3-17b4-4992-8a20-a2b77ff6b3f6
 | S       |   ✅    |  ✅  |  ✅  |  ❌  | 🔜  |
 | D       |   ✅    |  ✅  |  ✅  |  ✅  |  ❌  |
 
-5. `[Редактор]` На каждом из 4: `AnimNotifyState_WeaponTrace` вокруг фазы контакта. Montage Tick Type = **Branching Point**.  
-6. `[Редактор]` На каждом из 4: `AnimNotifyState_ComboWindow`
-7. `[Редактор]` Монтажи продолжений комбо (2-й удар и далее по направлениям), с теми же двумя наборами нотифаев из п.4–5.
+5. `[Редактор]` `AnimNotifyState_WeaponTrace` вокруг фазы контакта — на КАЖДОМ удар-монтаже (опенеры и переходы), не на Recovery. Montage Tick Type = **Branching Point**.  
+6. `[Редактор]` `AnimNotifyState_ComboWindow` на каждом удар-монтаже: Begin ≈ 60%, End ≈ 90%, причём End ПОСЛЕ окна контакта — иначе следующий шаг срежет собственное попадание. На Recovery не ставится: он ввод не читает.
+7. `[Редактор]` Остальные монтажи матрицы: 12 переходов между ударами (по 3 из каждого направления) с теми же двумя нотифай-стейтами из п.5–6, плюс 4 Recovery-хвоста «узел → стойка» без нотифаев. Итого по блоку — 20 монтажей: 4 опенера + 12 переходов + 4 Recovery. Клип адресуется ПАРОЙ «предыдущее направление → новое», а не полным путём: `A→W` один на все ветки, откуда бы в `A` ни пришли — второй вариант того же перехода резать некуда. Нарезка узловыми позами и правило «резать из самого длинного дубля» — `combo_system.md`.
 
-**Блок C — DataAsset комбо-оружия**
+##### Блок C — Data Asset комбо-оружия
+**Статус:** 🔜 — структура заполняется по мере готовности монтажей (п.7).
+
+8. `[Редактор]` Создать `UComboData` — один ассет на класс. Заполнить профиль урона — четыре обязательных поля `Overhead`/`RightSlash`/`LeftSlash`/`LowSweep` (`BaseDamage` + `DamageType`-заглушка, в расчёте пока не читается) — и `StanceAnim` (loop-поза боевой стойки, `UAnimSequence`). Назначить ассет в поле `ComboData` на BP-персонаже, там же выставить `ClassRank` — потолок длины серии живёт на персонаже, не в ассете.
+9. `[Редактор]` Разложить монтажи по слотам переходов по таблице из п.4: `FromStance` (4 опенера), `FromOverhead`/`FromLeftSlash`/`FromRightSlash`/`FromLowSweep` (по 3) и `Recovery` (4 по последнему направлению серии) — 20 слотов, один к одному с монтажами Блока B:
+    - Пустой слот — легальное состояние, а не недоделка: `nullptr` в `From*` = продолжение запрещено → серия уходит в Recovery; `nullptr` в `FromStance` = этим направлением серию не начать; `nullptr` в `Recovery` = хвост запечён в сам удар-монтаж.
+    - Повтора направления (W→W и т.д.) в типах нет — слота просто не существует, заполнять нечего и ошибиться негде.
+    - Ни Data Table ходов, ни списка цепочек нет: клип выбирается парой направлений, история серии до предыдущего шага в резолве не участвует.
+
+##### Блок D — Активки Q/E/R/F (Knight)
 **Статус:** 
 
-8. `[Редактор]` Создать Data Asset типа `DataTable UComboMove`, заполнить все 16 вариатов анимаций в `Row_Name, Direction, Montage`.
-9. `[Редактор]` Создать Data Asset типа `UComboData`, заполнить три поля: `DamageProfile` (`BaseDamage` на каждое из 4 направлений), `Moves` (`MoveId`+`Direction`+`Montage` на каждый ход), `Chains` (включая опенеры на все 4 направления, без них WASD не бьёт). Назначить ассет в поле `ComboData` на BP-персонаже, там же выставить `ClassRank` (потолок длины серии — больше не поле ассета).
-
-|     | A           | D               | S                 | W                 |
-| --- | ----------- | --------------- | ----------------- | ----------------- |
-| A   | ❌           | ADA/`ADS`/`ADW` | ASA/ASD/ASW       | AWA/AWD/AWS       |
-| D   | DAD/DAS/DAW | ❌               | `DSA`/`DSD`/`DSW` | `DWA`/`DWD`/`DWS` |
-| S   | SAD/SAS/SAW | SDA/`SDS`/`SDW` | ❌                 | SWA/SWD/SWS       |
-| W   | WAD/WAS/WAW | WDA/`WDS`/`WDW` | WSA/WSD/WSW       | ❌                 |
-
-**Блок D — Активки Q/E/R/F (Knight)**  
-**Статус:** 
-
-10. `[Редактор]` `CastMontage` в `UAnimationFragment` каждого из Q/E/R/F.  
+10. `[Редактор]` `CastMontage` в заголовке `UAbilityData` каждого из Q/E/R/F. После п.29 — до него поля в ассете нет.  
 11. `[Редактор]` `AnimNotify_ApplyMark` на кадре удара (задел на будущее — эффекта пока не даёт, ставить безопасно).  
-12. `[Редактор + дизайн]` Root Motion: **Shield Charge (R)** — рывок 3–4 шага. Для **Retribution (F)** сперва уточнить у геймдизайнера, нужно ли ему перемещение, прежде чем включать.  
+12. `[Редактор + дизайн]` Root Motion: **Shield Charge (R)** — рывок 3–4 шага.
 13. `[Редактор]` Проставить `CounterTag` в 4 Knight `UAbilityData` (`Ability.Skill.Knight.ShieldSlam / PowerStrike / ShieldCharge / Retribution`) — сейчас пусто во всех четырёх.
+##### Блок E — Переключение интеримов код↔нотифай
 
-**Блок E — Монтажи врага и его нотифаи**  
+17. `[C++]` Когда монтажи врага с Parry-нотифаями из п.14 готовы → убрать интерим-строку `ApplyTimedTag(SelfASC, State_Parrying, WindowDuration)` в `GA_EnemyWASDSeries::PrepareHit`. Иначе окно `State.Parrying` откроется дважды.  
+18. `[C++]` Когда появится реальный монтаж Power Strike с `AnimNotifyState_CounterWindow` → убрать интерим `OpenWindow/CloseWindow` из `GA_EnemyActiveSkill.cpp`. Иначе окно контрнавыка задвоится.
+
+##### Блок F — Слоты и состояние при прерывании
+
+19. `[Редактор]` Выставить слоты в монтажах: `DefaultSlot` → **`upperbody`** на всех WASD-ударах, продолжениях и Recovery-хвостах; **`fullbody`** на R/F. Канон — `locomotion_structure.md §3`. Типовая ошибка: монтаж остался в `DefaultSlot` → логика работает, анимации не видно.  
+20. `[C++]` **Отмена серии чужим монтажом.** `upperbody` и `fullbody` в одной группе → активка Q/E/R/F прерывает удар-монтаж, `OnAttackMontageEnded` на `bInterrupted` делает ранний return, `ActiveDirections` залипает, WASD мёртв до выхода из стойки. Воспроизведение: LMB → W → сразу Q/R до открытия комбо-окна.
+    - Новый публичный метод `UClanhallComboComponent::CancelSequenceForExternalMontage()`: ранний `return` при пустом `ActiveDirections` (нейтраль — прерывать нечего), иначе `ForceEndWeaponTrace()` + `ResetCombo()`. Монтаж НЕ останавливать — `Montage_Play` вызывающего сам его перебьёт, прилетит `OnAttackMontageEnded(bInterrupted=true)` → ранний return → состояние уже чистое.
+    - Без Recovery-анимации и без `State.ComboRecovery`: чужой монтаж уже занимает слот, Recovery дрался бы с ним; наказания за прерывание нет — тот же принцип, что у невалидного продолжения.
+    - Вызов в `GA_PhysicalSkill::ActivateAbility` внутри блока `if (Data->CastMontage)`, прямо перед `Montage_Play`. Не в начале `ActivateAbility`: способность может выйти раньше (резолвер контрнавыка, промах, пустой `CastMontage`) — тогда чужой монтаж не стартует и гасить серию не за что.
+    - `LastPlayedMontage` после отмены НЕ обнулять: он указывает на мёртвый монтаж, и `Montage_Stop` по нему из `OnStanceExit` — безвредный no-op (каст доиграет). `Montage_Stop` с `nullptr` остановил бы всё подряд и убил каст.
+    - Проверка: после каста WASD снова бьёт опенером; активка из нейтрали ничего не ломает; контрнавык посреди комбо серию НЕ гасит (чужого монтажа не было).
+21. `[C++]` **Правило на будущее — проверять при каждом новом монтаже.** Любой новый источник `Montage_Play` в `DefaultGroup` (реакции на удар, стан, касты) обязан сначала гасить серию тем же вызовом из п.18.
+22. `[Редактор + дизайн]` Решить по слоту `Cast`. Собрано два слота (`upperbody`, `fullbody`), Q/E сидят на `upperbody`. Если отдельный приёмник под заклинания нужен — создать в Anim Slot Manager и добавить ноду `Slot 'Cast'` в AnimGraph.
+23. `[Редактор]` Боевая стойка отдельным состоянием `CombatStance` в Main States. Sequence Player, Loop=true, пин `Sequence` промоутнут в переменную `CurrentStanceAnim`, заполняется из `Character->ComboData->StanceAnim` в `NativeInitializeAnimation` (и при свапе оружия — Раздел 10, там же меняется `ComboData`). Переход Idle/Locomotion ↔ CombatStance по булю `bInStance` = `HasMatchingGameplayTag(State.InStance)`, читать в `Event Blueprint Update Animation` (НЕ Thread Safe — обращение к ASC из воркер-треда небезопасно). Duration перехода 0.18 в обе стороны = `StanceExitBlendOutTime` в комбо-компоненте, чтобы на выходе слот `upperbody` и состояние доехали одновременно. Ноги берутся из этого состояния (Base Pose = `lowerbody`), руки — из слота `upperbody` поверх; монтаж кончился/оборван → слот пуст → руки сами вернулись в стойку (без кода возврата). Зависит от п.26 (поле `StanceAnim` в `UComboData`). Структура AnimGraph не меняется, меняется наполнение Main States.
+24. `[C++]` **B2 — урон по окну контакта.** Перенести фиксацию урона с активации (frame 0) на окно `AnimNotifyState_WeaponTrace`. Закрывает «ударил мгновенно → тут же увернулся». Требует, чтобы резолвнутый `BaseDamage` дожил от выбора шага до момента контакта.
+25. `[C++]` **Shield Charge multi-hit.** По дизайну R задевает всех на пути рывка, но `GA_PhysicalSkill` резолвит одну цель через `FindMeleeTarget`. Нужен сбор целей по траектории рывка вместо одиночного поиска.
+26. `[C++]` **Поле боевой стойки в `UComboData`.** Добавить `UPROPERTY(EditAnywhere, Category="Combo") TObjectPtr<UAnimSequence> StanceAnim;` в `Fragments/ComboData.h` (+ forward-declare `class UAnimSequence;`). Loop-поза боевой стойки класса — ABP тянет её в Sequence Player состояния `CombatStance` (п.23). Тип именно `UAnimSequence`, не `UAnimMontage`: стойка — поза в SM, не монтаж через слот. Только поле, логики резолва не требует — ABP читает `Character->ComboData->StanceAnim` напрямую. Магическую/антимагическую стойки сюда НЕ добавлять — они глобальные (хардкод в ноде ABP), не per-class (Раздел 9).
+27. `[C++]` **Запрет прыжка в стойке.** Переопределить `ACharacter::CanJumpInternal_Implementation()` в `AClanhallCharacter` → возвращать `false`, если на ASC висит `State.InStance` (иначе — `Super`). `JumpAction` привязан к `ACharacter::Jump` напрямую, но фактический прыжок проходит через `CanJump()`/`CanJumpInternal()` в movement-тике — это единственная точка отсечения, входные биндинги трогать не нужно. Когда Раздел 9 введёт umbrella-тег `State.Stance`, проверку перевести на него (прыжок блокируется во всех трёх стойках) — вместе с `DoMove`.
+28. `[C++]` **Скорость в 0 при входе в стойку.** В `UGA_CombatStance::ActivateAbility` вызвать `Character->GetCharacterMovement()->StopMovementImmediately()` на аватаре. `DoMove` уже не принимает WASD в стойке, но остаточная инерция от бега гасится за пару десятых — снап в 0 убирает её мгновенно и роняет Speed до нуля в тот же кадр, так что переход Locomotion→CombatStance (п.23) блендится из idle-позы, а не из бега. Фолбэк, если снап с высокой скорости читается резко: высокий `BrakingDecelerationWalking` на время стойки (скид-ин) вместо мгновенного стопа; по умолчанию — мгновенный стоп.
+
+##### Блок G — Данные навыков
+
+29. `[C++ + редактор]` **`CastMontage` и `BalanceShift` — из фрагментов в заголовок `UAbilityData`.** Отсутствие этих двух фрагментов не несёт смысла сверх `nullptr`/`0` (см. «Граница «заголовок или фрагмент»»): удалить `UAnimationFragment` и `UBalanceFragment`, перевести `GA_PhysicalSkill` на поля заголовка, знак сдвига — через общий `UGA_ClanhallAbilityBase::GetBalanceSign` (один на WASD-удары и активки). Детали и пошаговка — `ability_data_header_task.md` (временный, удалить по завершении).
+    - `ImpactMontage` удаляется без замены: реакция на удар принадлежит получателю, а не навыку атакующего, и станет отдельной системой — тогда же попадёт под п.21.
+    - **Две фазы, между ними ручной шаг.** `UBalanceFragment` заполнен в четырёх ассетах Knight; удалённый UCLASS → инстансированный сабобъект отбрасывается при загрузке и цифры теряются. Порядок: добавить поля → перенести значения в редакторе и сохранить ассеты → удалить фрагменты и переключить логику.
+    - Гвард `IsNearlyZero` обязателен: без него утилитарный навык применяет GE баланса с нулевой магнитудой на каждое попадание — раньше это бесплатно отсекалось отсутствием фрагмента.
+    - Вызов `CancelSequenceForExternalMontage()` перед `Montage_Play` сохранить (п.20): меняется только источник монтажа, не условие.
+    - Проверка: Q/E/R/F двигают шкалу в сторону типа оружия на записанный модуль; навык с `BalanceShift = 0` шкалу не трогает; WASD-удары сдвигают как раньше (STR +5..15, DEX −5..−15).
+
+
+---
+### Раздел 8 — Противники
+
+#### Часовой (Dummy)
+
+Блок  — Монтажи врага и его нотифаи
 
 14. `[Редактор]` Placeholder-анимации Часового (Training Dummy) и Стража.  
 15. `[Редактор]` На ударах серий врага: `AnimNotifyState_WeaponTrace` (для клэша парирования через trace игрока).  
 16. `[Редактор]` На ударах серий врага: `AnimNotifyState_ParryWindow` (Begin ~20%, End ~80%). Montage Tick Type = **Branching Point** — окно короткое, терять кадры нельзя.  
 
-**Блок F — Переключение интеримов код↔нотифай
-17. `[C++]` Когда монтажи врага с Parry-нотифаями из п.14 готовы → убрать интерим-строку `ApplyTimedTag(SelfASC, State_Parrying, WindowDuration)` в `GA_EnemyWASDSeries::PrepareHit`. Иначе окно `State.Parrying` откроется дважды.  
-18. `[C++]` Когда появится реальный монтаж Power Strike с `AnimNotifyState_CounterWindow` → убрать интерим `OpenWindow/CloseWindow` из `GA_EnemyActiveSkill.cpp`. Иначе окно контрнавыка задвоится.
-
-**Блок G — Слоты и состояние при прерывании**  
-19. `[Редактор]` Выставить слоты в монтажах: `DefaultSlot` → **`upperbody`** на всех WASD-ударах, продолжениях и Recovery-хвостах; **`fullbody`** на R/F. Канон — `Advanced/locomotion structure.md §3`. Типовая ошибка: монтаж остался в `DefaultSlot` → логика работает, анимации не видно.  
-20. `[C++]` **Отмена серии чужим монтажом.** `upperbody` и `fullbody` в одной группе → активка Q/E/R/F прерывает удар-монтаж, `OnAttackMontageEnded` на `bInterrupted` делает ранний return, `ActiveDirections` залипает, WASD мёртв до выхода из стойки. Воспроизведение: LMB → W → сразу Q/R до открытия комбо-окна.
-    - Новый публичный метод `UClanhallComboComponent::CancelSequenceForExternalMontage()`: ранний `return` при пустом `ActiveDirections` (нейтраль — прерывать нечего), иначе `ForceEndWeaponTrace()` + `ResetCombo()`. Монтаж НЕ останавливать — `Montage_Play` вызывающего сам его перебьёт, прилетит `OnAttackMontageEnded(bInterrupted=true)` → ранний return → состояние уже чистое.
-    - Без Recovery-анимации и без `State.ComboRecovery`: чужой монтаж уже занимает слот, Recovery дрался бы с ним; наказания за прерывание нет — тот же принцип, что у невалидного продолжения.
-    - Вызов в `GA_PhysicalSkill::ActivateAbility` внутри блока `if (AnimFrag->CastMontage)`, прямо перед `Montage_Play`. Не в начале `ActivateAbility`: способность может выйти раньше (резолвер контрнавыка, промах, пустой `CastMontage`) — тогда чужой монтаж не стартует и гасить серию не за что.
-    - `LastPlayedMontage` после отмены НЕ обнулять: он указывает на мёртвый монтаж, и `Montage_Stop` по нему из `OnStanceExit` — безвредный no-op (каст доиграет). `Montage_Stop` с `nullptr` остановил бы всё подряд и убил каст.
-    - Проверка: после каста WASD снова бьёт опенером; активка из нейтрали ничего не ломает; контрнавык посреди комбо серию НЕ гасит (чужого монтажа не было).
-21. `[C++]` **Правило на будущее — проверять при каждом новом монтаже.** Любой новый источник `Montage_Play` в `DefaultGroup` (реакции на удар, стан, касты) обязан сначала гасить серию тем же вызовом из п.18.
-22. `[Редактор + дизайн]` Решить по слоту `Cast`. Собрано два слота (`upperbody`, `fullbody`), Q/E сидят на `upperbody`. Если отдельный приёмник под заклинания нужен — создать в Anim Slot Manager и добавить ноду `Slot 'Cast'` в AnimGraph.
-23. `[Редактор]` Боевая стойка отдельным состоянием в Main States, переключение по тегу `State.InStance`. Сейчас низ тела под верхними атаками отдаёт idle/локомоцию — для плейсхолдеров нормально, для финала нет. Структура AnimGraph не меняется, меняется наполнение Main States.
-24. `[C++]` **B2 — урон по окну контакта.** Перенести фиксацию урона с активации (frame 0) на окно `AnimNotifyState_WeaponTrace`. Закрывает «ударил мгновенно → тут же увернулся». Требует, чтобы резолвнутый `BaseDamage` дожил от выбора шага до момента контакта.
-25. `[C++]` **Shield Charge multi-hit.** По дизайну R задевает всех на пути рывка, но `GA_PhysicalSkill` резолвит одну цель через `FindMeleeTarget`. Нужен сбор целей по траектории рывка вместо одиночного поиска.
-
-
----
-### Раздел 7 — Рядовой противник (Часовой)
-
 **Характеристики:** AP 150 / HP 300 / MP 0 / Charges 2 / DT 8
 
+**Что делаем:**
 - Behavior Tree или простой State Machine
 - Две WASD-серии: A→D («Перекрёстный»), W→W («Сверху дважды»)
 - «Сверху дважды» появляется при HP < 60%
@@ -441,10 +829,13 @@ https://github.com/user-attachments/assets/30800fd3-17b4-4992-8a20-a2b77ff6b3f6
 - При HP < 50%: Power Strike после каждой второй серии, агрессия если BROKEN GUARD на игроке
 - Пауза 1.5 сек после промаха Power Strike
 
----
-### Раздел 8 — Стартовый босс (Старый Страж)
+**Результат:** первый полноценный боевой цикл с противником. Парирование, контрнавык, метка на себе — всё проверяется.
+
+#### Стартовый босс (Старый Страж)
 
 **Характеристики:** AP 300 / HP 700 / MP 80 / Charges 4 / DT 12
+
+**Что делаем:**
 
 WASD-серии:
 - «Вертикаль» W→S (Фаза 1, 2, 3)
@@ -471,13 +862,14 @@ WASD-серии:
 
 После победы: кат-сцена → гримуар открывается → слоги Wîn (W) и Sîl (S) записываются → разблокировано Ранг 1 Стихий.
 
----
-### Прототип магической системы
-
-![spells_prototype](https://github.com/user-attachments/assets/82a408f8-28a7-425d-aa9c-2fc725c807c9)
+**Результат:** полный тестовый босс. Все системы до магии проверены. Первое знакомство с кастом.
 
 ---
 ### Раздел 9 — Магическая система
+
+#### Прототип магической системы
+
+![spells_prototype](https://github.com/user-attachments/assets/82a408f8-28a7-425d-aa9c-2fc725c807c9)
 
 - RMB зажат = режим каста, движение заблокировано
 - 8 клавиш как syllable input (Q/A/W/S/E/D/R/F в режиме каста)
@@ -521,12 +913,6 @@ WASD-серии:
 
 
 # План Разработки HUD — Рабочий трекер
-
- Живой документ. Отражает **что сделано, как именно, и что дальше**.
- Стек: Unreal Engine 5.8, GAS. ASC живёт на `AClanhallCharacter`, атрибуты — в `UClanhallAttributeSet` на этом ASC.
- Собираем UMG поверх готового C++
-
----
 ## Контекст
 
 - **Движок:** UE 5.8, плагин GAS.

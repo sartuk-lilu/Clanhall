@@ -31,4 +31,8 @@ protected:
 	 *  переполнение (урон больше остатка AP) идёт прямиком в HP. Возвращает true, если урон
 	 *  был нанесён — это и есть "confirmed hit" для КД и синергий меток. */
 	bool ResolveStandardDamage(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, float RawDamage) const;
+
+	/** combat_system.md §2: STR-оружие двигает шкалу вправо, DEX — влево.
+	 *  Знак определяется ТОЛЬКО типом оружия, в данных навыка не хранится. */
+	float GetBalanceSign(const UAbilitySystemComponent* SourceASC) const;
 };

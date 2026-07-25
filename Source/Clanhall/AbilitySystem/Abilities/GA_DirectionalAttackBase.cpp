@@ -42,7 +42,7 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 				// combat_system.md §4: STR-удар → MP +10, Balance +5..+15; DEX-удар → MP +5, Balance -5..-15.
 				const bool bIsSTR = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
 				const float MPGain = bIsSTR ? 10.0f : 5.0f;
-				const float BalanceShift = bIsSTR ? FMath::FRandRange(5.0f, 15.0f) : FMath::FRandRange(-15.0f, -5.0f);
+				const float BalanceShift = GetBalanceSign(SourceASC) * FMath::FRandRange(5.0f, 15.0f);
 
 				ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyMP::StaticClass(), MPGain);
 				ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), BalanceShift);

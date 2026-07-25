@@ -79,3 +79,9 @@ bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* Sou
 
 	return true;
 }
+
+float UGA_ClanhallAbilityBase::GetBalanceSign(const UAbilitySystemComponent* SourceASC) const
+{
+	const bool bIsSTR = SourceASC && SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
+	return bIsSTR ? 1.0f : -1.0f;
+}

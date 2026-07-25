@@ -2,6 +2,9 @@
 // Заголовок — поля, которые есть у каждой абилки без исключения. Fragments — только то,
 // что нужно конкретной. Логика GameplayAbility не меняется при правке этого ассета —
 // меняется только сам DataAsset (development_plan.md).
+// UAbilityData описывает данные ФИЗИЧЕСКОГО навыка (ChargeCost, CooldownTag, CounterTag,
+// BalanceShift) — у заклинаний игрока КД нет, только MP (CLAUDE.md, magic_system.md),
+// им понадобится свой ассет (Раздел 9).
 
 #pragma once
 
@@ -11,6 +14,7 @@
 #include "AbilityData.generated.h"
 
 class UTexture2D;
+class UAnimMontage;
 
 UCLASS()
 class CLANHALL_API UAbilityData : public UPrimaryDataAsset
@@ -45,6 +49,17 @@ public:
 	/** Стоимость в Charges. Канон: Q/E=0, R/F=2, Z/X=4, C/V=6 (combat_system.md §1). */
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	int32 ChargeCost = 0;
+
+	/** Монтаж навыка. Слот — upperbody для Q/E, fullbody для R/F (Advanced/locomotion structure.md §3).
+	 *  nullptr законен: механика навыка работает без монтажа (Раздел 6.5). */
+	UPROPERTY(EditAnywhere, Category = "Ability")
+	TObjectPtr<UAnimMontage> CastMontage;
+
+	/** МОДУЛЬ сдвига шкалы DEX↔STR при подтверждённом попадании (combat_system.md §2: 5..15).
+	 *  Знак здесь НЕ хранится — он определяется типом оружия (Weapon.Type.STR → вправо,
+	 *  DEX → влево), см. UGA_ClanhallAbilityBase::GetBalanceSign. 0 = навык шкалу не двигает. */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.0"))
+	float BalanceShift = 0.0f;
 
 	UPROPERTY(EditAnywhere, Instanced, Category = "Ability")
 	TArray<TObjectPtr<UAbilityFragment>> Fragments;

@@ -1,28 +1,12 @@
-// Презентационные фрагменты — форма заложена в Разделе 4 (development_plan.md требует
-// "Все фрагменты из таблицы" сразу), но GA_PhysicalSkill пока их не читает: монтажей,
-// VFX и звука у проекта ещё нет (Animation Setup — Раздел 6.5). Просто FindFragment<T>()
-// будет возвращать nullptr, пока эти данные не появятся в конкретном UAbilityData.
+// Презентационные фрагменты — есть не у всех навыков (VFX/SFX), в отличие от CastMontage,
+// который переехал в заголовок UAbilityData (Раздел 6.5: отсутствие ≡ CastMontage == nullptr).
 
 #pragma once
 
 #include "AbilityFragment.h"
 #include "PresentationFragments.generated.h"
 
-class UAnimMontage;
 class USoundBase;
-
-UCLASS()
-class CLANHALL_API UAnimationFragment : public UAbilityFragment
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, Category = "Animation")
-	TObjectPtr<UAnimMontage> CastMontage;
-
-	UPROPERTY(EditAnywhere, Category = "Animation")
-	TObjectPtr<UAnimMontage> ImpactMontage;
-};
 
 UCLASS()
 class CLANHALL_API UVFXFragment : public UAbilityFragment
