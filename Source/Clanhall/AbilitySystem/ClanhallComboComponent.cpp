@@ -9,7 +9,7 @@
 #include "AbilitySystemInterface.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Animation/AnimInstance.h"
-#include "Animation/AnimSequence.h"
+#include "Animation/AnimMontage.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -19,7 +19,9 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 	UAbilitySystemComponent* ASC = GetASC();
 	if (!ASC || ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_ComboRecovery.GetTag()))
 	{
-		// Лок-аут после максимальной длины комбо — вход игнорируется, пока тег не спадёт.
+		// Лок-аут после Recovery (см. EndSequenceWithRecovery) — вход игнорируется, пока тег не
+		// спадёт. Дублирует ActivationBlockedTags на GA_ClanhallAbilityBase для WASD-пути конкретно
+		// (тот гейтит саму активацию GA, этот — вход в компонент раньше, до попытки активации).
 		return;
 	}
 
@@ -215,23 +217,50 @@ void UClanhallComboComponent::EndSequenceWithRecovery()
 	}
 
 	const UComboData* Data = GetComboData();
-	// Вычислить ДО ResetCombo() — сброс очищает LastDirection.
-	UAnimSequence* RecoveryAnim = (Data && LastDirection.IsSet()) ? Data->FindRecoveryAnimation(LastDirection.GetValue()) : nullptr;
+	// Резолв Recovery-анимации и чтение bCeilingReached — оба ДО ResetCombo(): сброс очищает
+	// LastDirection и гасит флаг.
+	UAnimMontage* RecoveryMontage = (Data && LastDirection.IsSet()) ? Data->FindRecoveryMontage(LastDirection.GetValue()) : nullptr;
+	const bool bWasCeilingReached = bCeilingReached;
 
 	ResetCombo();
 
-	if (!RecoveryAnim)
+	// Лок-аут новых атак (State.ComboRecovery) реально стартует здесь, не в ApplyComboRecovery —
+	// таймер должен покрывать время ПОСЛЕ возврата в стойку, а не время, пока ещё доигрывает
+	// терминальный удар-монтаж (дефект «а» из задачи). База — доля длительности Recovery-анимации;
+	// если серии некуда было расти (потолок ClassRank), сверху добавляется ComboRecoveryDuration.
+	float LockDuration = RecoveryMontage ? RecoveryMontage->GetPlayLength() * RecoveryLockFraction : 0.f;
+	if (bWasCeilingReached)
 	{
-		// nullptr: хвост восстановления запечён в сам удар-монтаж, отдельно играть нечего.
+		LockDuration += ComboRecoveryDuration;
+	}
+	if (LockDuration > 0.f)
+	{
+		if (UAbilitySystemComponent* ASC = GetASC())
+		{
+			ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_ComboRecovery.GetTag(), LockDuration);
+		}
+	}
+
+	if (!RecoveryMontage)
+	{
+		// nullptr: хвост восстановления запечён в сам удар-монтаж, отдельно играть нечего. Штраф за
+		// потолок ClassRank (если был) уже применён выше.
 		return;
 	}
 
 	if (UAnimInstance* AnimInst = GetAnimInstance())
 	{
-		// Recovery — Animation Sequence, не Montage (FComboRecoveryAnimations): играем через слот
-		// динамическим монтажом. Без делегата конца — иначе собственный конец Recovery снова вызвал
-		// бы EndSequenceWithRecovery() (ловушка-петля).
-		LastPlayedMontage = AnimInst->PlaySlotAnimationAsDynamicMontage(RecoveryAnim, RecoverySlotName);
+		// НЕ вызывать PlayMontage() здесь: тот хелпер вешает Montage_SetEndDelegate на
+		// OnAttackMontageEnded, и для Recovery это ловушка-петля (конец Recovery ->
+		// OnAttackMontageEnded(bInterrupted=false) -> EndSequenceWithRecovery -> снова Recovery).
+		// Recovery играется без делегата конца, как и было в текущей реализации — не "оптимизировать"
+		// обратно на PlayMontage().
+		const float PlayedDuration = AnimInst->Montage_Play(RecoveryMontage);
+		if (PlayedDuration == 0.f)
+		{
+			UE_LOG(LogClanhall, Warning, TEXT("EndSequenceWithRecovery: Montage_Play failed to start %s"), *RecoveryMontage->GetName());
+		}
+		LastPlayedMontage = RecoveryMontage;
 	}
 }
 
@@ -259,22 +288,31 @@ void UClanhallComboComponent::ResetCombo()
 	// Упрочнение: гасим ворота даже если сброс пришёл при открытом окне (напр. OnStanceExit
 	// посреди чтения ввода) — не даём следующему нажатию попасть в уже мёртвое окно.
 	bReadWindowOpen = false;
+	// Тег State.ComboRecovery (если уже был повешен) НЕ снимается здесь — он живёт своим таймером
+	// независимо от состояния серии. Именно это не даёт связке "выйти из стойки и сразу войти
+	// обратно" бесплатно отменить лок-аут (см. OnStanceExit).
+	bCeilingReached = false;
 }
 
 void UClanhallComboComponent::ApplyComboRecovery()
 {
-	if (UAbilitySystemComponent* ASC = GetASC())
-	{
-		ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_ComboRecovery.GetTag(), ComboRecoveryDuration);
-	}
+	// Тег State.ComboRecovery здесь НЕ вешается: терминальный удар-монтаж ещё доигрывает, и таймер
+	// стартовал бы раньше, чем реально начинается Recovery — к моменту возврата в стойку лок-аут
+	// почти истёк бы. Тег вешает EndSequenceWithRecovery, когда Recovery реально стартует; здесь
+	// только фиксируем факт для добавочного штрафа.
+	bCeilingReached = true;
 
 	// ResetCombo НЕ здесь: сброс состояния и Recovery-анимация — по завершении терминального
 	// удар-монтажа через EndSequenceWithRecovery (fall-through этого же окна или делегат конца
-	// монтажа). Тег живёт своим таймером параллельно, ResetCombo его не снимает.
+	// монтажа).
 }
 
 void UClanhallComboComponent::OnStanceExit()
 {
+	// Выход из стойки во время Recovery остаётся бесплатным: гасит монтаж с блендом и сбрасывает
+	// серию как обычно. State.ComboRecovery намеренно НЕ снимается — тег продолжает тикать своим
+	// таймером (см. ResetCombo), поэтому "выйти из стойки и сразу войти обратно" не даёт бесплатной
+	// отмены лок-аута на новые атаки.
 	if (UAnimInstance* AnimInst = GetAnimInstance())
 	{
 		AnimInst->Montage_Stop(StanceExitBlendOutTime, LastPlayedMontage.Get());

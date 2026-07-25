@@ -6,7 +6,7 @@
 // (FComboTransitionSet). Переходы между ударами (From*) — по 3 направления: повтор направления
 // запрещён по дизайну, и слот-владелец исключён из типа набора (FComboTransitionsFrom*), а не просто
 // оставлен пустым — невозможное состояние непредставимо. Резолв — простой switch в UComboData
-// (FindOpenerMontage/FindTransitionMontage/FindRecoveryAnimation), без поиска и без логов конфликтов:
+// (FindOpenerMontage/FindTransitionMontage/FindRecoveryMontage), без поиска и без логов конфликтов:
 // слот либо заполнен, либо пуст, конфликтовать нечему.
 
 #pragma once
@@ -142,10 +142,12 @@ struct FComboTransitionsFromLowSweep
 
 /** Возврат в стойку после терминального удара, по ПОСЛЕДНЕМУ направлению серии. Один struct-филд
  *  вместо 4 плоских — сворачивается в Details одной строкой, как FromStance/FromOverhead/... .
- *  Animation Sequence, не Montage: в возврате пока нет notify-окон и секций, монтаж был бы лишней
- *  сущностью — тот же принцип, что у StanceAnim. Играется через
- *  UAnimInstance::PlaySlotAnimationAsDynamicMontage (UClanhallComboComponent::EndSequenceWithRecovery),
- *  слот задаёт UClanhallComboComponent::RecoverySlotName. nullptr = хвост запечён в сам удар-монтаж,
+ *  Montage, не Sequence: PlaySlotAnimationAsDynamicMontage всё равно создаёт UAnimMontage в
+ *  рантайме — монтаж не был устранён, он стал неавторируемым, и BlendIn/BlendOut/
+ *  BlendOutTriggerTime переехали из ассета в дефолты аргументов C++-функции (одно значение на все
+ *  4 направления, ноль настройки в редакторе). Аналогия со StanceAnim была неверной: стойка играется
+ *  Sequence Player'ом в стейт-машине (монтажа нет), Recovery играется через слот (монтаж есть).
+ *  Монтаж-ассет — источник бленда per-direction. nullptr = хвост запечён в сам удар-монтаж,
  *  отдельно не играется. */
 USTRUCT(BlueprintType)
 struct FComboRecoveryAnimations
@@ -154,19 +156,19 @@ struct FComboRecoveryAnimations
 
 	/** Ассет: W_Recovery. */
 	UPROPERTY(EditAnywhere, Category = "Combo")
-	TObjectPtr<UAnimSequence> AfterOverhead;
+	TObjectPtr<UAnimMontage> AfterOverhead;
 
 	/** Ассет: A_Recovery. */
 	UPROPERTY(EditAnywhere, Category = "Combo")
-	TObjectPtr<UAnimSequence> AfterLeftSlash;
+	TObjectPtr<UAnimMontage> AfterLeftSlash;
 
 	/** Ассет: D_Recovery. */
 	UPROPERTY(EditAnywhere, Category = "Combo")
-	TObjectPtr<UAnimSequence> AfterRightSlash;
+	TObjectPtr<UAnimMontage> AfterRightSlash;
 
 	/** Ассет: S_Recovery. */
 	UPROPERTY(EditAnywhere, Category = "Combo")
-	TObjectPtr<UAnimSequence> AfterLowSweep;
+	TObjectPtr<UAnimMontage> AfterLowSweep;
 };
 
 /** Данные комбо класса/оружия — профиль урона (4 обязательных поля), опенеры из стойки, переходы
@@ -235,5 +237,5 @@ public:
 	UAnimMontage* FindTransitionMontage(EClanhallAttackDirection From, EClanhallAttackDirection To) const;
 
 	/** Возврат в стойку по последнему направлению серии. nullptr = хвост запечён в удар-монтаж. */
-	UAnimSequence* FindRecoveryAnimation(EClanhallAttackDirection LastDirection) const;
+	UAnimMontage* FindRecoveryMontage(EClanhallAttackDirection LastDirection) const;
 };

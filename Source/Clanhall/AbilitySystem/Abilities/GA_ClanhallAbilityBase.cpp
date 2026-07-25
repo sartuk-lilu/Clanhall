@@ -12,6 +12,12 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	// Все физические действия (WASD и активные навыки) работают только в боевой стойке.
 	// Вне стойки те же клавиши двигают персонажа — TryActivateAbility просто откажет.
 	ActivationRequiredTags.AddTag(ClanhallGameplayTags::State_InStance.GetTag());
+
+	// Блокирует новые атаки на время лок-аута после Recovery — накрывает и WASD-удары
+	// (GA_DirectionalAttack_*), и физактивки Q/E/R/F (GA_PhysicalSkill), обе наследуются отсюда.
+	// UGA_CombatStance наследуется от UGameplayAbility напрямую и этой блокировкой НЕ затрагивается:
+	// вход и выход из стойки остаются свободными во время Recovery — это намеренно.
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_ComboRecovery.GetTag());
 }
 
 AActor* UGA_ClanhallAbilityBase::FindMeleeTarget(AActor* Avatar) const

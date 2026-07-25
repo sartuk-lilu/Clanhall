@@ -98,7 +98,7 @@ UAnimMontage* UComboData::FindTransitionMontage(EClanhallAttackDirection From, E
 	}
 }
 
-UAnimSequence* UComboData::FindRecoveryAnimation(EClanhallAttackDirection LastDirection) const
+UAnimMontage* UComboData::FindRecoveryMontage(EClanhallAttackDirection LastDirection) const
 {
 	switch (LastDirection)
 	{

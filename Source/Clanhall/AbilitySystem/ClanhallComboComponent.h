@@ -13,6 +13,12 @@
 // шага и передаётся в GA_DirectionalAttackBase через FGameplayEventData
 // (TriggerAbilityFromGameplayEvent) — Handle-активация сохраняется, тег события служебный.
 // Потолок длины серии = AClanhallCharacter::ClassRank, а не поле ассета.
+//
+// State.ComboRecovery (уточнение намерения): блокирует НОВЫЕ атаки (WASD и физактивки Q/E/R/F —
+// см. UGA_ClanhallAbilityBase) на время проигрывания Recovery-анимации, RecoveryLockFraction её
+// доли. Выход из стойки (ЛКМ вверх, OnStanceExit) остаётся бесплатным всегда — тег гасит только
+// возможность бить дальше, не возможность убежать. Тег вешается в EndSequenceWithRecovery, когда
+// Recovery реально стартует, а не раньше (см. ApplyComboRecovery).
 
 #pragma once
 
@@ -33,21 +39,22 @@ class CLANHALL_API UClanhallComboComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	/** Длительность лок-аута после максимальной длины комбо (State.ComboRecovery). Плейсхолдер. */
+	/** Добавочный штраф лок-аута (State.ComboRecovery) поверх базового, применяется только когда
+	 *  серия упёрлась в потолок ClassRank (bCeilingReached). Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float ComboRecoveryDuration = 1.0f;
+
+	/** Доля длительности Recovery-анимации, на которую вешается State.ComboRecovery (лок-аут новых
+	 *  атак). 1.0 = блок до последнего кадра Recovery. Меньше 1.0 оставляет отменяемый хвост в конце
+	 *  (окно для выхода из стойки уже свободно всегда — см. OnStanceExit). Плейсхолдер под тюнинг в
+	 *  плейтесте, 0.6-0.7 — кандидат, если полный блок окажется слишком вязким. */
+	UPROPERTY(EditDefaultsOnly, Category = "Combo")
+	float RecoveryLockFraction = 1.0f;
 
 	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. combo_system_redesign.md:
 	 *  "порядка 0.15-0.2 с, чтобы верх плавно ушёл в локомоцию". */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float StanceExitBlendOutTime = 0.18f;
-
-	/** Slot node в AnimGraph персонажа, через который Recovery (Animation Sequence, не Montage —
-	 *  см. FComboRecoveryAnimations) проигрывается как динамический монтаж
-	 *  (PlaySlotAnimationAsDynamicMontage). Должен совпадать с именем Slot-ноды в ABP; поменять
-	 *  здесь, если ABP использует другое имя, чем "DefaultSlot". */
-	UPROPERTY(EditDefaultsOnly, Category = "Combo")
-	FName RecoverySlotName = "DefaultSlot";
 
 	/** Вызывается из WASD-обработчика ввода (OnAttackX в ClanhallCharacter). Решает: опенер,
 	 *  запись в окне чтения (продолжение) или мусор вне окна — сама активирует направленный
@@ -80,6 +87,11 @@ private:
 	TOptional<EClanhallAttackDirection> LatestInWindow;
 	TWeakObjectPtr<UAnimMontage> LastPlayedMontage;
 
+	/** Взведён ApplyComboRecovery(), когда серия упёрлась в потолок ClassRank. Читается в
+	 *  EndSequenceWithRecovery для добавочного штрафа (ComboRecoveryDuration) поверх базового
+	 *  лок-аута, затем сбрасывается в ResetCombo(). */
+	bool bCeilingReached = false;
+
 	/** Нейтраль + валидный опенер по данным -> активировать и стартовать серию. */
 	void TryStartSequence(EClanhallAttackDirection Direction);
 
@@ -98,9 +110,12 @@ private:
 	 *  EndTrace() (нотифай + страховка) безвреден. */
 	void ForceEndWeaponTrace();
 
-	/** Вешает State.ComboRecovery (лок-аут ввода) при достижении потолка ClassRank. Состояние
-	 *  (LastDirection/StepCount) НЕ трогает — сброс и Recovery-анимация делает EndSequenceWithRecovery
-	 *  по завершении терминального удар-монтажа; тег живёт своим таймером параллельно. */
+	/** Взводит bCeilingReached при достижении потолка ClassRank. Тег State.ComboRecovery здесь
+	 *  БОЛЬШЕ НЕ вешается — если повесить его тут, таймер стартует, пока терминальный удар-монтаж
+	 *  ещё доигрывает, и к возврату в стойку лок-аут почти истёк (дефект «а» из задачи). Тег вешает
+	 *  EndSequenceWithRecovery, когда Recovery реально стартует. Состояние (LastDirection/StepCount)
+	 *  НЕ трогает — сброс и Recovery-анимация делает EndSequenceWithRecovery по завершении
+	 *  терминального удар-монтажа. */
 	void ApplyComboRecovery();
 
 	/** Делегат конца УДАР-монтажа. Подстраховка от залипания состояния, если на монтаже
@@ -111,9 +126,14 @@ private:
 
 	/** Единственная точка завершения серии — вызывается и из fall-through OnComboWindowClose
 	 *  (терминальный удар без продолжения), и из OnAttackMontageEnded (страховка без окна). Guard
-	 *  от повторного входа (StepCount уже 0) не даёт сыграть Recovery дважды на одну серию —
-	 *  не путать Recovery-анимацию (играет всегда после терминального удара, по LastDirection) с
-	 *  State.ComboRecovery (лок-аут только по ClassRank). */
+	 *  от повторного входа (StepCount уже 0) не даёт сыграть Recovery дважды на одну серию.
+	 *
+	 *  Здесь же реально вешается State.ComboRecovery: база = длительность Recovery-анимации *
+	 *  RecoveryLockFraction (0, если Recovery-монтажа нет — хвост запечён в удар-монтаж), плюс
+	 *  ComboRecoveryDuration сверху, если серия упёрлась в потолок ClassRank (bCeilingReached).
+	 *  Recovery-анимация и флаг обязаны читаться ДО ResetCombo() — сброс их обнуляет. Не путать
+	 *  Recovery-анимацию (играет всегда после терминального удара, по LastDirection) с
+	 *  State.ComboRecovery (лок-аут новых атак, длительность считается тут). */
 	void EndSequenceWithRecovery();
 
 	const UComboData* GetComboData() const;
