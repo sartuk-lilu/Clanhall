@@ -738,9 +738,11 @@ clash detection — `combat_system.md §4/§5`; AnimGraph, слои и слот�
 4. `[Редактор]` Четыре монтажа-опенера из стойки (W=Overhead, D=RightSlash, A=LeftSlash, S=LowSweep) — строка `Stance` в таблице ниже. Опенер режется именно из стойки: удар из середины дубля на эту роль не годится.  
 
 **Mocap**
+
 https://github.com/user-attachments/assets/1a1860be-d227-4b33-a482-516d13a3bf6f
 
 **Sequencer**
+
 https://github.com/user-attachments/assets/30800fd3-17b4-4992-8a20-a2b77ff6b3f6
 
 **Статус Комбо Анимаций Knight**
