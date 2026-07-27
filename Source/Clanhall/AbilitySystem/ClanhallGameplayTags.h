@@ -40,6 +40,10 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Stunned);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Knockdown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_ComboRecovery);
+	// Активка в фазе коммита: живёт от активации до закрытия окна контакта. Пока висит —
+	// нельзя начать WASD-серию и нельзя запустить вторую активку (combat_system.md §3,
+	// «начатую активку нельзя оборвать»). Выход из стойки при этом свободен всегда.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_SkillCommitted);
 
 	// ---- Weapon.Type.* ----
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon_Type_STR);
@@ -83,6 +87,13 @@ namespace ClanhallGameplayTags
 	// к GA_DirectionalAttackBase через TriggerAbilityFromGameplayEvent — Handle-активация сохраняется,
 	// тег тут служебный (не гейтит выбор способности, тот идёт по Handle).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_DirectionalAttack);
+	// Порция D: сигналы от UClanhallHitboxComponent к живой способности.
+	// Hit: Instigator = владелец зоны, Target = задетый актор, EventMagnitude = хендл зоны
+	// (подписчик может отличить свою зону от чужой). Шлётся на КАЖДУЮ задетую цель.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Hitbox_Hit);
+	// Closed: закрылась ПОСЛЕДНЯЯ активная зона — фаза контакта удара окончена.
+	// Способность, ждавшая попадания, на этом заканчивается (попала она или нет).
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Hitbox_Closed);
 
 	// ---- Damage.Type.* ----
 	// Тег типа урона на FDirectionalDamage (combo_fragments_redesign_task.md §1). Заглушка —

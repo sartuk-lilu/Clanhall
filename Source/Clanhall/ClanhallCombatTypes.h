@@ -1,6 +1,6 @@
 // Общие типы боевой системы, не привязанные к конкретному классу абилок.
 // EClanhallAttackDirection используется в GA_DirectionalAttackBase, ClanhallParryComponent
-// и ClanhallWeaponTraceComponent — вынесен сюда, чтобы избежать взаимозависимостей заголовков.
+// и ClanhallHitboxComponent — вынесен сюда, чтобы избежать взаимозависимостей заголовков.
 
 #pragma once
 

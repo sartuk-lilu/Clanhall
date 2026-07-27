@@ -21,7 +21,7 @@ class UClanhallMarkComponent;
 class UClanhallParryComponent;
 class UClanhallCounterComponent;
 class UClanhallComboComponent;
-class UClanhallWeaponTraceComponent;
+class UClanhallHitboxComponent;
 class UClanhallTargetingComponent;
 class UClanhallBossSensorComponent;
 class UAbilityData;
@@ -50,7 +50,7 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallMarkComponent> MarkComponent;
 
-	/** Раздел 5: флаг bParrySuccessful — пишет ClanhallWeaponTraceComponent, читает GA_EnemyWASDSeries. */
+	/** Раздел 5: флаг bParrySuccessful — пишет ClanhallHitboxComponent, читает GA_EnemyWASDSeries. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallParryComponent> ParryComponent;
 
@@ -67,10 +67,12 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallComboComponent> ComboComponent;
 
-	/** Раздел 6.5: sweep-трейс оружия, открывается AnimNotifyState_WeaponTrace.
-	 *  При попадании во врага со State.Parrying вызывает ParryComponent->TryParry(). */
+	/** Порция C: диспетчер активных зон поражения (main_dev_plan.md §7). Собственной геометрии
+	 *  не имеет — форма и роль каждой зоны приходят из AnimNotifyState_Hitbox на монтаже.
+	 *  При попадании во врага со State.Parrying (и bParryable зоны) вызывает ParryComponent->TryParry().
+	 *  Имя сабобъекта намеренно осталось прежним ("WeaponTraceComponent") — см. конструктор. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallWeaponTraceComponent> WeaponTraceComponent;
+	TObjectPtr<UClanhallHitboxComponent> HitboxComponent;
 
 	/** HUD: camera-forward line trace 20 м. CurrentTarget → Enemy Frame виджета.
 	 *  OnTargetChanged — делегат для биндинга в WBP_HUD. */

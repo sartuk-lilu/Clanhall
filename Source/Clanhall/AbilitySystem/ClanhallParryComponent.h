@@ -3,8 +3,8 @@
 // окна и решает: оглушить врага или нанести урон.
 //
 // Раздел 5 (placeholder): TryParry вызывался из обработчиков ввода WASD персонажа.
-// Раздел 6.5 (финал):    TryParry вызывается из UClanhallWeaponTraceComponent::CheckAndHandleParry
-//                         когда weapon trace игрока задевает врага со State.Parrying.
+// Раздел 6.5 / Порция C (финал): TryParry вызывается из UClanhallHitboxComponent::CheckAndHandleParry,
+//                                и только для зон с bParryable == true — активки Q/E/R/F в клэш не попадают.
 
 #pragma once
 
@@ -32,7 +32,8 @@ public:
 	/** Вызывается AI-способностью перед каждым ударом серии. */
 	void ResetParry();
 
-	/** Вызывается из UClanhallWeaponTraceComponent::CheckAndHandleParry.
+	/** Вызывается из UClanhallHitboxComponent::CheckAndHandleParry — только для зон с
+	 *  bParryable == true (ability_system.md §2, п.31: активки в клэше не участвуют).
 	 *  Проверяет направление удара игрока против Parry.Incoming.* тега на своём ASC.
 	 *  Возвращает true при успешном парировании. */
 	bool TryParry(AActor* HitEnemy, EClanhallAttackDirection PlayerDirection, FVector HitLocation);

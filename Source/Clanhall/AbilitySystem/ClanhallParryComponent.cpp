@@ -44,7 +44,7 @@ bool UClanhallParryComponent::TryParry(AActor* HitEnemy, EClanhallAttackDirectio
 	}
 
 #if !UE_BUILD_SHIPPING
-	GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("✓ ПАРИРОВАНИЕ (weapon trace)!"));
+	GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("✓ ПАРИРОВАНИЕ (hitbox)!"));
 #endif
 
 	return true;

@@ -1,6 +1,6 @@
 // Раздел 6 (переработан): базовый класс активных навыков врага с окном контрнавыка.
 // При активации открывает окно на своём UClanhallCounterComponent (State.CounterWindow на ASC) —
-// игрок контрит, активировав навык с тем же CounterTag, без модификатора (clanhall_claude_code_counter.md).
+// игрок контрит, активировав любой навык из набора CounteredBy, без модификатора (counter_tags_task.md).
 // Если НЕ прерван → по истечении окна наносит урон/метку игроку.
 // Если прерван → ConsumeCounter вызывает CancelAbilityHandle → WaitDelay-задача снимается → урон не применяется.
 //
@@ -28,14 +28,14 @@ public:
 	                             const FGameplayAbilityActivationInfo ActivationInfo,
 	                             const FGameplayEventData* TriggerEventData) override;
 
-	FGameplayTag GetCounterTag() const { return CounterTag; }
+	const FGameplayTagContainer& GetCounteredBy() const { return CounteredBy; }
 	FGameplayTag GetCooldownTag() const { return CooldownTag; }
 	float GetCooldownDuration() const { return Cooldown; }
 
 protected:
-	/** Идентичность навыка для контрнавыка — тот же тег, что и у навыка игрока (см. AbilityTags). */
+	/** Набор навыков, которыми эту активку можно прервать; пусто = не контрится. */
 	UPROPERTY(EditDefaultsOnly, Category = "Counter", meta = (Categories = "Ability.Skill"))
-	FGameplayTag CounterTag;
+	FGameplayTagContainer CounteredBy;
 
 	/** Тег слота КД, который получит владелец при успешном контре (ConsumeCounter). */
 	UPROPERTY(EditDefaultsOnly, Category = "Counter", meta = (Categories = "Cooldown.Slot"))
@@ -65,8 +65,8 @@ private:
 
 // ---------------------------------------------------------------------------
 // UGA_Enemy_PowerStrike — конкретная реализация «Power Strike» для врагов.
-// AbilityTags = {Ability.Skill.Knight.PowerStrike}: тот же тег, что у игрока (Knight E),
-// — контрнавык детектирует через CancelAbilities(Ability.Skill.*) (development_plan.md §6).
+// AbilityTags = {Ability.Skill.Knight.PowerStrike}: тот же тег, что у игрока (Knight E).
+// CounteredBy содержит этот же тег — самоконтр, теперь выраженный записью в наборе (counter_tags_task.md).
 // ---------------------------------------------------------------------------
 UCLASS()
 class CLANHALL_API UGA_Enemy_PowerStrike : public UGA_EnemyActiveSkill

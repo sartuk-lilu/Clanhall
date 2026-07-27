@@ -8,6 +8,9 @@
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
+#include "Animation/AnimNotifyState_Hitbox.h"
+#include "Animation/AnimMontage.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Animation/AnimInstance.h"
@@ -17,6 +20,12 @@
 UGA_PhysicalSkill::UGA_PhysicalSkill()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerExecution;
+
+	// E2.4: тег коммита живёт ровно окно контакта (ActivationOwnedTags снимается автоматически
+	// на EndAbility). На контактном пути висит от активации до Event.Hitbox.Closed; на
+	// фолбэк-пути способность заканчивается сразу же, тега фактически нет — без анимации
+	// коммититься не во что.
+	ActivationOwnedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 }
 
 const UAbilityData* UGA_PhysicalSkill::GetAbilityData(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const
@@ -45,8 +54,9 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return false;
 	}
 
-	// КД проверяется здесь (тег навешивается только при подтверждённом попадании, см. ActivateAbility),
-	// а Charges — на активацию (combat_system.md §1: "проверяется количество зарядов на активацию").
+	// КД проверяется здесь (тег вешается на активации, см. ActivateAbility — исключение: успешный
+	// контрнавык КД не вешает вовсе), а Charges — на активацию (combat_system.md §1: "проверяется
+	// количество зарядов на активацию").
 	if (Data->CooldownTag.IsValid() && ASC->HasMatchingGameplayTag(Data->CooldownTag))
 	{
 		return false;
@@ -64,7 +74,7 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 	return true;
 }
 
-void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent) const
+void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent)
 {
 	if (!TargetMarkComponent)
 	{
@@ -78,7 +88,11 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 		{
 			for (const FMarkSynergy& Synergy : Trigger->Synergies)
 			{
-				if (Synergy.RequiredMark != CurrentMark)
+				// MatchesTag, а не ==: RequiredMark задаёт КРУПНОСТЬ записи. Конкретный тег
+				// (Mark.BrokenGuard) матчит только себя; корневой Mark матчит любую метку — так
+				// выражается «активирует независимо от типа метки» (Knight Retribution,
+				// physical_abilities.md). Тот же приём, что у CounteredBy в контрнавыке.
+				if (!Synergy.RequiredMark.IsValid() || !CurrentMark.MatchesTag(Synergy.RequiredMark))
 				{
 					continue;
 				}
@@ -88,14 +102,24 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 
 				if (Synergy.EffectOnTarget)
 				{
+					// Состояние на цель — на каждой задетой цели.
 					ClanhallGameplayEffects::ApplyEffect(SourceASC, TargetASC, Synergy.EffectOnTarget);
 				}
-				else if (Synergy.EffectOnSelf)
+				else if (Synergy.EffectOnSelf && !bSelfSynergySpent)
 				{
+					// Состояние на себя — один раз за применение, сколько бы целей ни задело:
+					// трёхкратно наложенный баф либо бессмыслен, либо стакается непредсказуемо.
 					ClanhallGameplayEffects::ApplyEffect(SourceASC, SourceASC, Synergy.EffectOnSelf);
+					bSelfSynergySpent = true;
 				}
 
-				ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), 1.0f);
+				// Заряды — РЕСУРС, а не состояние: начисляются ЗА КАЖДУЮ задетую цель и НЕ
+				// гатятся bSelfSynergySpent. Мультицель — редкая ситуация повышенного риска, и она
+				// должна награждать. От переполнения защищает кламп MaxCharges в UClanhallAttributeSet.
+				if (Synergy.ChargeGain > 0)
+				{
+					ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), static_cast<float>(Synergy.ChargeGain));
+				}
 				break;
 			}
 		}
@@ -113,123 +137,156 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
 	const UAbilityData* Data = GetAbilityData(Handle, ActorInfo);
 
-	if (SourceASC && Avatar && Data)
+	if (!SourceASC || !Avatar || !Data)
 	{
-		AActor* Target = FindMeleeTarget(Avatar);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
 
-		// Резолвер контрнавыка: до списания Charges/КД (ability_system.md §2, clanhall_claude_code_counter.md).
-		// Совпал CounterTag этого навыка с открытым окном цели → навык цели сбит + получает полный КД,
-		// а этот навык не коммитится вовсе — без стоимости, без КД, без урона.
-		if (Target && UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag))
+	// Поиск цели нужен и для урона (фолбэк-путь), и для контр-запроса. Контр — это вопрос
+	// «кому я отвечаю», а не проверка попадания.
+	AActor* Target = FindMeleeTarget(Avatar);
+
+	// Резолвер контрнавыка: до списания Charges (ability_system.md §2, clanhall_claude_code_counter.md).
+	// Совпал CounterTag этого навыка с открытым окном цели → навык цели сбит + получает полный КД.
+	// Контр обязан сбить навык врага немедленно, до анимации — резолвится на активации, не на контакте.
+	const bool bWasCounter = Target && UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag);
+
+	// Активка коммитится в момент нажатия: заряды уходят всегда, включая контр и промах.
+	// Контр тратит ресурс так же, как обычное применение (ability_system.md §2) — цена
+	// решения «придержать навык на контратаку» и есть эти заряды.
+	if (Data->ChargeCost > 0)
+	{
+		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(Data->ChargeCost));
+	}
+
+	if (bWasCounter)
+	{
+		// Навык врага сбит и получил полный КД. Навык игрока в КД НЕ уходит и готов сразу —
+		// ограничен только зарядами (ability_system.md §2, «Успешная контратака»).
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
+
+	// КД уходит НА АКТИВАЦИИ, а не на подтверждённом попадании: активку нельзя оборвать,
+	// промах стоит зарядов и КД. Это цена коммита (combat_system.md §3).
+	if (Data->CooldownTag.IsValid())
+	{
+		ClanhallGameplayEffects::ApplyTimedTag(SourceASC, Data->CooldownTag, Data->Cooldown);
+	}
+
+	// Порядок критичен: серию гасим и монтаж запускаем ДО подписки на Event.Hitbox.*.
+	// CancelSequenceForExternalMontage() зовёт ForceEndHitboxes(), а тот при непустом списке
+	// зон шлёт Event.Hitbox.Closed — подпишись мы раньше, активка получила бы его сама и
+	// закончилась до открытия собственной зоны (тот же баг, что D2 закрыл для чейна).
+	if (Data->CastMontage)
+	{
+		if (ACharacter* Char = Cast<ACharacter>(Avatar))
 		{
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-			return;
-		}
-
-		// Charges списываются на активацию, а не на попадание — в отличие от КД (см. CanActivateAbility).
-		if (Data->ChargeCost > 0)
-		{
-			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(Data->ChargeCost));
-		}
-
-		// Метка на самом игроке: могла прийти от врага (активный навык босса) или от промаха
-		// собственного навыка. Нужна для переноса своей метки на врага при попадании (правка 1.2).
-		UClanhallMarkComponent* SelfMarkComponent = Avatar->FindComponentByClass<UClanhallMarkComponent>();
-
-		if (Target)
-		{
-			IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
-			UAbilitySystemComponent* TargetASC = TargetInterface ? TargetInterface->GetAbilitySystemComponent() : nullptr;
-
-			bool bConfirmedHit = false;
-			if (const UDamageFragment* Damage = Data->FindFragment<UDamageFragment>())
+			if (UAnimInstance* AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr)
 			{
-				bConfirmedHit = ResolveStandardDamage(SourceASC, TargetASC, Damage->BaseDamage);
-			}
-			else
-			{
-				// Утилитарный навык без урона — попадание подтверждено самим фактом найденной цели,
-				// иначе КД и метки у таких навыков никогда бы не срабатывали.
-				bConfirmedHit = (TargetASC != nullptr);
-			}
-
-			if (bConfirmedHit)
-			{
-				if (UClanhallMarkComponent* TargetMarkComponent = Target->FindComponentByClass<UClanhallMarkComponent>())
+				if (UClanhallComboComponent* Combo = Char->FindComponentByClass<UClanhallComboComponent>())
 				{
-					// mark_system.md правка 1.2: если у игрока висит СВОЯ метка (осталась от промаха
-					// собственного навыка) — она переносится на врага до обычной mark-логики.
-					// Вражеская метка (от босса) атакой не снимается и сюда не попадает.
-					if (SelfMarkComponent && SelfMarkComponent->IsOwnMark(SourceASC))
-					{
-						const FGameplayTag SelfMark = SelfMarkComponent->GetCurrentMark();
-						SelfMarkComponent->ClearMark();
-						TargetMarkComponent->ApplyMark(SelfMark, SourceASC);
-					}
-
-					ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
+					Combo->CancelSequenceForExternalMontage();
 				}
-
-				if (!FMath::IsNearlyZero(Data->BalanceShift))
-				{
-					const float Shift = GetBalanceSign(SourceASC) * Data->BalanceShift;
-					ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), Shift);
-				}
-
-				// КД только при подтверждённом попадании — CLAUDE.md, "ЗАБЛОКИРОВАННЫЙ КАНОН".
-				if (Data->CooldownTag.IsValid())
-				{
-					ClanhallGameplayEffects::ApplyTimedTag(SourceASC, Data->CooldownTag, Data->Cooldown);
-				}
-
-#if !UE_BUILD_SHIPPING
-				if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
-				{
-					GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, FString::Printf(
-						TEXT("%s hit | AP %.0f/%.0f  Charges %.0f/%.0f  Balance %.1f"),
-						*Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
-						SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
-				}
-#endif
-			}
-		}
-
-		else
-		{
-			// ПРОМАХ: цель не найдена в зоне удара.
-			// mark_system.md §2 Правило 1: метка навыка остаётся у самого игрока на 5 сек.
-			// Если затем игрок попадёт следующим навыком — эта метка перейдёт на врага (см. выше IsOwnMark).
-			if (SelfMarkComponent)
-			{
-				if (const UMarkApplyFragment* MarkApply = Data->FindFragment<UMarkApplyFragment>())
-				{
-					SelfMarkComponent->ApplyMark(MarkApply->MarkTag, SourceASC);
-				}
-			}
-		}
-
-		// Раздел 6.5: воспроизводим монтаж если CastMontage заполнен (косметика).
-		// Урон и метка уже применены выше мгновенно. AnimNotify_ApplyMark в монтаже
-		// отправит Event.ApplyMark — будущая async-версия способности будет ждать его.
-		if (Data->CastMontage)
-		{
-			if (ACharacter* Char = Cast<ACharacter>(Avatar))
-			{
-				if (UAnimInstance* AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr)
-				{
-					// notify_state_migration_task.md Фаза 4: upperbody/fullbody делят DefaultGroup —
-					// этот Montage_Play сейчас перебьёт живой удар-монтаж комбо. Погасить его состояние
-					// заранее, иначе HandleAttackInput намертво отбрасывает WASD после каста.
-					if (UClanhallComboComponent* Combo = Char->FindComponentByClass<UClanhallComboComponent>())
-					{
-						Combo->CancelSequenceForExternalMontage();
-					}
-
-					AnimInst->Montage_Play(Data->CastMontage);
-				}
+				AnimInst->Montage_Play(Data->CastMontage);
 			}
 		}
 	}
 
-	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(Data->CastMontage);
+
+	if (!bResolveOnContact)
+	{
+		// Нет монтажа или на монтаже не расставлены зоны — мгновенный резолв по цели, найденной
+		// на активации, как до Порции D. Осознанный фолбэк: он позволяет проверять навык и его
+		// фрагменты до нарезки анимаций (инвариант Раздела 7). Все четыре ассета Knight сейчас
+		// идут именно этим путём — CastMontage у них пока nullptr.
+		ResolveHitOn(Target);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
+
+	// Контактный путь: EndAbility НЕ вызывается здесь — ждём Event.Hitbox.Hit/Closed.
+	UAbilityTask_WaitGameplayEvent* HitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this, ClanhallGameplayTags::Event_Hitbox_Hit.GetTag(), nullptr, /*OnlyTriggerOnce*/ false, /*OnlyMatchExact*/ true);
+	HitTask->EventReceived.AddDynamic(this, &UGA_PhysicalSkill::OnHitboxHitReceived);
+	HitTask->ReadyForActivation();
+
+	UAbilityTask_WaitGameplayEvent* ClosedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this, ClanhallGameplayTags::Event_Hitbox_Closed.GetTag(), nullptr, /*OnlyTriggerOnce*/ true, /*OnlyMatchExact*/ true);
+	ClosedTask->EventReceived.AddDynamic(this, &UGA_PhysicalSkill::OnHitboxClosedReceived);
+	ClosedTask->ReadyForActivation();
+}
+
+void UGA_PhysicalSkill::OnHitboxHitReceived(FGameplayEventData Payload)
+{
+	// Зона может задеть несколько целей за одно применение (Shield Charge — капсула на пелвисе
+	// на весь рывок, п.25). Способность здесь НЕ заканчивается, ждём Event.Hitbox.Closed.
+	ResolveHitOn(const_cast<AActor*>(Payload.Target.Get()));
+}
+
+void UGA_PhysicalSkill::OnHitboxClosedReceived(FGameplayEventData Payload)
+{
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
+{
+	if (!Target)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* SourceASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
+	const UAbilityData* Data = GetAbilityData(CurrentSpecHandle, CurrentActorInfo);
+	if (!SourceASC || !Data)
+	{
+		return;
+	}
+
+	IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
+	UAbilitySystemComponent* TargetASC = TargetInterface ? TargetInterface->GetAbilitySystemComponent() : nullptr;
+
+	bool bConfirmedHit = false;
+	if (const UDamageFragment* Damage = Data->FindFragment<UDamageFragment>())
+	{
+		bConfirmedHit = ResolveStandardDamage(SourceASC, TargetASC, Damage->BaseDamage);
+	}
+	else
+	{
+		// Утилитарный навык без урона — попадание подтверждено самим фактом найденной цели,
+		// иначе КД и метки у таких навыков никогда бы не срабатывали.
+		bConfirmedHit = (TargetASC != nullptr);
+	}
+
+	if (!bConfirmedHit)
+	{
+		return;
+	}
+
+	if (UClanhallMarkComponent* TargetMarkComponent = Target->FindComponentByClass<UClanhallMarkComponent>())
+	{
+		ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
+	}
+
+	// Balance — СОСТОЯНИЕ, а не ресурс: сдвигается один раз за применение навыка, сколько бы
+	// целей ни задело (mark_system.md §2, правило «ресурс/состояние»). Тройной сдвиг сломал бы шкалу.
+	if (!bBalanceApplied && !FMath::IsNearlyZero(Data->BalanceShift))
+	{
+		const float Shift = GetBalanceSign(SourceASC) * Data->BalanceShift;
+		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), Shift);
+		bBalanceApplied = true;
+	}
+
+#if !UE_BUILD_SHIPPING
+	// На каждое попадание, без гейта: при мультицели полезно видеть, сколько целей задело.
+	if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, FString::Printf(
+			TEXT("%s hit | AP %.0f/%.0f  Charges %.0f/%.0f  Balance %.1f"),
+			*Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
+			SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
+	}
+#endif
 }

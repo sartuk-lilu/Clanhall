@@ -3,7 +3,7 @@
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
-#include "AbilitySystem/ClanhallWeaponTraceComponent.h"
+#include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "ClanhallCharacter.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -22,6 +22,14 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 		// Лок-аут после Recovery (см. EndSequenceWithRecovery) — вход игнорируется, пока тег не
 		// спадёт. Дублирует ActivationBlockedTags на GA_ClanhallAbilityBase для WASD-пути конкретно
 		// (тот гейтит саму активацию GA, этот — вход в компонент раньше, до попытки активации).
+		return;
+	}
+
+	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
+	{
+		// E2.4: активка в фазе коммита — начатую активку нельзя оборвать (combat_system.md §3).
+		// Отбрасываем ввод здесь же, до ActivateStep и его ForceEndHitboxes(), иначе WASD сразу
+		// после Q обрывал бы активке окно контакта, хоть заряды и КД уже потрачены.
 		return;
 	}
 
@@ -86,8 +94,9 @@ void UClanhallComboComponent::OnComboWindowClose()
 	const EClanhallAttackDirection Direction = LatestInWindow.GetValue();
 	LatestInWindow.Reset();
 
-	// Потолок ранга: если продолжение длиннее ClassRank — запрещено, даже если слот перехода занят.
-	if (StepCount + 1 > GetClassRank())
+	// Потолок ранга: длина серии = ClassRank + 1 (ранг 0 → 1 удар, ранг 4 → 5 ударов).
+	// Запрещено, даже если слот перехода занят.
+	if (StepCount > GetClassRank())
 	{
 		EndSequenceWithRecovery();
 		return;
@@ -120,11 +129,6 @@ void UClanhallComboComponent::OnComboWindowClose()
 
 	LastDirection = Direction;
 	++StepCount;
-
-	if (StepCount >= GetClassRank())
-	{
-		ApplyComboRecovery();
-	}
 }
 
 bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, UAnimMontage* Montage)
@@ -136,6 +140,11 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	{
 		return false;
 	}
+
+	// Порция D: зоны предыдущего шага закрываем ДО активации следующей способности.
+	// Иначе Event.Hitbox.Closed от прерванного монтажа (Montage_Play ниже -> bInterrupted)
+	// прилетит уже НОВОЙ способности и оборвёт её до открытия собственной зоны.
+	ForceEndHitboxes();
 
 	const FDirectionalDamage& Damage = Data->FindDamageByDirection(Direction);
 
@@ -149,6 +158,8 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 		// Задел: тип урона в InstigatorTags события, в расчёте пока не читается.
 		EventData.InstigatorTags.AddTag(Damage.DamageType);
 	}
+	// Порция D: способность по монтажу определяет режим резолва (контакт или мгновенный фолбэк).
+	EventData.OptionalObject = Montage;
 
 	const FGameplayAbilitySpecHandle Handle = Character->GetAttackHandle(Direction);
 	if (!ASC->TriggerAbilityFromGameplayEvent(Handle, ASC->AbilityActorInfo.Get(), ClanhallGameplayTags::Event_DirectionalAttack.GetTag(), &EventData, *ASC))
@@ -185,9 +196,19 @@ void UClanhallComboComponent::PlayMontage(UAnimMontage* Montage)
 
 void UClanhallComboComponent::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	// Прерванный монтаж — основной кейс залипшего трейса (нотифай WeaponTraceEnd не успел
+	if (Montage != LastPlayedMontage.Get())
+	{
+		// Делегат от уже смещённого монтажа: чейн (или активка) успел стартовать следующий
+		// монтаж, а зоны предыдущего закрыты в ActivateStep / CancelSequenceForExternalMontage.
+		// Трогать зоны ТЕКУЩЕГО владельца нельзя: EndAllHitboxes послал бы Event.Hitbox.Closed
+		// и оборвал живую способность до окна контакта. Делегат приходит асинхронно (после
+		// блендаута), поэтому синхронного порядка в ActivateStep недостаточно.
+		return;
+	}
+
+	// Прерванный монтаж — основной кейс залипшей зоны (нотифай NotifyEnd не успел
 	// сработать): страховка идёт до раннего return по bInterrupted.
-	ForceEndWeaponTrace();
+	ForceEndHitboxes();
 
 	if (bInterrupted)
 	{
@@ -199,11 +220,11 @@ void UClanhallComboComponent::OnAttackMontageEnded(UAnimMontage* Montage, bool b
 	EndSequenceWithRecovery();
 }
 
-void UClanhallComboComponent::ForceEndWeaponTrace()
+void UClanhallComboComponent::ForceEndHitboxes()
 {
-	if (UClanhallWeaponTraceComponent* TraceComp = GetOwner() ? GetOwner()->FindComponentByClass<UClanhallWeaponTraceComponent>() : nullptr)
+	if (UClanhallHitboxComponent* HitboxComp = GetOwner() ? GetOwner()->FindComponentByClass<UClanhallHitboxComponent>() : nullptr)
 	{
-		TraceComp->EndTrace();
+		HitboxComp->EndAllHitboxes();
 	}
 }
 
@@ -211,56 +232,50 @@ void UClanhallComboComponent::EndSequenceWithRecovery()
 {
 	if (StepCount == 0)
 	{
-		// Уже нейтраль — серия уже завершена другим путём (fall-through/делегат). Guard от
-		// двойного Recovery на одну серию.
+		// Уже нейтраль — серия завершена другим путём (fall-through/делегат).
+		// Guard от двойного Recovery на одну серию.
 		return;
 	}
 
 	const UComboData* Data = GetComboData();
-	// Резолв Recovery-анимации и чтение bCeilingReached — оба ДО ResetCombo(): сброс очищает
-	// LastDirection и гасит флаг.
+	// Резолв Recovery-анимации ДО ResetCombo(): сброс очищает LastDirection.
 	UAnimMontage* RecoveryMontage = (Data && LastDirection.IsSet()) ? Data->FindRecoveryMontage(LastDirection.GetValue()) : nullptr;
-	const bool bWasCeilingReached = bCeilingReached;
 
 	ResetCombo();
 
-	// Лок-аут новых атак (State.ComboRecovery) реально стартует здесь, не в ApplyComboRecovery —
-	// таймер должен покрывать время ПОСЛЕ возврата в стойку, а не время, пока ещё доигрывает
-	// терминальный удар-монтаж (дефект «а» из задачи). База — доля длительности Recovery-анимации;
-	// если серии некуда было расти (потолок ClassRank), сверху добавляется ComboRecoveryDuration.
-	float LockDuration = RecoveryMontage ? RecoveryMontage->GetPlayLength() * RecoveryLockFraction : 0.f;
-	if (bWasCeilingReached)
-	{
-		LockDuration += ComboRecoveryDuration;
-	}
-	if (LockDuration > 0.f)
-	{
-		if (UAbilitySystemComponent* ASC = GetASC())
-		{
-			ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_ComboRecovery.GetTag(), LockDuration);
-		}
-	}
-
 	if (!RecoveryMontage)
 	{
-		// nullptr: хвост восстановления запечён в сам удар-монтаж, отдельно играть нечего. Штраф за
-		// потолок ClassRank (если был) уже применён выше.
+		// nullptr: хвост восстановления запечён в сам удар-монтаж, отдельно играть нечего.
+		// Лок-аут НЕ вешается: показывать его нечем, а невидимого лока в системе больше нет.
 		return;
 	}
 
-	if (UAnimInstance* AnimInst = GetAnimInstance())
+	UAnimInstance* AnimInst = GetAnimInstance();
+	if (!AnimInst)
 	{
-		// НЕ вызывать PlayMontage() здесь: тот хелпер вешает Montage_SetEndDelegate на
-		// OnAttackMontageEnded, и для Recovery это ловушка-петля (конец Recovery ->
-		// OnAttackMontageEnded(bInterrupted=false) -> EndSequenceWithRecovery -> снова Recovery).
-		// Recovery играется без делегата конца, как и было в текущей реализации — не "оптимизировать"
-		// обратно на PlayMontage().
-		const float PlayedDuration = AnimInst->Montage_Play(RecoveryMontage);
-		if (PlayedDuration == 0.f)
-		{
-			UE_LOG(LogClanhall, Warning, TEXT("EndSequenceWithRecovery: Montage_Play failed to start %s"), *RecoveryMontage->GetName());
-		}
-		LastPlayedMontage = RecoveryMontage;
+		return;
+	}
+
+	// НЕ вызывать PlayMontage() здесь: тот хелпер вешает Montage_SetEndDelegate на
+	// OnAttackMontageEnded, и для Recovery это ловушка-петля (конец Recovery ->
+	// OnAttackMontageEnded(bInterrupted=false) -> EndSequenceWithRecovery -> снова Recovery).
+	// Recovery играется без делегата конца — не "оптимизировать" обратно на PlayMontage().
+	const float PlayedDuration = AnimInst->Montage_Play(RecoveryMontage);
+	if (PlayedDuration == 0.f)
+	{
+		UE_LOG(LogClanhall, Warning, TEXT("EndSequenceWithRecovery: Montage_Play failed to start %s"), *RecoveryMontage->GetName());
+		// Монтаж не стартовал — лок не вешаем, иначе он был бы невидимым.
+		return;
+	}
+	LastPlayedMontage = RecoveryMontage;
+
+	// Лок-аут ровно на длительность Recovery-анимации: тег спадает в тот же кадр, в котором
+	// заканчивается анимация. Никаких долей и добавок — лок обязан быть виден целиком.
+	// Блокирует новые атаки (ActivationBlockedTags на UGA_ClanhallAbilityBase и ранний гейт
+	// в HandleAttackInput) И вход в стойку (UGA_CombatStance). Выход из стойки — свободен.
+	if (UAbilitySystemComponent* ASC = GetASC())
+	{
+		ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_ComboRecovery.GetTag(), RecoveryMontage->GetPlayLength());
 	}
 }
 
@@ -272,12 +287,14 @@ void UClanhallComboComponent::CancelSequenceForExternalMontage()
 		return;
 	}
 
-	ForceEndWeaponTrace();
+	ForceEndHitboxes();
 	ResetCombo();
 	// Монтаж НЕ останавливаем: Montage_Play вызывающего сам его перебьёт.
-	// Прилетит OnAttackMontageEnded(bInterrupted=true) -> ранний return -> состояние уже чистое.
-	// LastPlayedMontage намеренно не трогаем: если игрок отпустит ЛКМ во время каста, OnStanceExit
-	// вызовет Montage_Stop по уже мёртвому удар-монтажу (no-op) вместо живого каста.
+	// LastPlayedMontage обнуляем: (1) прежний трюк с no-op Montage_Stop в OnStanceExit стал
+	// избыточен — после Порции B тот зовётся только при StepCount > 0, а ResetCombo() выше
+	// уже поставил 0; (2) иначе гард в OnAttackMontageEnded пропустит делегат прерванного
+	// удар-монтажа и закроет зоны уже живой активки, оборвав её до контакта.
+	LastPlayedMontage.Reset();
 }
 
 void UClanhallComboComponent::ResetCombo()
@@ -291,34 +308,30 @@ void UClanhallComboComponent::ResetCombo()
 	// Тег State.ComboRecovery (если уже был повешен) НЕ снимается здесь — он живёт своим таймером
 	// независимо от состояния серии. Именно это не даёт связке "выйти из стойки и сразу войти
 	// обратно" бесплатно отменить лок-аут (см. OnStanceExit).
-	bCeilingReached = false;
-}
-
-void UClanhallComboComponent::ApplyComboRecovery()
-{
-	// Тег State.ComboRecovery здесь НЕ вешается: терминальный удар-монтаж ещё доигрывает, и таймер
-	// стартовал бы раньше, чем реально начинается Recovery — к моменту возврата в стойку лок-аут
-	// почти истёк бы. Тег вешает EndSequenceWithRecovery, когда Recovery реально стартует; здесь
-	// только фиксируем факт для добавочного штрафа.
-	bCeilingReached = true;
-
-	// ResetCombo НЕ здесь: сброс состояния и Recovery-анимация — по завершении терминального
-	// удар-монтажа через EndSequenceWithRecovery (fall-through этого же окна или делегат конца
-	// монтажа).
 }
 
 void UClanhallComboComponent::OnStanceExit()
 {
-	// Выход из стойки во время Recovery остаётся бесплатным: гасит монтаж с блендом и сбрасывает
-	// серию как обычно. State.ComboRecovery намеренно НЕ снимается — тег продолжает тикать своим
-	// таймером (см. ResetCombo), поэтому "выйти из стойки и сразу войти обратно" не даёт бесплатной
-	// отмены лок-аута на новые атаки.
-	if (UAnimInstance* AnimInst = GetAnimInstance())
+	// Прерываем ТОЛЬКО живой удар-монтаж (StepCount > 0). При StepCount == 0 это либо
+	// нейтраль (гасить нечего), либо уже играет Recovery — и он обязан доиграть: именно
+	// он показывает игроку, почему новые атаки и вход в стойку пока не работают.
+	// Recovery живёт в слоте upperbody, низ уходит в локомоцию по bInStance — персонаж
+	// бежит, руки доводят возврат к стойке.
+	if (StepCount > 0)
 	{
-		AnimInst->Montage_Stop(StanceExitBlendOutTime, LastPlayedMontage.Get());
+		if (UAnimInstance* AnimInst = GetAnimInstance())
+		{
+			AnimInst->Montage_Stop(StanceExitBlendOutTime, LastPlayedMontage.Get());
+		}
+
+		// ForceEndHitboxes переехал СЮДА (E2.6): при StepCount == 0 живого удар-монтажа нет, а
+		// значит нет и своей зоны — всё открытое принадлежит активке в фазе коммита (State.
+		// SkillCommitted). Закрывать чужую зону нельзя: Event.Hitbox.Closed оборвал бы её до
+		// контакта, хотя выход из стойки по канону блокирует новые действия, а не отменяет
+		// начатое (combat_system.md §3) — тот же принцип, что уже защищает каст-монтаж строкой выше.
+		ForceEndHitboxes();
 	}
 
-	ForceEndWeaponTrace();
 	ResetCombo();
 }
 
@@ -331,7 +344,7 @@ const UComboData* UClanhallComboComponent::GetComboData() const
 int32 UClanhallComboComponent::GetClassRank() const
 {
 	const AClanhallCharacter* Character = Cast<AClanhallCharacter>(GetOwner());
-	return Character ? Character->ClassRank : 1;
+	return Character ? Character->ClassRank : 0;
 }
 
 UAbilitySystemComponent* UClanhallComboComponent::GetASC() const

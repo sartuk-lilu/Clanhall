@@ -41,8 +41,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Class"))
 	FGameplayTag RequiredClass;
 
-	/** Идентичность навыка для контрнавыка — Ability.Skill.Knight.PowerStrike и т.д.
-	 *  Тот же тег на навыке врага = «тот же навык» → контр (clanhall_claude_code_counter.md). */
+	/** Идентичность навыка — чем я контрю (Ability.Skill.Knight.PowerStrike и т.д.), а не кого я контрю.
+	 *  Уходит в TryResolveCounter как IncomingCounterTag; матчится против набора CounteredBy на
+	 *  защищающемся (counter_tags_task.md). */
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Skill"))
 	FGameplayTag CounterTag;
 

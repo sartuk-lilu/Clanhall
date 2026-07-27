@@ -1,9 +1,10 @@
 // Компонент на бойце (игрок и враг, симметрично), который держит окно контрнавыка.
-// Пока висит окно, на владельце State.CounterWindow и запомнена идентичность контримой
-// активки (CounterTag) + её хендл. Совпадение CounterTag входящего навыка с активным
-// окном = контр: активка сбивается и уходит на полный КД, окно закрывается.
+// Пока висит окно, на владельце State.CounterWindow и запомнен набор навыков, которыми эту
+// активку можно прервать (CounteredByTags), + её хендл. Совпадение (через HasTag, с учётом
+// иерархии тегов) идентичности входящего навыка с этим набором = контр: активка сбивается
+// и уходит на полный КД, окно закрывается.
 //
-// clanhall_claude_code_counter.md, Раздел 6.
+// ability_system.md §2.
 
 #pragma once
 
@@ -20,14 +21,15 @@ class CLANHALL_API UClanhallCounterComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	/** Открывает окно: запоминает CounterTag контримой активки, её хендл и КД (чтобы наложить
-	 *  на владельца при успешном контре), вешает State.CounterWindow на ASC владельца. */
-	void OpenWindow(FGameplayTag InCounterTag, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration);
+	/** Открывает окно: запоминает набор навыков, которыми контримую активку можно прервать
+	 *  (CounteredByTags), её хендл и КД (чтобы наложить на владельца при успешном контре),
+	 *  вешает State.CounterWindow на ASC владельца. */
+	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration);
 
 	/** Закрывает окно без контра (истекло время / активка доиграла). */
 	void CloseWindow();
 
-	/** true, если сейчас открыто окно и IncomingTag совпадает с CounterTag контримой активки. */
+	/** true, если сейчас открыто окно и IncomingTag входит в CounteredByTags (HasTag — матчит и родительские теги). */
 	bool IsCounterableBy(FGameplayTag IncomingTag) const;
 
 	/** Отменяет контримую активку (CancelAbilityHandle), навешивает ей полный КД, закрывает окно. */
@@ -39,7 +41,7 @@ public:
 
 private:
 	bool bWindowOpen = false;
-	FGameplayTag ActiveCounterTag;
+	FGameplayTagContainer CounteredByTags;
 	FGameplayAbilitySpecHandle CounteredHandle;
 	FGameplayTag CounteredCooldownTag;
 	float CounteredCooldownDuration = 0.0f;

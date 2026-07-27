@@ -27,7 +27,7 @@
 #include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
-#include "AbilitySystem/ClanhallWeaponTraceComponent.h"
+#include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "Engine/Engine.h"
@@ -84,16 +84,18 @@ AClanhallCharacter::AClanhallCharacter()
 	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
 	// Раздел 6.5 (combo_system_redesign.md): ворота ввода + владелец активации WASD-ударов.
 	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
-	// Раздел 6.5: weapon trace для парирования и будущей damage-on-hit логики.
-	WeaponTraceComponent = CreateDefaultSubobject<UClanhallWeaponTraceComponent>(TEXT("WeaponTraceComponent"));
+	// Порция C (main_dev_plan.md §7): диспетчер зон поражения вместо жёстко зашитого weapon trace.
+	// Имя сабобъекта намеренно осталось прежним ("WeaponTraceComponent"): смена строки
+	// рвёт переопределения в BP-наследнике. Класс переименован, имя — нет.
+	HitboxComponent = CreateDefaultSubobject<UClanhallHitboxComponent>(TEXT("WeaponTraceComponent"));
 	// HUD: camera line trace, мягкая цель под удар/метку (Enemy Frame больше не водит).
 	TargetingComponent = CreateDefaultSubobject<UClanhallTargetingComponent>(TEXT("TargetingComponent"));
 	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (changelog_enemyframe_unitroles.md §3).
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
 	// WASD-классы дефолтно равны C++ классам; Blueprint персонажа может переопределить их
-	// на BP-наследников (см. GA_DirectionalAttackBase.h). Монтажи — per-move в UComboData
-	// (Moves/Chains).
+	// на BP-наследников (см. GA_DirectionalAttackBase.h). Монтажи — в UComboData, модель
+	// пар переходов (FromStance/From*/Recovery).
 	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
 	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
 	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
@@ -208,6 +210,11 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 		// Combat stance (combat_system.md §3): ЛКМ зажат/отпущен
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnStancePressed);
+		// Ретрай: Started может прийти во время State.ComboRecovery и быть отклонён. Triggered
+		// повторяет попытку каждый кадр удержания, поэтому по истечении лока персонаж войдёт в
+		// стойку сам, без повторного клика. Повторный вызов при уже активной стойке — дешёвый
+		// отказ по ActivationBlockedTags(State.InStance).
+		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::OnStancePressed);
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnStanceReleased);
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnStanceReleased);
 
@@ -329,7 +336,8 @@ void AClanhallCharacter::OnStanceReleased()
 // combo_system_redesign.md, Часть B1: WASD больше не активирует направленный удар напрямую —
 // решение (опенер / продолжение по данным дерева / мусор вне окна) целиком у ComboComponent,
 // он же сам вызывает TryActivateAbility, когда ввод валиден. Парирование обрабатывает
-// UClanhallWeaponTraceComponent при хите врага (State.Parrying на ASC врага, не игрока).
+// UClanhallHitboxComponent при хите врага зоной с bParryable == true (State.Parrying на ASC
+// врага, не игрока).
 
 void AClanhallCharacter::OnAttackOverhead()
 {

@@ -33,7 +33,7 @@ void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshCom
 			CooldownDuration = EnemyAbility->GetCooldownDuration();
 		}
 
-		CounterComp->OpenWindow(CounterTag, Spec.Handle, CooldownTag, CooldownDuration);
+		CounterComp->OpenWindow(CounteredBy, Spec.Handle, CooldownTag, CooldownDuration);
 		break;
 	}
 }

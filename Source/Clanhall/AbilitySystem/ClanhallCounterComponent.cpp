@@ -5,10 +5,10 @@
 #include "AbilitySystemInterface.h"
 #include "Engine/Engine.h"
 
-void UClanhallCounterComponent::OpenWindow(FGameplayTag InCounterTag, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration)
+void UClanhallCounterComponent::OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration)
 {
 	bWindowOpen = true;
-	ActiveCounterTag = InCounterTag;
+	CounteredByTags = InCounteredBy;
 	CounteredHandle = InCounteredHandle;
 	CounteredCooldownTag = InCooldownTag;
 	CounteredCooldownDuration = InCooldownDuration;
@@ -22,7 +22,7 @@ void UClanhallCounterComponent::OpenWindow(FGameplayTag InCounterTag, FGameplayA
 void UClanhallCounterComponent::CloseWindow()
 {
 	bWindowOpen = false;
-	ActiveCounterTag = FGameplayTag();
+	CounteredByTags.Reset();
 	CounteredHandle = FGameplayAbilitySpecHandle();
 	CounteredCooldownTag = FGameplayTag();
 	CounteredCooldownDuration = 0.0f;
@@ -35,7 +35,7 @@ void UClanhallCounterComponent::CloseWindow()
 
 bool UClanhallCounterComponent::IsCounterableBy(FGameplayTag IncomingTag) const
 {
-	return bWindowOpen && IncomingTag.IsValid() && ActiveCounterTag == IncomingTag;
+	return bWindowOpen && IncomingTag.IsValid() && CounteredByTags.HasTag(IncomingTag);
 }
 
 void UClanhallCounterComponent::ConsumeCounter()

@@ -1,5 +1,5 @@
 // Базовые ресурсы персонажа: AP, HP, MP, Charges, Balance.
-// Канон: combat_system.md §1-2, CLAUDE.md "ЗАБЛОКИРОВАННЫЙ КАНОН".
+// Канон: combat_system.md §1-2.
 
 #pragma once
 

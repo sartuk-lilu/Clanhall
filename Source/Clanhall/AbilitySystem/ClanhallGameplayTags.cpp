@@ -25,6 +25,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Оглушение после полного парирования серии");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита (Порция E2) — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_STR, "Weapon.Type.STR", "Текущее оружие относится к STR-ветке");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_DEX, "Weapon.Type.DEX", "Текущее оружие относится к DEX-ветке");
@@ -50,6 +51,8 @@ namespace ClanhallGameplayTags
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_ApplyMark, "Event.ApplyMark", "AnimNotify_ApplyMark отправляет этот GameplayEvent — GA_PhysicalSkill может слушать его для async-подтверждения хита");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_DirectionalAttack, "Event.DirectionalAttack", "Служебный тег для TriggerAbilityFromGameplayEvent — несёт BaseDamage (EventMagnitude) от UClanhallComboComponent к GA_DirectionalAttackBase, не гейтит выбор способности");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Hitbox_Hit, "Event.Hitbox.Hit", "UClanhallHitboxComponent шлёт на каждую задетую цель — Instigator = владелец зоны, Target = задетый актор, EventMagnitude = хендл зоны");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Hitbox_Closed, "Event.Hitbox.Closed", "UClanhallHitboxComponent шлёт при переходе «были зоны -> зон не осталось» — фаза контакта окончена");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Slash, "Damage.Type.Slash", "Тип урона — рубящий (заглушка, в расчёте не используется)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Pierce, "Damage.Type.Pierce", "Тип урона — колющий (заглушка, в расчёте не используется)");

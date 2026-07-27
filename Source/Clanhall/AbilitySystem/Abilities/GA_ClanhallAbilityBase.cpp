@@ -15,9 +15,16 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 
 	// Блокирует новые атаки на время лок-аута после Recovery — накрывает и WASD-удары
 	// (GA_DirectionalAttack_*), и физактивки Q/E/R/F (GA_PhysicalSkill), обе наследуются отсюда.
-	// UGA_CombatStance наследуется от UGameplayAbility напрямую и этой блокировкой НЕ затрагивается:
-	// вход и выход из стойки остаются свободными во время Recovery — это намеренно.
+	// UGA_CombatStance наследуется от UGameplayAbility напрямую, поэтому этот тег она берёт
+	// себе явно, в собственном конструкторе: вход в стойку на время Recovery заблокирован,
+	// ВЫХОД остаётся свободным всегда (идёт через CancelAbilityHandle).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_ComboRecovery.GetTag());
+
+	// E2.4: активка в фазе коммита (State.SkillCommitted, висит на UGA_PhysicalSkill от активации
+	// до Event.Hitbox.Closed) блокирует и вторую активку, и WASD-способности — «начатую активку
+	// нельзя оборвать» (combat_system.md §3). Выход из стойки тег не трогает: тот идёт через
+	// CancelAbilityHandle на способности стойки, не через TryActivateAbility.
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 }
 
 AActor* UGA_ClanhallAbilityBase::FindMeleeTarget(AActor* Avatar) const

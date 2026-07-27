@@ -42,8 +42,8 @@ void UGA_EnemyActiveSkill::ActivateAbility(
 #endif
 
 	// Открыть окно контрнавыка на своём UClanhallCounterComponent (interim: код, не AnimNotifyState —
-	// реальных монтажей у врага пока нет). Игрок контрит, активировав навык с тем же CounterTag.
-	CounterComp->OpenWindow(CounterTag, Handle, CooldownTag, Cooldown);
+	// реальных монтажей у врага пока нет). Игрок контрит, активировав любой навык из набора CounteredBy.
+	CounterComp->OpenWindow(CounteredBy, Handle, CooldownTag, Cooldown);
 
 	// Таймер удара. Если ConsumeCounter вызвал CancelAbilityHandle извне — WaitDelay-задача снимается,
 	// OnHitDelayExpired не вызовется, урон не применяется.
@@ -82,8 +82,8 @@ void UGA_EnemyActiveSkill::OnHitDelayExpired()
 		{
 			if (UClanhallMarkComponent* MarkComp = PlayerPawn->FindComponentByClass<UClanhallMarkComponent>())
 			{
-				// SelfASC — источник врага: IsOwnMark(PlayerASC) вернёт false.
-				// Игрок не сможет снять эту метку атакой (mark_system.md §3, правка 1.2).
+				// SelfASC — источник врага. Метку, наложенную врагом, игрок снять не может
+				// никак — только переждать 5 сек (mark_system.md §3).
 				MarkComp->ApplyMark(HitMarkTag, SelfASC);
 			}
 		}
@@ -101,9 +101,9 @@ void UGA_EnemyActiveSkill::OnHitDelayExpired()
 UGA_Enemy_PowerStrike::UGA_Enemy_PowerStrike()
 {
 	// Тот же тег, что у Knight E (Power Strike) — как AbilityTags (идентичность способности для GAS),
-	// так и CounterTag (идентичность для резолвера контрнавыка) намеренно совпадают.
+	// так и запись в CounteredBy (набор контрящих навыков) намеренно совпадают — самоконтр.
 	SetAssetTags(FGameplayTagContainer(ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag()));
-	CounterTag = ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag();
+	CounteredBy.AddTag(ClanhallGameplayTags::Ability_Skill_Knight_PowerStrike.GetTag());
 
 	// Knight E — тир 10 сек (ability_system.md §3, CLAUDE.md "КД физнавыков").
 	CooldownTag = ClanhallGameplayTags::Cooldown_Slot_E.GetTag();

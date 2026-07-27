@@ -39,6 +39,10 @@ class CLANHALL_API UMarkTriggerFragment : public UAbilityFragment
 	GENERATED_BODY()
 
 public:
+	/** У навыков, потребляющих метки на цели (mark_system.md §2, Правило 2).
+	 *  Первое совпадение выигрывает. Матч по MatchesTag, поэтому конкретные метки
+	 *  ставить ВЫШЕ широких: запись с корневым тегом Mark («любая метка») перекроет
+	 *  всё, что стоит после неё. */
 	UPROPERTY(EditAnywhere, Category = "Mark")
 	TArray<FMarkSynergy> Synergies;
 };
