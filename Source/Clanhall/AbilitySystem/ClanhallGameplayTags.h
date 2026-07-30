@@ -1,6 +1,9 @@
 // Clanhall — единая точка объявления GameplayTags.
-// Канон: теги закладываются один раз и полностью (см. CLAUDE.md / development_plan.md).
-// Дописывать новые теги можно. Переименовывать существующие — нельзя, это ломает весь GAS-граф.
+// Канон: теги закладываются один раз и полностью (см. CLAUDE.md / main_dev_plan.md).
+// Дописывать новые теги можно. Переименовывать существующие — нельзя, это ломает весь GAS-граф
+// (ассеты хранят тег строкой FName, ссылка порвётся молча). Удалять неиспользуемый тег можно —
+// сначала проверить Reference Viewer (Project Settings → GameplayTags → поиск ссылок). Мёртвые
+// теги «заделом» не держим: завести заново — одна строка, а тег с устаревшим комментарием врёт.
 
 #pragma once
 
@@ -33,9 +36,6 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_CastingAntimagic);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Parrying);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_CounterWindow);
-	// Раздел 6: навешивается на игрока на 0.1 сек при успешном контрнавыке.
-	// GA_PhysicalSkill читает этот тег → пропускает Charges/КД.
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_CounterActive);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InStance);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Stunned);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Knockdown);
@@ -83,11 +83,11 @@ namespace ClanhallGameplayTags
 	// ---- Event.* ----
 	// GameplayEvent-сигналы от AnimNotify к активной способности.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_ApplyMark);
-	// combo_fragments_redesign_task.md: несёт BaseDamage (EventMagnitude) от UClanhallComboComponent
+	// combo_system.md: несёт BaseDamage (EventMagnitude) от UClanhallComboComponent
 	// к GA_DirectionalAttackBase через TriggerAbilityFromGameplayEvent — Handle-активация сохраняется,
 	// тег тут служебный (не гейтит выбор способности, тот идёт по Handle).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_DirectionalAttack);
-	// Порция D: сигналы от UClanhallHitboxComponent к живой способности.
+	// Сигналы от UClanhallHitboxComponent к живой способности.
 	// Hit: Instigator = владелец зоны, Target = задетый актор, EventMagnitude = хендл зоны
 	// (подписчик может отличить свою зону от чужой). Шлётся на КАЖДУЮ задетую цель.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Hitbox_Hit);
@@ -96,7 +96,7 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Hitbox_Closed);
 
 	// ---- Damage.Type.* ----
-	// Тег типа урона на FDirectionalDamage (combo_fragments_redesign_task.md §1). Заглушка —
+	// Тег типа урона на FDirectionalDamage (combo_system.md). Заглушка —
 	// в расчёте урона пока НЕ используется. Ровно три листа для физического урона прототипа;
 	// магический (Damage.Type.Magic.*) — отдельной веткой, пока не заводить.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage_Type_Slash);
@@ -119,7 +119,7 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Stars);
 
 	// ---- Unit.Role.* ----
-	// Роль юнита, навешивается loose-тегом на его ASC в BeginPlay (changelog_enemyframe_unitroles.md §1-2).
+	// Роль юнита, навешивается loose-тегом на его ASC в BeginPlay (hud_dev_plan.md).
 	// Unit.Role.Boss — родитель для Humanoid/Monster: сенсор рамки (UClanhallBossSensorComponent)
 	// запрашивает именно родителя, чтобы матчить оба подтипа боссов разом.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Mob);

@@ -1,7 +1,7 @@
 // Центральный паттерн проекта (CLAUDE.md: "Главный паттерн: DataAsset + Fragments").
 // Заголовок — поля, которые есть у каждой абилки без исключения. Fragments — только то,
 // что нужно конкретной. Логика GameplayAbility не меняется при правке этого ассета —
-// меняется только сам DataAsset (development_plan.md).
+// меняется только сам DataAsset (main_dev_plan.md).
 // UAbilityData описывает данные ФИЗИЧЕСКОГО навыка (ChargeCost, CooldownTag, CounterTag,
 // BalanceShift) — у заклинаний игрока КД нет, только MP (CLAUDE.md, magic_system.md),
 // им понадобится свой ассет (Раздел 9).
@@ -28,7 +28,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	TObjectPtr<UTexture2D> Icon;
 
-	/** КД в секундах. Канон (development_plan.md): по тиру навыка — для прототипа Knight Q/E/R/F → 10/10/20/20. */
+	/** КД в секундах. Канон (ability_system.md §3): по тиру навыка — для прототипа Knight Q/E/R/F → 10/10/20/20. */
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	float Cooldown = 10.0f;
 
@@ -43,7 +43,7 @@ public:
 
 	/** Идентичность навыка — чем я контрю (Ability.Skill.Knight.PowerStrike и т.д.), а не кого я контрю.
 	 *  Уходит в TryResolveCounter как IncomingCounterTag; матчится против набора CounteredBy на
-	 *  защищающемся (counter_tags_task.md). */
+	 *  защищающемся (ability_system.md). */
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Skill"))
 	FGameplayTag CounterTag;
 
@@ -51,8 +51,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	int32 ChargeCost = 0;
 
-	/** Монтаж навыка. Слот — upperbody для Q/E, fullbody для R/F (Advanced/locomotion structure.md §3).
-	 *  nullptr законен: механика навыка работает без монтажа (Раздел 6.5). */
+	/** Монтаж навыка. Слот — upperbody для Q/E, fullbody для R/F (locomotion_structure.md).
+	 *  nullptr законен: механика навыка работает без монтажа. */
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	TObjectPtr<UAnimMontage> CastMontage;
 

@@ -1,5 +1,5 @@
 // Презентационные фрагменты — есть не у всех навыков (VFX/SFX), в отличие от CastMontage,
-// который переехал в заголовок UAbilityData (Раздел 6.5: отсутствие ≡ CastMontage == nullptr).
+// который переехал в заголовок UAbilityData (отсутствие ≡ CastMontage == nullptr).
 
 #pragma once
 

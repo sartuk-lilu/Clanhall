@@ -147,7 +147,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// «кому я отвечаю», а не проверка попадания.
 	AActor* Target = FindMeleeTarget(Avatar);
 
-	// Резолвер контрнавыка: до списания Charges (ability_system.md §2, clanhall_claude_code_counter.md).
+	// Резолвер контрнавыка: до списания Charges (ability_system.md §2).
 	// Совпал CounterTag этого навыка с открытым окном цели → навык цели сбит + получает полный КД.
 	// Контр обязан сбить навык врага немедленно, до анимации — резолвится на активации, не на контакте.
 	const bool bWasCounter = Target && UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag);
@@ -199,7 +199,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	if (!bResolveOnContact)
 	{
 		// Нет монтажа или на монтаже не расставлены зоны — мгновенный резолв по цели, найденной
-		// на активации, как до Порции D. Осознанный фолбэк: он позволяет проверять навык и его
+		// на активации, без ожидания контакта. Осознанный фолбэк: он позволяет проверять навык и его
 		// фрагменты до нарезки анимаций (инвариант Раздела 7). Все четыре ассета Knight сейчас
 		// идут именно этим путём — CastMontage у них пока nullptr.
 		ResolveHitOn(Target);
@@ -222,7 +222,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 void UGA_PhysicalSkill::OnHitboxHitReceived(FGameplayEventData Payload)
 {
 	// Зона может задеть несколько целей за одно применение (Shield Charge — капсула на пелвисе
-	// на весь рывок, п.25). Способность здесь НЕ заканчивается, ждём Event.Hitbox.Closed.
+	// на весь рывок). Способность здесь НЕ заканчивается, ждём Event.Hitbox.Closed.
 	ResolveHitOn(const_cast<AActor*>(Payload.Target.Get()));
 }
 

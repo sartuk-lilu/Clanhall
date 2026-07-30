@@ -69,7 +69,7 @@ AClanhallCharacter::AClanhallCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-	// GAS: ASC живёт прямо на Character, владелец и аватар — один и тот же актор (см. technical_context.md)
+	// GAS: ASC живёт прямо на Character, владелец и аватар — один и тот же актор
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
@@ -82,15 +82,15 @@ AClanhallCharacter::AClanhallCharacter()
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
 	// Раздел 6 (переработан): симметричный компонент окна контрнавыка, тот же класс на враге.
 	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
-	// Раздел 6.5 (combo_system_redesign.md): ворота ввода + владелец активации WASD-ударов.
+	// combo_system.md: ворота ввода + владелец активации WASD-ударов.
 	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
-	// Порция C (main_dev_plan.md §7): диспетчер зон поражения вместо жёстко зашитого weapon trace.
+	// main_dev_plan.md §7: диспетчер зон поражения вместо жёстко зашитого weapon trace.
 	// Имя сабобъекта намеренно осталось прежним ("WeaponTraceComponent"): смена строки
 	// рвёт переопределения в BP-наследнике. Класс переименован, имя — нет.
 	HitboxComponent = CreateDefaultSubobject<UClanhallHitboxComponent>(TEXT("WeaponTraceComponent"));
 	// HUD: camera line trace, мягкая цель под удар/метку (Enemy Frame больше не водит).
 	TargetingComponent = CreateDefaultSubobject<UClanhallTargetingComponent>(TEXT("TargetingComponent"));
-	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (changelog_enemyframe_unitroles.md §3).
+	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (hud_dev_plan.md).
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
 	// WASD-классы дефолтно равны C++ классам; Blueprint персонажа может переопределить их
@@ -113,14 +113,14 @@ void AClanhallCharacter::BeginPlay()
 
 	if (AbilitySystemComponent)
 	{
-		// OwnerActor == AvatarActor == this: ASC не на PlayerState, см. technical_context.md
+		// OwnerActor == AvatarActor == this: ASC не на PlayerState
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	}
 
 	if (AttributeSet)
 	{
 		// Хардкод стартовых значений — плейсхолдеры прототипа из combat_system.md.
-		// Допустимо в Разделах 1-3 (см. development_plan.md); DataAsset/GameplayEffect
+		// Допустимо на текущем этапе (см. main_dev_plan.md); DataAsset/GameplayEffect
 		// для инициализации атрибутов появится позже вместе с остальной системой данных.
 		AttributeSet->InitMaxAP(300.0f);
 		AttributeSet->InitAP(300.0f);
@@ -157,7 +157,7 @@ void AClanhallCharacter::BeginPlay()
 		AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 		// Раздел 4: кит Knight — один класс GA_PhysicalSkill гранится 4 раза,
-		// каждый раз с разным UAbilityData как SourceObject (development_plan.md).
+		// каждый раз с разным UAbilityData как SourceObject (main_dev_plan.md).
 		// DataAsset'ы привязываются в Blueprint-наследнике в редакторе.
 		if (KnightSkillQ_ShieldSlam)
 		{
@@ -325,7 +325,7 @@ void AClanhallCharacter::OnStanceReleased()
 		AbilitySystemComponent->CancelAbilityHandle(StanceAbilityHandle);
 	}
 
-	// combo_system_redesign.md: выход из стойки — всегда, вне ворот. Останавливает активный
+	// combo_system.md: выход из стойки — всегда, вне ворот. Останавливает активный
 	// монтаж комбо с blend-out и сбрасывает последовательность независимо от фазы.
 	if (ComboComponent)
 	{
@@ -333,7 +333,7 @@ void AClanhallCharacter::OnStanceReleased()
 	}
 }
 
-// combo_system_redesign.md, Часть B1: WASD больше не активирует направленный удар напрямую —
+// combo_system.md: WASD больше не активирует направленный удар напрямую —
 // решение (опенер / продолжение по данным дерева / мусор вне окна) целиком у ComboComponent,
 // он же сам вызывает TryActivateAbility, когда ввод валиден. Парирование обрабатывает
 // UClanhallHitboxComponent при хите врага зоной с bParryable == true (State.Parrying на ASC

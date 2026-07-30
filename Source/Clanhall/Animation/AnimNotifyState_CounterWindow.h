@@ -7,7 +7,7 @@
 /** Открывает окно контрнавыка на UClanhallCounterComponent владельца на время анимации (Begin→End).
  *  CounterTag — идентичность контримой активки (напр. Ability.Skill.Knight.PowerStrike), ставит
  *  разработчик на монтаже; по ней находится активный спек (хендл, КД). CounteredBy — набор навыков,
- *  которыми эту активку можно прервать (counter_tags_task.md); пусто = не контрится.
+ *  которыми эту активку можно прервать (ability_system.md); пусто = не контрится.
  *  Пока реальных монтажей у врагов нет — GA_EnemyActiveSkill открывает окно напрямую через код
  *  (interim); этот нотифай — для будущих монтажей. */
 UCLASS(const, hidecategories=Object, collapsecategories, meta=(DisplayName="Counter Window"))

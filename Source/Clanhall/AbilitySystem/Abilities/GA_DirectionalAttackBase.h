@@ -1,19 +1,20 @@
 // Базовый класс для 4 направленных WASD-ударов. Канон: combat_system.md §4.
-// Активация идёт только через UClanhallComboComponent (combo_fragments_redesign_task.md, Часть
-// B1 — валидатор комбо гейтит вызов активации, формулы урона/MP/Balance ниже не тронуты).
+// Активация идёт только через UClanhallComboComponent (combo_system.md — валидатор
+// комбо гейтит вызов активации, формулы урона/MP/Balance ниже не тронуты).
 // Величина урона (BaseDamage профиля по направлению шага) приходит в
 // TriggerEventData->EventMagnitude — компонент резолвит её из UComboData::FindDamageByDirection
 // ДО активации, эта абилка своего числа урона больше не хранит. Монтаж играет сам
 // комбо-компонент — эта абилка своего монтажа не проигрывает.
 //
-// Порция D — два режима резолва, выбираются на активации по TriggerEventData->OptionalObject
+// Два режима резолва, выбираются на активации по TriggerEventData->OptionalObject
 // (сам Montage шага, см. UClanhallComboComponent::ActivateStep):
 //   - Контактный (по умолчанию, монтаж есть и на нём расставлен AnimNotifyState_Hitbox):
 //     способность ждёт Event.Hitbox.Hit/Event.Hitbox.Closed от UClanhallHitboxComponent и
 //     применяет урон в момент реального касания зоны. Удар засчитывается зоне, а не нажатию.
 //   - Мгновенный фолбэк (монтажа нет ИЛИ на нём не расставлена зона): резолв сферой
-//     FindMeleeTarget/TraceRange/TraceRadius прямо на активации, как до Порции D. Это то, что
-//     сохраняет инвариант «дерево комбо тестируется до нарезки анимаций» (main_dev_plan.md §7).
+//     FindMeleeTarget/TraceRange/TraceRadius прямо на активации, как до перехода на контактный
+//     резолв. Это то, что сохраняет инвариант «дерево комбо тестируется до нарезки анимаций»
+//     (main_dev_plan.md §7).
 
 #pragma once
 
@@ -48,6 +49,12 @@ private:
 	 *  контакта, а не активации. */
 	float PendingBaseDamage = 0.0f;
 
-	/** Общая часть контактного и фолбэк-путей: урон + MP/Balance + debug. */
+	/** Общая часть контактного и фолбэк-путей: урон + MP (ресурс, на каждую цель) + Balance
+	 *  (состояние, один раз за взмах) + debug. */
 	void ResolveHitOn(AActor* Target);
+
+	/** Сдвиг Balance уже применён за этот взмах. InstancingPolicy == InstancedPerExecution —
+	 *  инстанс свежий на каждую активацию, сбрасывать вручную не нужно (тот же паттерн, что
+	 *  UGA_PhysicalSkill::bBalanceApplied). */
+	bool bBalanceApplied = false;
 };

@@ -17,7 +17,7 @@ class CLANHALL_API UClanhallTargetingComponent : public UActorComponent
 public:
 	UClanhallTargetingComponent();
 
-	/** Дальность луча в см (hud_system.md: 20 м). */
+	/** Дальность луча в см (hud_dev_plan.md: 20 м). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Targeting")
 	float MaxRange = 2000.0f;
 

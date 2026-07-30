@@ -1,17 +1,21 @@
 // Описание активной зоны поражения. Задаётся на нотифае монтажа, передаётся в
 // UClanhallHitboxComponent::BeginHitbox. Компонент собственной геометрии не имеет —
-// вся форма приходит из данных анимации (main_dev_plan.md §7, Порция C).
+// вся форма приходит из данных анимации (main_dev_plan.md §7).
 
 #pragma once
 
+#include "CoreMinimal.h"
+#include "CollisionShape.h"
 #include "ClanhallHitboxTypes.generated.h"
+
+class USkeletalMeshComponent;
 
 UENUM(BlueprintType)
 enum class EClanhallHitboxShape : uint8
 {
-	Sphere  UMETA(DisplayName = "Сфера"),
-	Capsule UMETA(DisplayName = "Капсула"),
-	Box     UMETA(DisplayName = "Бокс")
+	Sphere,
+	Capsule,
+	Box
 };
 
 USTRUCT(BlueprintType)
@@ -19,7 +23,8 @@ struct FClanhallHitboxDesc
 {
 	GENERATED_BODY()
 
-	/** Кость или сокет крепления зоны. Дефолт воспроизводит поведение до Порции C. */
+	/** Кость или сокет крепления зоны. Дефолт воспроизводит прежнее захардкоженное крепление
+	 *  (WeaponSocket). */
 	UPROPERTY(EditAnywhere, Category = "Hitbox")
 	FName Bone = FName("WeaponSocket");
 
@@ -49,8 +54,22 @@ struct FClanhallHitboxDesc
 	/** Участвует ли этот взмах в клэше парирования (ability_system.md §2: WASD парируют WASD,
 	 *  активки контрят активки — активка в клэше не участвует вообще).
 	 *  true  — WASD-удары: попадание по актору со State.Parrying идёт в UClanhallParryComponent.
-	 *  false — активки Q/E/R/F: зона бьёт, но парирование не проверяет. Это и закрывает п.31:
-	 *          протухшее CurrentDirection от последнего WASD-удара до проверки не доходит. */
+	 *  false — активки Q/E/R/F: зона бьёт, но парирование не проверяет. Так протухшее
+	 *          CurrentDirection от последнего WASD-удара до проверки не доходит вовсе —
+	 *          для таких зон проверка парирования не вызывается. */
 	UPROPERTY(EditAnywhere, Category = "Hitbox")
 	bool bParryable = true;
+
+	/** Мировой трансформ зоны на текущей позе меша. Единая точка для свипа в рантайме и для
+	 *  превью в редакторе монтажей: разойдись они — превью показывало бы не то, что бьёт.
+	 *  false = кости/сокета с именем Bone на меше нет. Логировать или молчать решает
+	 *  вызывающий: компонент логирует один раз, вьюпорт молчит (он рисует каждый кадр). */
+	bool GetWorldTransform(const USkeletalMeshComponent* Mesh, FVector& OutLocation, FQuat& OutRotation) const;
+
+	/** HalfHeight < Radius — вырожденная капсула; поля независимы, кросс-полевой ClampMin
+	 *  в метаданных не выражается, поэтому зажимаем здесь. */
+	float GetEffectiveHalfHeight() const { return FMath::Max(HalfHeight, Radius); }
+
+	/** Форма для свипа. Sphere — дефолт и фолбэк. */
+	FCollisionShape MakeCollisionShape() const;
 };

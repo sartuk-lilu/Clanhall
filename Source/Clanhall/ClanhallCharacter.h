@@ -40,7 +40,7 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
-	// --- GAS: ASC и AttributeSet живут прямо на Character (не на PlayerState) — см. technical_context.md ---
+	// --- GAS: ASC и AttributeSet живут прямо на Character (не на PlayerState) ---
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
@@ -56,18 +56,18 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 
 	/** Раздел 6 (переработан): окно контрнавыка на самом игроке — держит State.CounterWindow,
 	 *  когда враг (в будущем — с AI-контром) мог бы прервать навык игрока. Симметричный компонент,
-	 *  тот же класс висит на враге (clanhall_claude_code_counter.md). */
+	 *  тот же класс висит и на враге. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCounterComponent> CounterComponent;
 
-	/** Ворота ввода, не буфер (combo_system_redesign.md): до открытия окна чтения ввод
+	/** Ворота ввода, не буфер (combo_system.md): до открытия окна чтения ввод
 	 *  отбрасывается целиком, в окне — "последнее решает". Сам владеет активацией — решает,
-	 *  когда вызвать TryActivateAbility на GA_DirectionalAttack_* (инверсия потока, Часть B1),
+	 *  когда вызвать TryActivateAbility на GA_DirectionalAttack_* (инверсия потока активации),
 	 *  играет per-path монтаж и терминальный Recovery-хвост серии. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallComboComponent> ComboComponent;
 
-	/** Порция C: диспетчер активных зон поражения (main_dev_plan.md §7). Собственной геометрии
+	/** Диспетчер активных зон поражения (main_dev_plan.md §7). Собственной геометрии
 	 *  не имеет — форма и роль каждой зоны приходят из AnimNotifyState_Hitbox на монтаже.
 	 *  При попадании во врага со State.Parrying (и bParryable зоны) вызывает ParryComponent->TryParry().
 	 *  Имя сабобъекта намеренно осталось прежним ("WeaponTraceComponent") — см. конструктор. */
@@ -80,7 +80,7 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	TObjectPtr<UClanhallTargetingComponent> TargetingComponent;
 
 	/** HUD: держит Unit.Role.Boss.* юнитов в радиусе игрока, вещает OnFrameUnitEntered/Exited
-	 *  для мульти-контейнера Enemy Frame (changelog_enemyframe_unitroles.md §3). Рамку водит этот
+	 *  для мульти-контейнера Enemy Frame (hud_dev_plan.md). Рамку водит этот
 	 *  компонент, а не TargetingComponent — тот остаётся мягкой целью под удар/метку. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallBossSensorComponent> BossSensorComponent;
@@ -148,7 +148,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackLowSweepClass;
 
-	/** «Данные оружия» для комбо (combo_fragments_redesign_task.md): профиль урона, база ходов и
+	/** «Данные оружия» для комбо (combo_system.md): профиль урона, база ходов и
 	 *  дерево цепочек одним ассетом — без фрагментов-обёрток (состав комбо-данных фиксирован, в
 	 *  отличие от опциональных Fragments у UAbilityData). Назначается в Blueprint-наследнике
 	 *  персонажа, по образцу KnightSkill*. */
@@ -283,19 +283,19 @@ public:
 	static UAnimSequence* GetStanceAnim(const ACharacter* Character);
 
 	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
-	 *  активировать (combo_system_redesign.md, Часть B1: инверсия потока активации). */
+	 *  активировать (combo_system.md: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 
 	// TODO: вынести в общий предок с классом врага, когда враги поедут на общий исполнитель
 	// комбо-дерева (сейчас враги используют отдельный GA_EnemyWASDSeries, в этом резолве не
-	// участвуют — combo_fragments_redesign_task.md, ответ на вопрос 3).
+	// участвуют — см. combo_system.md).
 
 	/** Тег класса персонажа (Ability.Class.Knight и т.д.). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (Categories = "Ability.Class"))
 	FGameplayTag ClassTag;
 
 	/** Потолок длины серии WASD-комбо (0-4). Плейсхолдер до системы прокачки —
-	 *  combo_fragments_redesign_task.md, "Ранг / потолок длины комбо". */
+	 *  см. combo_system.md, ранг / потолок длины комбо. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (ClampMin = "0", ClampMax = "4"))
 	int32 ClassRank = 1;
 };

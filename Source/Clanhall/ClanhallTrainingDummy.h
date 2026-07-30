@@ -31,8 +31,7 @@ class AClanhallTrainingDummy : public ACharacter, public IAbilitySystemInterface
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallMarkComponent> MarkComponent;
 
-	/** Раздел 6 (переработан): держит окно контрнавыка, когда играет UGA_Enemy_PowerStrike
-	 *  (clanhall_claude_code_counter.md). */
+	/** Раздел 6 (переработан): держит окно контрнавыка, когда играет UGA_Enemy_PowerStrike. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCounterComponent> CounterComponent;
 

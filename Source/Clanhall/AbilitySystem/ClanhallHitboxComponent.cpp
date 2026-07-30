@@ -132,8 +132,9 @@ void UClanhallHitboxComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 
 void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshComponent* Mesh)
 {
-	const bool bBoneExists = Mesh->GetBoneIndex(Box.Desc.Bone) != INDEX_NONE || Mesh->DoesSocketExist(Box.Desc.Bone);
-	if (!bBoneExists)
+	FVector CurrentLocation;
+	FQuat CurrentRotation;
+	if (!Box.Desc.GetWorldTransform(Mesh, CurrentLocation, CurrentRotation))
 	{
 		if (!Box.bLoggedMissingBone)
 		{
@@ -142,11 +143,6 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 		}
 		return;
 	}
-
-	const FTransform BoneTransform = Mesh->GetSocketTransform(Box.Desc.Bone, RTS_World);
-	// Смещение поворачивается трансформом кости, поворот домножается справа.
-	const FVector CurrentLocation = BoneTransform.GetLocation() + BoneTransform.GetRotation().RotateVector(Box.Desc.LocationOffset);
-	const FQuat CurrentRotation = BoneTransform.GetRotation() * FQuat(Box.Desc.RotationOffset);
 
 	if (!Box.bHasPrevTransform)
 	{
@@ -161,22 +157,7 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 	const bool bParryable = Box.Desc.bParryable;
 	const int32 HitboxHandle = Box.Handle;
 
-	FCollisionShape Shape;
-	switch (Box.Desc.Shape)
-	{
-	case EClanhallHitboxShape::Capsule:
-		// HalfHeight < Radius — вырожденная капсула; поля независимы, кросс-полевой ClampMin
-		// в метаданных не выражается, поэтому зажимаем здесь.
-		Shape = FCollisionShape::MakeCapsule(Box.Desc.Radius, FMath::Max(Box.Desc.HalfHeight, Box.Desc.Radius));
-		break;
-	case EClanhallHitboxShape::Box:
-		Shape = FCollisionShape::MakeBox(Box.Desc.BoxExtent);
-		break;
-	case EClanhallHitboxShape::Sphere:
-	default:
-		Shape = FCollisionShape::MakeSphere(Box.Desc.Radius);
-		break;
-	}
+	const FCollisionShape Shape = Box.Desc.MakeCollisionShape();
 
 	AActor* Owner = GetOwner();
 	TArray<FHitResult> Hits;
@@ -228,7 +209,7 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 		switch (Box.Desc.Shape)
 		{
 		case EClanhallHitboxShape::Capsule:
-			DrawDebugCapsule(GetWorld(), CurrentLocation, FMath::Max(Box.Desc.HalfHeight, Box.Desc.Radius), Box.Desc.Radius, CurrentRotation, Color, false, 0.0f, SDPG_Foreground);
+			DrawDebugCapsule(GetWorld(), CurrentLocation, Box.Desc.GetEffectiveHalfHeight(), Box.Desc.Radius, CurrentRotation, Color, false, 0.0f, SDPG_Foreground);
 			break;
 		case EClanhallHitboxShape::Box:
 			DrawDebugBox(GetWorld(), CurrentLocation, Box.Desc.BoxExtent, CurrentRotation, Color, false, 0.0f, SDPG_Foreground);

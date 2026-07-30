@@ -70,14 +70,14 @@ void UGA_EnemyWASDSeries::PrepareHit()
 	UAbilitySystemComponent* SelfASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
 	const FGameplayTag IncomingTag = AttackDirections[CurrentHitIndex];
 
-	// Визуальный индикатор (прототип: экранное сообщение; Раздел 6.5 заменит на VFX/звук).
+	// Визуальный индикатор (прототип: экранное сообщение; позже заменится на VFX/звук).
 	const FString DirectionChar = IncomingTag.GetTagName().ToString().Right(1);
 #if !UE_BUILD_SHIPPING
 	GEngine->AddOnScreenDebugMessage(-1, WindowDuration + 0.15f, FColor::Yellow,
 		FString::Printf(TEXT("↓ INCOMING [%s]  — press opposite!"), *DirectionChar));
 #endif
 
-	// Раздел 6.5: State.Parrying вешается на SELF (враг — паррируемый актор).
+	// State.Parrying вешается на SELF (враг — паррируемый актор).
 	// Это interim-замена AnimNotifyState_ParryWindow — когда animation setup будет готов
 	// в редакторе, этот вызов можно убрать, и тег будет управляться только нотифай-стейтом.
 	ClanhallGameplayEffects::ApplyTimedTag(SelfASC, ClanhallGameplayTags::State_Parrying.GetTag(), WindowDuration);
@@ -157,7 +157,7 @@ void UGA_EnemyWASDSeries::FinalizeSeries()
 		ClanhallGameplayEffects::ApplyTimedTag(SelfASC, ClanhallGameplayTags::State_ComboRecovery.GetTag(), RecoveryDuration);
 	}
 
-	// notify_state_migration_task.md §2.3: страховка окна парирования — снимает только
+	// combat_system.md §5: страховка окна парирования — снимает только
 	// loose-счётчик, интерим-тег от ApplyTimedTag выше (GE-таймер) не трогает, конфликта нет.
 	if (SelfASC)
 	{

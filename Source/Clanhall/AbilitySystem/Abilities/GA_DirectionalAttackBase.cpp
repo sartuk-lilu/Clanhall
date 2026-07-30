@@ -27,8 +27,8 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 		return;
 	}
 
-	// Раздел 6.5 / Порция C: сообщаем HitboxComponent направление до открытия зоны (придёт
-	// из AnimNotifyState_Hitbox::NotifyBegin во время монтажа) — читается только зонами
+	// Сообщаем HitboxComponent направление до открытия зоны (придёт из
+	// AnimNotifyState_Hitbox::NotifyBegin во время монтажа) — читается только зонами
 	// с bParryable == true. Оставлено строго здесь, до открытия зоны нотифаем.
 	if (ACharacter* Char = Cast<ACharacter>(Avatar))
 	{
@@ -45,9 +45,9 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 
 	if (!bResolveOnContact)
 	{
-		// У шага нет монтажа или на монтаже не расставлены зоны — резолвим мгновенно сферой,
-		// как до Порции D. Это осознанный фолбэк, а не деградация: он и есть то, что позволяет
-		// проверять дерево комбо до нарезки анимаций (инвариант Раздела 7).
+		// У шага нет монтажа или на монтаже не расставлены зоны — резолвим мгновенно сферой.
+		// Это осознанный фолбэк, а не деградация: он и есть то, что позволяет проверять дерево
+		// комбо до нарезки анимаций (инвариант Раздела 7).
 		ResolveHitOn(FindMeleeTarget(Avatar));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
@@ -101,11 +101,19 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 	{
 		// combat_system.md §4: STR-удар → MP +10, Balance +5..+15; DEX-удар → MP +5, Balance -5..-15.
 		const bool bIsSTR = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
-		const float MPGain = bIsSTR ? 10.0f : 5.0f;
-		const float BalanceShift = GetBalanceSign(SourceASC) * FMath::FRandRange(5.0f, 15.0f);
 
+		// MP — ресурс: начисляется на КАЖДУЮ задетую цель (mark_system.md §2 Правило 5).
+		const float MPGain = bIsSTR ? 10.0f : 5.0f;
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyMP::StaticClass(), MPGain);
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), BalanceShift);
+
+		// Balance — состояние: сдвигается ОДИН раз за взмах, сколько бы целей ни задело. Иначе
+		// удар по троим давал бы до 45 ед. при пороге перегруза ±60 (mark_system.md §2 Правило 5).
+		if (!bBalanceApplied)
+		{
+			const float BalanceShift = GetBalanceSign(SourceASC) * FMath::FRandRange(5.0f, 15.0f);
+			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), BalanceShift);
+			bBalanceApplied = true;
+		}
 
 #if !UE_BUILD_SHIPPING
 		if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())

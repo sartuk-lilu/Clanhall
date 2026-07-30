@@ -1,4 +1,4 @@
-// Форма синергии метки — намеренно совпадает с FMarkSynergy из development_plan.md
+// Форма синергии метки — намеренно совпадает с FMarkSynergy из main_dev_plan.md
 // (заготовка для UMarkTriggerFragment в Разделе 4). mark_system.md §2, Правило 2:
 // метка сгорает → бафф на атакующего ИЛИ дебафф на цель (никогда оба) → +ChargeGain Charges.
 

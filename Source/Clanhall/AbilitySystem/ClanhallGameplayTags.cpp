@@ -20,12 +20,11 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CastingAntimagic, "State.CastingAntimagic", "Идёт набор слогов антимагии (ПКМ зажат, Ctrl)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Parrying, "State.Parrying", "Окно парирования физической серии открыто");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterWindow, "State.CounterWindow", "Окно контрнавыка против активного навыка врага открыто");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterActive, "State.CounterActive", "Не используется с переработки Раздела 6 (Ctrl-контр заменён резолвером по CounterTag) — тег оставлен объявленным, не переименован");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InStance, "State.InStance", "ЛКМ зажат — боевая стойка (WASD = направленные удары)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Оглушение после полного парирования серии");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита (Порция E2) — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_STR, "Weapon.Type.STR", "Текущее оружие относится к STR-ветке");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_DEX, "Weapon.Type.DEX", "Текущее оружие относится к DEX-ветке");
@@ -65,7 +64,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Aether, "Magic.School.Aether", "Школа Эфира (E/D)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Stars, "Magic.School.Stars", "Школа Звёзд (R/F)");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Mob, "Unit.Role.Mob", "Пушечное мясо: без уникальных атак, рамки нет (changelog_enemyframe_unitroles.md §1)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Mob, "Unit.Role.Mob", "Пушечное мясо: без уникальных атак, рамки нет (hud_dev_plan.md)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss, "Unit.Role.Boss", "Родитель Humanoid/Monster — сенсор рамки матчит этот тег, чтобы захватить оба подтипа");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Humanoid, "Unit.Role.Boss.Humanoid", "«Псевдоигрок»: навыки из пула игрока, есть AP/MP/Charges, игрок учится у него навыкам");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Monster, "Unit.Role.Boss.Monster", "Босс-монстр: уникальные атаки, без MP и без AP, ничему не учит; рамка HP-центричная");

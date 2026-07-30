@@ -141,14 +141,14 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 		return false;
 	}
 
-	// Порция D: зоны предыдущего шага закрываем ДО активации следующей способности.
+	// Зоны предыдущего шага закрываем ДО активации следующей способности.
 	// Иначе Event.Hitbox.Closed от прерванного монтажа (Montage_Play ниже -> bInterrupted)
 	// прилетит уже НОВОЙ способности и оборвёт её до открытия собственной зоны.
 	ForceEndHitboxes();
 
 	const FDirectionalDamage& Damage = Data->FindDamageByDirection(Direction);
 
-	// Часть B1: точка вызова инвертирована — GA_DirectionalAttackBase::ActivateAbility
+	// Точка вызова инвертирована — GA_DirectionalAttackBase::ActivateAbility
 	// (формулы урона/MP/Balance не тронуты) срабатывает, только если валидатор дошёл до этого
 	// вызова. BaseDamage профиля идёт в EventMagnitude — GA больше не хранит RawDamage сам.
 	FGameplayEventData EventData;
@@ -158,7 +158,7 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 		// Задел: тип урона в InstigatorTags события, в расчёте пока не читается.
 		EventData.InstigatorTags.AddTag(Damage.DamageType);
 	}
-	// Порция D: способность по монтажу определяет режим резолва (контакт или мгновенный фолбэк).
+	// Способность по монтажу определяет режим резолва (контакт или мгновенный фолбэк).
 	EventData.OptionalObject = Montage;
 
 	const FGameplayAbilitySpecHandle Handle = Character->GetAttackHandle(Direction);

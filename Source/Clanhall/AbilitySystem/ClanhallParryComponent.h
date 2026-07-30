@@ -3,8 +3,8 @@
 // окна и решает: оглушить врага или нанести урон.
 //
 // Раздел 5 (placeholder): TryParry вызывался из обработчиков ввода WASD персонажа.
-// Раздел 6.5 / Порция C (финал): TryParry вызывается из UClanhallHitboxComponent::CheckAndHandleParry,
-//                                и только для зон с bParryable == true — активки Q/E/R/F в клэш не попадают.
+// Сейчас: TryParry вызывается из UClanhallHitboxComponent::CheckAndHandleParry,
+//         и только для зон с bParryable == true — активки Q/E/R/F в клэш не попадают.
 
 #pragma once
 

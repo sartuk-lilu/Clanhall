@@ -1,4 +1,4 @@
-// changelog_enemyframe_unitroles.md §3: заменяет рейкаст как драйвер Enemy Frame.
+// hud_dev_plan.md: заменяет рейкаст как драйвер Enemy Frame.
 // Держит множество актуальных «юнитов под рамку» (Unit.Role.Boss.*) в радиусе игрока
 // и вещает вход/выход через делегаты. UClanhallTargetingComponent остаётся мягкой целью
 // под удар/метку и рамку больше не водит.

@@ -5,6 +5,8 @@
 #include "AnimNotifyState_Hitbox.generated.h"
 
 class UAnimMontage;
+class FPrimitiveDrawInterface;
+struct FAnimNotifyEvent;
 
 /** Активная зона поражения на время отрезка монтажа.
  *  NotifyBegin → UClanhallHitboxComponent::BeginHitbox(Hitbox, this)
@@ -32,4 +34,15 @@ public:
 	 *  выбрать режим резолва: контактный (ждём Event.Hitbox.Hit) или мгновенный фолбэк.
 	 *  Фолбэк — то, что сохраняет инвариант «дерево комбо тестируется до нарезки анимаций». */
 	static bool MontageHasHitbox(const UAnimMontage* Montage);
+
+#if WITH_EDITOR
+	/** Превью зоны во вьюпорте Persona: рисует ту же форму, что свипается в рантайме, по той
+	 *  же математике (FClanhallHitboxDesc::GetWorldTransform). Без него зоны на каст-монтажах
+	 *  Q/E/R/F размечаются вслепую — bDrawDebugHitboxes требует UWorld и в редакторе мёртв.
+	 *  ВАЖНО: рисуется зона в позе кадра, а не заметённый свипом объём — на быстром взмахе
+	 *  фактическая область поражения шире нарисованной. */
+	virtual void DrawInEditor(FPrimitiveDrawInterface* PDI, USkeletalMeshComponent* MeshComp,
+	                          const UAnimSequenceBase* Animation,
+	                          const FAnimNotifyEvent& NotifyEvent) const override;
+#endif
 };

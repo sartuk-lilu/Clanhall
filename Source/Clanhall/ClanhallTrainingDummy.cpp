@@ -32,7 +32,7 @@ void AClanhallTrainingDummy::BeginPlay()
 	{
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 
-		// changelog_enemyframe_unitroles.md §1-2: Часовой — edge-case (не моб, не учит игрока),
+		// hud_dev_plan.md: Часовой — edge-case (не моб, не учит игрока),
 		// провизорно Unit.Role.Boss.Humanoid, чтобы сохранить рамку боссфайта для теста.
 		AbilitySystemComponent->AddLooseGameplayTag(ClanhallGameplayTags::Unit_Role_Boss_Humanoid);
 

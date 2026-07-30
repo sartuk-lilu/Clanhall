@@ -1,12 +1,11 @@
-// Единственный источник истины для чейна WASD-ударов (combo_transition_model_task.md, ранее
-// combo_fragments_redesign_task.md, combo_system_redesign.md). Ворота ввода, не буфер: до открытия
-// окна чтения ввод отбрасывается целиком, ничего не копится; в открытом окне действует "последнее
-// нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (Часть B1: инверсия
+// Единственный источник истины для чейна WASD-ударов (combo_system.md). Ворота ввода, не буфер:
+// до открытия окна чтения ввод отбрасывается целиком, ничего не копится; в открытом окне действует
+// "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (инверсия
 // потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP/Balance) и
 // сам проигрывает монтаж конкретного шага — GA_DirectionalAttackBase собственного монтажа больше
 // не играет. Живёт на AClanhallCharacter.
 //
-// Резолв данных (combo_transition_model_task.md): модель пар, не путей. Ход определяется только
+// Резолв данных (combo_system.md): модель пар, не путей. Ход определяется только
 // парой «предыдущее направление -> новое» (UComboData::FindOpenerMontage/FindTransitionMontage) —
 // история серии до предыдущего шага не участвует, LastDirection хранит только последний шаг.
 // Урон берётся из UComboData::FindDamageByDirection (4 именованных поля профиля) по направлению
@@ -41,7 +40,7 @@ class CLANHALL_API UClanhallComboComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. combo_system_redesign.md:
+	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. combo_system.md:
 	 *  "порядка 0.15-0.2 с, чтобы верх плавно ушёл в локомоцию". */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float StanceExitBlendOutTime = 0.18f;
@@ -60,7 +59,7 @@ public:
 	void OnStanceExit();
 
 	/** Внешнее прерывание серии чужим монтажом (активка Q/E/R/F в общей slot-группе,
-	 *  notify_state_migration_task.md Фаза 4). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
+	 *  combo_system.md). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
 	 *  чужой монтаж уже занимает слот, Recovery дрался бы с ним за него; наказания за прерывание
 	 *  нет — тот же принцип, что у невалидного продолжения. Зовётся ДО Montage_Play активки. */
 	void CancelSequenceForExternalMontage();
@@ -80,7 +79,7 @@ private:
 	/** Нейтраль + валидный опенер по данным -> активировать и стартовать серию. */
 	void TryStartSequence(EClanhallAttackDirection Direction);
 
-	/** Закрывает зоны предыдущего шага (ForceEndHitboxes, Порция D — иначе Event.Hitbox.Closed
+	/** Закрывает зоны предыдущего шага (ForceEndHitboxes — иначе Event.Hitbox.Closed
 	 *  прерванного монтажа прилетит уже новой способности), затем активирует GA_DirectionalAttack_*
 	 *  для Direction через ASC, передавая BaseDamage профиля (по Direction,
 	 *  UComboData::FindDamageByDirection) в FGameplayEventData::EventMagnitude и сам Montage в
@@ -93,7 +92,7 @@ private:
 	void PlayMontage(UAnimMontage* Montage);
 	void ResetCombo();
 
-	/** Страховка от залипшей зоны поражения (main_dev_plan.md §7, Порция C): комбо-компонент
+	/** Страховка от залипшей зоны поражения (main_dev_plan.md §7): комбо-компонент
 	 *  владеет жизненным циклом удар-монтажа, поэтому страховка идёт сюда, а не в GA (тот
 	 *  InstancedPerExecution и заканчивается синхронно до начала монтажа). Закрывает ВСЕ зоны
 	 *  без разбора (UClanhallHitboxComponent::EndAllHitboxes) — двойной вызов безвреден. */

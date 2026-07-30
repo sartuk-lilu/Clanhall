@@ -9,7 +9,7 @@
 UClanhallBossSensorComponent::UClanhallBossSensorComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	// Рамка — не прицел, 10 Гц достаточно (changelog_enemyframe_unitroles.md §3).
+	// Рамка — не прицел, 10 Гц достаточно (hud_dev_plan.md).
 	PrimaryComponentTick.TickInterval = 0.1f;
 }
 
