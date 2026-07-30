@@ -27,13 +27,15 @@ void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshCom
 
 		FGameplayTag CooldownTag;
 		float CooldownDuration = 0.0f;
+		float StunDuration = 0.0f;
 		if (const UGA_EnemyActiveSkill* EnemyAbility = Cast<UGA_EnemyActiveSkill>(Spec.Ability))
 		{
 			CooldownTag = EnemyAbility->GetCooldownTag();
 			CooldownDuration = EnemyAbility->GetCooldownDuration();
+			StunDuration = EnemyAbility->GetCounterStunDuration();
 		}
 
-		CounterComp->OpenWindow(CounteredBy, Spec.Handle, CooldownTag, CooldownDuration);
+		CounterComp->OpenWindow(CounteredBy, Spec.Handle, CooldownTag, CooldownDuration, StunDuration);
 		break;
 	}
 }

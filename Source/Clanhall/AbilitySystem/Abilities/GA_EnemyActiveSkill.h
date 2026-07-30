@@ -31,6 +31,7 @@ public:
 	const FGameplayTagContainer& GetCounteredBy() const { return CounteredBy; }
 	FGameplayTag GetCooldownTag() const { return CooldownTag; }
 	float GetCooldownDuration() const { return Cooldown; }
+	float GetCounterStunDuration() const { return CounterStunDuration; }
 
 protected:
 	/** Набор навыков, которыми эту активку можно прервать; пусто = не контрится. */
@@ -48,6 +49,12 @@ protected:
 	/** Длительность окна контрнавыка в секундах. Одновременно — задержка до удара. */
 	UPROPERTY(EditDefaultsOnly, Category = "Counter")
 	float CounterWindowDuration = 1.2f;
+
+	/** Сколько шатает врага, если этот навык сбили контром, секунды. Интерим: у врага пока нет
+	 *  UAbilityData (CounterStunDuration переезжает в ассет с переводом врагов, main_dev_plan.md
+	 *  Раздел 8) — до тех пор поле дублируется здесь. */
+	UPROPERTY(EditDefaultsOnly, Category = "Counter")
+	float CounterStunDuration = 0.5f;
 
 	/** Урон по AP игрока при непрерванном ударе. */
 	UPROPERTY(EditDefaultsOnly, Category = "Hit")

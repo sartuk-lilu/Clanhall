@@ -10,7 +10,8 @@
 //   - Контактный (монтаж есть и на нём расставлен AnimNotifyState_Hitbox): способность ждёт
 //     Event.Hitbox.Hit/Event.Hitbox.Closed от UClanhallHitboxComponent и резолвит цель(и) в
 //     момент реального касания зоны. Одна зона может задеть несколько целей за применение
-//     (Shield Charge — капсула на пелвисе на весь рывок, п.25) — см. правило мультицели ниже.
+//     (Shield Charge — капсула на пелвисе на весь рывок, main_dev_plan.md §7 п.11) — см.
+//     правило мультицели ниже.
 //   - Мгновенный фолбэк (CastMontage == nullptr ИЛИ на нём не расставлена зона): резолв по
 //     FindMeleeTarget на активации, как до перехода на контактный резолв. Все четыре ассета
 //     Knight сейчас идут этим путём — разметка зон на монтажах ещё не сделана (редакторная
@@ -34,6 +35,7 @@
 
 class UAbilityData;
 class UClanhallMarkComponent;
+class UAnimMontage;
 struct FMarkSynergy;
 
 UCLASS()
@@ -48,12 +50,21 @@ public:
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
+	/** Переопределён ради страховки от залипания State.SkillCommitted (см. поле ниже) —
+	 *  снимает loose-тег независимо от того, как способность закончилась. */
+	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
+
 protected:
 	UFUNCTION()
 	void OnHitboxHitReceived(FGameplayEventData Payload);
 
 	UFUNCTION()
 	void OnHitboxClosedReceived(FGameplayEventData Payload);
+
+	/** Терминатор контактного пути. Делегат AnimInstance, не GameplayEvent — биндится
+	 *  через Montage_SetEndDelegate после Montage_Play(Data->CastMontage), срабатывает и на
+	 *  нормальном завершении, и на прерывании монтажа. */
+	void OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 private:
 	/** SourceObject ищется через Handle, а не GetCurrentSourceObject() — у InstancedPerExecution
@@ -75,7 +86,14 @@ private:
 	/** Сдвиг Balance уже применён за это применение навыка. */
 	bool bBalanceApplied = false;
 
-	// Оба флага выше — обычные поля без сброса: InstancingPolicy == InstancedPerExecution,
+	/** Цели, по которым логика метки за это применение уже отработала. Урон идёт на КАЖДЫЙ
+	 *  контакт (два хитбокса на монтаже = два урона), а метка/синергия/ChargeGain — один раз
+	 *  на цель за применение: иначе вторая фаза увидит метку, которую положила первая, и
+	 *  синергия с корневым RequiredMark (Retribution — «любая метка») сработает на собственной
+	 *  метке, выдав заряды дважды. InstancedPerExecution — сбрасывать вручную не нужно. */
+	TArray<TWeakObjectPtr<AActor>> MarkResolvedTargets;
+
+	// Все поля выше — обычные, без сброса: InstancingPolicy == InstancedPerExecution,
 	// на каждое применение создаётся свежий инстанс. Не превращать в статики и не сбрасывать
 	// вручную — именно политика инстансирования делает их корректными.
 };

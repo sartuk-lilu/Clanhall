@@ -1,4 +1,5 @@
 #include "GA_PhysicalSkill.h"
+#include "Clanhall.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Fragments/GameplayFragments.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
@@ -21,11 +22,13 @@ UGA_PhysicalSkill::UGA_PhysicalSkill()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerExecution;
 
-	// E2.4: тег коммита живёт ровно окно контакта (ActivationOwnedTags снимается автоматически
-	// на EndAbility). На контактном пути висит от активации до Event.Hitbox.Closed; на
-	// фолбэк-пути способность заканчивается сразу же, тега фактически нет — без анимации
-	// коммититься не во что.
-	ActivationOwnedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	// Тег коммита намеренно НЕ в ActivationOwnedTags: терминатор способности — конец каст-
+	// монтажа, а не первый Event.Hitbox.Closed (тот пустеет и между фазами мультизонного
+	// удара, где способность обязана жить дальше). ActivationOwnedTags снимался бы на
+	// EndAbility, то есть растянул бы лок-аут на весь монтаж, включая кадры завершения
+	// взмаха, — полная сериализация действий, которая противоречит принципу «без наказаний
+	// лок-аутом». Вместо этого тег вешается loose'ом в ActivateAbility (только на контактном
+	// пути) и снимается на первом Event.Hitbox.Closed.
 }
 
 const UAbilityData* UGA_PhysicalSkill::GetAbilityData(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const
@@ -54,9 +57,8 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return false;
 	}
 
-	// КД проверяется здесь (тег вешается на активации, см. ActivateAbility — исключение: успешный
-	// контрнавык КД не вешает вовсе), а Charges — на активацию (combat_system.md §1: "проверяется
-	// количество зарядов на активацию").
+	// КД проверяется здесь (тег вешается на активации, см. ActivateAbility), а Charges —
+	// на активацию (combat_system.md §1: "проверяется количество зарядов на активацию").
 	if (Data->CooldownTag.IsValid() && ASC->HasMatchingGameplayTag(Data->CooldownTag))
 	{
 		return false;
@@ -143,33 +145,21 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		return;
 	}
 
-	// Поиск цели нужен и для урона (фолбэк-путь), и для контр-запроса. Контр — это вопрос
-	// «кому я отвечаю», а не проверка попадания.
+	// Поиск цели нужен фолбэк-пути (урон мгновенно, без ожидания контакта). Контрнавык цель
+	// отсюда НЕ берёт — он резолвится по контакту, в ResolveHitOn: зона атакующего касается
+	// тела защищающегося, состояние защищающегося проверяется в момент касания, тем же
+	// паттерном, что и парирование (CheckAndHandleParry).
 	AActor* Target = FindMeleeTarget(Avatar);
 
-	// Резолвер контрнавыка: до списания Charges (ability_system.md §2).
-	// Совпал CounterTag этого навыка с открытым окном цели → навык цели сбит + получает полный КД.
-	// Контр обязан сбить навык врага немедленно, до анимации — резолвится на активации, не на контакте.
-	const bool bWasCounter = Target && UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag);
-
-	// Активка коммитится в момент нажатия: заряды уходят всегда, включая контр и промах.
-	// Контр тратит ресурс так же, как обычное применение (ability_system.md §2) — цена
-	// решения «придержать навык на контратаку» и есть эти заряды.
+	// Активка коммитится в момент нажатия: заряды уходят всегда, включая промах и контр —
+	// цена решения «придержать навык на контратаку» и есть эти заряды (ability_system.md §2).
 	if (Data->ChargeCost > 0)
 	{
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(Data->ChargeCost));
 	}
 
-	if (bWasCounter)
-	{
-		// Навык врага сбит и получил полный КД. Навык игрока в КД НЕ уходит и готов сразу —
-		// ограничен только зарядами (ability_system.md §2, «Успешная контратака»).
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-		return;
-	}
-
-	// КД уходит НА АКТИВАЦИИ, а не на подтверждённом попадании: активку нельзя оборвать,
-	// промах стоит зарядов и КД. Это цена коммита (combat_system.md §3).
+	// КД уходит НА АКТИВАЦИИ безусловно, без исключения для контра — тот больше не бесплатен,
+	// он лишь побочный эффект попадания. Промах стоит зарядов и КД (combat_system.md §3).
 	if (Data->CooldownTag.IsValid())
 	{
 		ClanhallGameplayEffects::ApplyTimedTag(SourceASC, Data->CooldownTag, Data->Cooldown);
@@ -179,42 +169,68 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// CancelSequenceForExternalMontage() зовёт ForceEndHitboxes(), а тот при непустом списке
 	// зон шлёт Event.Hitbox.Closed — подпишись мы раньше, активка получила бы его сама и
 	// закончилась до открытия собственной зоны (тот же баг, что D2 закрыл для чейна).
+	UAnimInstance* AnimInst = nullptr;
+	float MontagePlayLength = 0.0f;
 	if (Data->CastMontage)
 	{
 		if (ACharacter* Char = Cast<ACharacter>(Avatar))
 		{
-			if (UAnimInstance* AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr)
+			AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr;
+			if (AnimInst)
 			{
 				if (UClanhallComboComponent* Combo = Char->FindComponentByClass<UClanhallComboComponent>())
 				{
 					Combo->CancelSequenceForExternalMontage();
 				}
-				AnimInst->Montage_Play(Data->CastMontage);
+				MontagePlayLength = AnimInst->Montage_Play(Data->CastMontage);
 			}
 		}
 	}
 
 	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(Data->CastMontage);
+	const bool bMontageStarted = (AnimInst != nullptr && MontagePlayLength > 0.0f);
 
-	if (!bResolveOnContact)
+	if (!bResolveOnContact || !bMontageStarted)
 	{
-		// Нет монтажа или на монтаже не расставлены зоны — мгновенный резолв по цели, найденной
-		// на активации, без ожидания контакта. Осознанный фолбэк: он позволяет проверять навык и его
-		// фрагменты до нарезки анимаций (инвариант Раздела 7). Все четыре ассета Knight сейчас
-		// идут именно этим путём — CastMontage у них пока nullptr.
+		// Мгновенный фолбэк. Два случая ведут сюда: (1) нет монтажа или на монтаже не расставлены
+		// зоны — осознанный фолбэк, он позволяет проверять навык и его фрагменты до нарезки анимаций
+		// (инвариант Раздела 7), все четыре ассета Knight сейчас идут именно этим путём; (2) есть
+		// зона, но Montage_Play не смог стартовать монтаж (несовместимый скелет, невалидный слот) —
+		// тогда AnimNotifyState_Hitbox никогда не откроется и Event.Hitbox.Closed не придёт, а зона
+		// была объявлена — резолвим той же сферой, что и в (1), отдельной ветки поведения не нужно.
+		if (bResolveOnContact && !bMontageStarted)
+		{
+			UE_LOG(LogClanhall, Warning, TEXT("ActivateAbility: Montage_Play failed to start %s for %s, falling back to instant resolve"),
+				Data->CastMontage ? *Data->CastMontage->GetName() : TEXT("null"), *Avatar->GetName());
+		}
 		ResolveHitOn(Target);
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
-	// Контактный путь: EndAbility НЕ вызывается здесь — ждём Event.Hitbox.Hit/Closed.
+	// Тег коммита живёт до конца окна контакта, а не до конца монтажа — вешается
+	// loose'ом только здесь, на контактном пути (на фолбэке выше коммититься не во что, способность
+	// уже закончилась). Снимается на первом Event.Hitbox.Closed (см. OnHitboxClosedReceived) и,
+	// страховкой, в EndAbility.
+	SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+
+	// Терминатор способности — конец каст-монтажа, а не Event.Hitbox.Closed (тот означает
+	// «сейчас нет открытых зон», а не «удар закончился»: между двумя последовательными зонами
+	// список зон пустеет, и способность на контактном Closed умерла бы в промежутке между фазами).
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &UGA_PhysicalSkill::OnCastMontageEnded);
+	AnimInst->Montage_SetEndDelegate(EndDelegate, Data->CastMontage);
+
+	// Event.Hitbox.Hit по-прежнему резолвит попадания. Event.Hitbox.Closed больше НЕ заканчивает
+	// способность — только снимает тег коммита, поэтому OnlyTriggerOnce стал false: мультизонный
+	// удар шлёт Closed на каждом переходе «были зоны -> зон не осталось».
 	UAbilityTask_WaitGameplayEvent* HitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
 		this, ClanhallGameplayTags::Event_Hitbox_Hit.GetTag(), nullptr, /*OnlyTriggerOnce*/ false, /*OnlyMatchExact*/ true);
 	HitTask->EventReceived.AddDynamic(this, &UGA_PhysicalSkill::OnHitboxHitReceived);
 	HitTask->ReadyForActivation();
 
 	UAbilityTask_WaitGameplayEvent* ClosedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
-		this, ClanhallGameplayTags::Event_Hitbox_Closed.GetTag(), nullptr, /*OnlyTriggerOnce*/ true, /*OnlyMatchExact*/ true);
+		this, ClanhallGameplayTags::Event_Hitbox_Closed.GetTag(), nullptr, /*OnlyTriggerOnce*/ false, /*OnlyMatchExact*/ true);
 	ClosedTask->EventReceived.AddDynamic(this, &UGA_PhysicalSkill::OnHitboxClosedReceived);
 	ClosedTask->ReadyForActivation();
 }
@@ -222,13 +238,37 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 void UGA_PhysicalSkill::OnHitboxHitReceived(FGameplayEventData Payload)
 {
 	// Зона может задеть несколько целей за одно применение (Shield Charge — капсула на пелвисе
-	// на весь рывок). Способность здесь НЕ заканчивается, ждём Event.Hitbox.Closed.
+	// на весь рывок). Способность здесь НЕ заканчивается, ждём терминатор монтажа/страховку Closed.
 	ResolveHitOn(const_cast<AActor*>(Payload.Target.Get()));
 }
 
 void UGA_PhysicalSkill::OnHitboxClosedReceived(FGameplayEventData Payload)
 {
+	if (UAbilitySystemComponent* SourceASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr)
+	{
+		// Мультизонный удар шлёт Closed на каждой фазе — повторное снятие безвредно
+		// (RemoveLooseGameplayTag идемпотентен).
+		SourceASC->RemoveLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	}
+}
+
+void UGA_PhysicalSkill::OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	// Срабатывает и на нормальном завершении, и на прерывании — оба случая обязаны
+	// освободить слот активки.
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_PhysicalSkill::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	// Страховка от залипания State.SkillCommitted, если Event.Hitbox.Closed так и не пришёл
+	// (прерванный монтаж, ForceEndHitboxes и т.п.) — безопасно, даже если тег уже снят выше.
+	if (UAbilitySystemComponent* SourceASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr)
+	{
+		SourceASC->RemoveLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
@@ -265,9 +305,26 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 		return;
 	}
 
-	if (UClanhallMarkComponent* TargetMarkComponent = Target->FindComponentByClass<UClanhallMarkComponent>())
+	// Контр резолвится ПО КОНТАКТУ, как и парирование: зона дотянулась до тела врага, и в этот
+	// момент проверяется его открытое окно. Промах и недостаточная дальность = контра не было.
+	// Двойное срабатывание невозможно: ConsumeCounter закрывает окно, второй вызов вернёт false.
+	UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag);
+
+	// Метка/синергия/ChargeGain — один раз НА ЦЕЛЬ за применение, а не на каждый контакт: два
+	// хитбокса на монтаже дают два урона, но вторая фаза не должна видеть метку, которую только
+	// что положила первая (синергия с корневым RequiredMark сработала бы на собственной метке).
+	const bool bMarkAlreadyResolved = MarkResolvedTargets.ContainsByPredicate([Target](const TWeakObjectPtr<AActor>& Weak)
 	{
-		ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
+		return Weak.Get() == Target;
+	});
+	if (!bMarkAlreadyResolved)
+	{
+		MarkResolvedTargets.Add(Target);
+
+		if (UClanhallMarkComponent* TargetMarkComponent = Target->FindComponentByClass<UClanhallMarkComponent>())
+		{
+			ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
+		}
 	}
 
 	// Balance — СОСТОЯНИЕ, а не ресурс: сдвигается один раз за применение навыка, сколько бы

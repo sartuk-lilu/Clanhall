@@ -38,12 +38,12 @@ void UGA_EnemyActiveSkill::ActivateAbility(
 
 #if !UE_BUILD_SHIPPING
 	GEngine->AddOnScreenDebugMessage(-1, CounterWindowDuration + 0.2f, FColor::Orange,
-		FString::Printf(TEXT("⚡ ENEMY SKILL — тот же навык, чтобы прервать! (%.1f сек)"), CounterWindowDuration));
+		FString::Printf(TEXT("⚡ ENEMY SKILL — сбить навыком из CounteredBy, попав в окно! (%.1f сек)"), CounterWindowDuration));
 #endif
 
 	// Открыть окно контрнавыка на своём UClanhallCounterComponent (interim: код, не AnimNotifyState —
 	// реальных монтажей у врага пока нет). Игрок контрит, активировав любой навык из набора CounteredBy.
-	CounterComp->OpenWindow(CounteredBy, Handle, CooldownTag, Cooldown);
+	CounterComp->OpenWindow(CounteredBy, Handle, CooldownTag, Cooldown, CounterStunDuration);
 
 	// Таймер удара. Если ConsumeCounter вызвал CancelAbilityHandle извне — WaitDelay-задача снимается,
 	// OnHitDelayExpired не вызовется, урон не применяется.

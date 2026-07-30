@@ -5,13 +5,14 @@
 #include "AbilitySystemInterface.h"
 #include "Engine/Engine.h"
 
-void UClanhallCounterComponent::OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration)
+void UClanhallCounterComponent::OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration, float InStunDuration)
 {
 	bWindowOpen = true;
 	CounteredByTags = InCounteredBy;
 	CounteredHandle = InCounteredHandle;
 	CounteredCooldownTag = InCooldownTag;
 	CounteredCooldownDuration = InCooldownDuration;
+	CounteredStunDuration = InStunDuration;
 
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
@@ -26,6 +27,7 @@ void UClanhallCounterComponent::CloseWindow()
 	CounteredHandle = FGameplayAbilitySpecHandle();
 	CounteredCooldownTag = FGameplayTag();
 	CounteredCooldownDuration = 0.0f;
+	CounteredStunDuration = 0.0f;
 
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
@@ -54,10 +56,17 @@ void UClanhallCounterComponent::ConsumeCounter()
 			ClanhallGameplayEffects::ApplyTimedTag(ASC, CounteredCooldownTag, CounteredCooldownDuration);
 		}
 
+		if (CounteredStunDuration > 0.0f)
+		{
+			ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_Stunned.GetTag(), CounteredStunDuration);
+		}
+
 #if !UE_BUILD_SHIPPING
 		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, полный КД"));
 #endif
 	}
+
+	OnCounterConsumed.Broadcast();
 
 	CloseWindow();
 }

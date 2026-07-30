@@ -15,6 +15,11 @@
 
 class UAbilitySystemComponent;
 
+/** Владельца окна сбили контрнавыком. Точка подключения для получателя (флинч/VFX/звук) —
+ *  сама реакция сюда не входит, строится отдельной системой (main_dev_plan.md §7,
+ *  «Открытые вопросы»). */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallCounterConsumed);
+
 UCLASS(ClassGroup="Clanhall", meta=(BlueprintSpawnableComponent))
 class CLANHALL_API UClanhallCounterComponent : public UActorComponent
 {
@@ -22,9 +27,14 @@ class CLANHALL_API UClanhallCounterComponent : public UActorComponent
 
 public:
 	/** Открывает окно: запоминает набор навыков, которыми контримую активку можно прервать
-	 *  (CounteredByTags), её хендл и КД (чтобы наложить на владельца при успешном контре),
+	 *  (CounteredByTags), её хендл, КД (чтобы наложить на владельца при успешном контре) и
+	 *  длительность стана (свойство СБИТОГО навыка — см. AbilityData::CounterStunDuration),
 	 *  вешает State.CounterWindow на ASC владельца. */
-	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration);
+	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration, float InStunDuration);
+
+	/** Транслирует получателям, что владельца этого окна сбили контром (флинч/VFX/звук). */
+	UPROPERTY(BlueprintAssignable, Category = "Counter")
+	FOnClanhallCounterConsumed OnCounterConsumed;
 
 	/** Закрывает окно без контра (истекло время / активка доиграла). */
 	void CloseWindow();
@@ -36,7 +46,9 @@ public:
 	void ConsumeCounter();
 
 	/** Общий резолвер для навыков: если у Target открыто окно с тем же CounterTag — сбивает его
-	 *  активку и возвращает true (вызывающий навык не коммитится). Иначе false — штатный путь. */
+	 *  активку и возвращает true. Резолвится ПО КОНТАКТУ (GA_PhysicalSkill::ResolveHitOn), не на
+	 *  активации — возвращаемое значение сейчас не влияет на коммит вызывающего навыка, тот
+	 *  списывает Charges/КД безусловно (combat_system.md §3). Иначе false — штатный путь. */
 	static bool TryResolveCounter(AActor* Target, FGameplayTag IncomingCounterTag);
 
 private:
@@ -45,6 +57,7 @@ private:
 	FGameplayAbilitySpecHandle CounteredHandle;
 	FGameplayTag CounteredCooldownTag;
 	float CounteredCooldownDuration = 0.0f;
+	float CounteredStunDuration = 0.0f;
 
 	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
 	UAbilitySystemComponent* GetASC();

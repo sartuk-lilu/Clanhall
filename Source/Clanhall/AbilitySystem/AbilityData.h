@@ -47,6 +47,20 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Skill"))
 	FGameplayTag CounterTag;
 
+	/** Чем ЭТОТ навык можно сбить. Контейнер, не один тег: один навык врага может контриться
+	 *  навыками нескольких классов. Проверка идёт через HasTag, поэтому запись ветки
+	 *  (Ability.Skill.Lancer) матчит любой навык Ланцера. Пусто = навык не контрится.
+	 *  Парный к CounterTag: тот — идентичность («чем я контрю»), этот — уязвимость. */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Skill"))
+	FGameplayTagContainer CounteredBy;
+
+	/** Сколько шатает владельца ЭТОГО навыка, если его сбили, секунды. Свойство сбитого навыка,
+	 *  а не контрящего: медленный тяжёлый замах шатает дольше быстрого. 0 = не шатает.
+	 *  ОГРАНИЧЕНИЕ: должно покрывать время до кадра контакта контрящего монтажа, иначе враг
+	 *  очнётся раньше, чем удар дойдёт. */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.0"))
+	float CounterStunDuration = 0.5f;
+
 	/** Стоимость в Charges. Канон: Q/E=0, R/F=2, Z/X=4, C/V=6 (combat_system.md §1). */
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	int32 ChargeCost = 0;
