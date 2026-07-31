@@ -12,6 +12,7 @@
 #include "Animation/AnimNotifyState_Hitbox.h"
 #include "Animation/AnimMontage.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Animation/AnimInstance.h"
@@ -22,13 +23,12 @@ UGA_PhysicalSkill::UGA_PhysicalSkill()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerExecution;
 
-	// Тег коммита намеренно НЕ в ActivationOwnedTags: терминатор способности — конец каст-
-	// монтажа, а не первый Event.Hitbox.Closed (тот пустеет и между фазами мультизонного
-	// удара, где способность обязана жить дальше). ActivationOwnedTags снимался бы на
-	// EndAbility, то есть растянул бы лок-аут на весь монтаж, включая кадры завершения
-	// взмаха, — полная сериализация действий, которая противоречит принципу «без наказаний
-	// лок-аутом». Вместо этого тег вешается loose'ом в ActivateAbility (только на контактном
-	// пути) и снимается на первом Event.Hitbox.Closed.
+	// Тег коммита намеренно НЕ в ActivationOwnedTags, а вешается loose'ом в ActivateAbility —
+	// иначе для не-контактных (пустых по монтажу) активаций он не повесился бы вовсе.
+	// Решение разработчика (закрывает бывший «Открытый вопрос 1» Раздела 7): начатую игроком
+	// активку нельзя прервать вручную — она доигрывает каст-монтаж целиком (а с рывком —
+	// и сам рывок, см. TryFinishAbility), единственный способ её сбить — контратака противника
+	// своей активкой. Тег снимается только в EndAbility.
 }
 
 const UAbilityData* UGA_PhysicalSkill::GetAbilityData(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const
@@ -187,6 +187,11 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		}
 	}
 
+	// Задача 1 (task_dash_and_counter_window.md): рывок — данные навыка, не свойство клипа.
+	// Запускается ПОСЛЕ списания ресурсов и ПОСЛЕ Montage_Play, ДО ветвления на контактный/
+	// фолбэк путь — обязан работать на обоих путях.
+	StartDashIfNeeded(Data, Avatar);
+
 	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(Data->CastMontage);
 	const bool bMontageStarted = (AnimInst != nullptr && MontagePlayLength > 0.0f);
 
@@ -204,19 +209,28 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 				Data->CastMontage ? *Data->CastMontage->GetName() : TEXT("null"), *Avatar->GetName());
 		}
 		ResolveHitOn(Target);
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+
+		// Тег коммита имеет смысл на фолбэке только если запущен рывок: без него способность
+		// заканчивается в этом же кадре, и вешать тег было бы бессмысленно.
+		if (bDashPending)
+		{
+			SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+		}
+
+		bPrimaryTerminatorFired = true;
+		TryFinishAbility();
 		return;
 	}
 
-	// Тег коммита живёт до конца окна контакта, а не до конца монтажа — вешается
-	// loose'ом только здесь, на контактном пути (на фолбэке выше коммититься не во что, способность
-	// уже закончилась). Снимается на первом Event.Hitbox.Closed (см. OnHitboxClosedReceived) и,
-	// страховкой, в EndAbility.
+	// Тег коммита живёт весь каст-монтаж (и, если запущен, весь рывок — см. TryFinishAbility) —
+	// вешается loose'ом только здесь, на контактном пути (на фолбэке выше коммититься не во что
+	// без рывка, способность уже закончилась). Снимается только в EndAbility.
 	SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 
-	// Терминатор способности — конец каст-монтажа, а не Event.Hitbox.Closed (тот означает
-	// «сейчас нет открытых зон», а не «удар закончился»: между двумя последовательными зонами
-	// список зон пустеет, и способность на контактном Closed умерла бы в промежутке между фазами).
+	// Первичный терминатор способности — конец каст-монтажа, а не Event.Hitbox.Closed (тот
+	// означает «сейчас нет открытых зон», а не «удар закончился»: между двумя последовательными
+	// зонами список зон пустеет, и способность на контактном Closed умерла бы в промежутке между
+	// фазами).
 	FOnMontageEnded EndDelegate;
 	EndDelegate.BindUObject(this, &UGA_PhysicalSkill::OnCastMontageEnded);
 	AnimInst->Montage_SetEndDelegate(EndDelegate, Data->CastMontage);
@@ -244,19 +258,63 @@ void UGA_PhysicalSkill::OnHitboxHitReceived(FGameplayEventData Payload)
 
 void UGA_PhysicalSkill::OnHitboxClosedReceived(FGameplayEventData Payload)
 {
-	if (UAbilitySystemComponent* SourceASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr)
-	{
-		// Мультизонный удар шлёт Closed на каждой фазе — повторное снятие безвредно
-		// (RemoveLooseGameplayTag идемпотентен).
-		SourceASC->RemoveLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
-	}
+	// Задача 2 (task_dash_and_counter_window.md): State.SkillCommitted больше НЕ снимается
+	// здесь — тег живёт до EndAbility (весь каст-монтаж, а с Задачей 1 — и весь рывок).
+	// Подписка на Event.Hitbox.Closed остаётся нужна: OnHitboxHitReceived один резолвит
+	// попадания, а закрытие зоны само по себе сигнала не несёт помимо этого.
 }
 
 void UGA_PhysicalSkill::OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	// Срабатывает и на нормальном завершении, и на прерывании — оба случая обязаны
-	// освободить слот активки.
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	// Срабатывает и на нормальном завершении, и на прерывании монтажа. Способность
+	// заканчивается только когда отработали оба терминатора (см. TryFinishAbility).
+	bPrimaryTerminatorFired = true;
+	TryFinishAbility();
+}
+
+void UGA_PhysicalSkill::OnDashFinished()
+{
+	bDashPending = false;
+	TryFinishAbility();
+}
+
+void UGA_PhysicalSkill::StartDashIfNeeded(const UAbilityData* Data, AActor* Avatar)
+{
+	const UDashFragment* Dash = Data ? Data->FindFragment<UDashFragment>() : nullptr;
+	if (!Dash)
+	{
+		return;
+	}
+
+	if (!Cast<ACharacter>(Avatar))
+	{
+		UE_LOG(LogClanhall, Warning, TEXT("StartDashIfNeeded: %s has UDashFragment but Avatar %s is not ACharacter (no CharacterMovementComponent), dash skipped"),
+			*Data->DisplayName.ToString(), *Avatar->GetName());
+		return;
+	}
+
+	// Направление фиксируется на активации, наведения на цель нет.
+	const FVector Forward = Avatar->GetActorForwardVector();
+	const FVector TargetLocation = Avatar->GetActorLocation() + Forward * Dash->Distance;
+
+	UAbilityTask_ApplyRootMotionMoveToForce* DashTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(
+		this, TEXT("ClanhallDash"), TargetLocation, Dash->Duration,
+		/*bSetNewMovementMode*/ false, EMovementMode::MOVE_Walking,
+		/*bRestrictSpeedToExpected*/ false, /*PathOffsetCurve*/ nullptr,
+		ERootMotionFinishVelocityMode::SetVelocity, FVector::ZeroVector, /*ClampVelocityOnFinish*/ 0.0f);
+	DashTask->OnTimedOut.AddDynamic(this, &UGA_PhysicalSkill::OnDashFinished);
+	DashTask->OnTimedOutAndDestinationReached.AddDynamic(this, &UGA_PhysicalSkill::OnDashFinished);
+	DashTask->ReadyForActivation();
+
+	bDashPending = true;
+}
+
+void UGA_PhysicalSkill::TryFinishAbility()
+{
+	if (bPrimaryTerminatorFired && !bDashPending)
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	}
 }
 
 void UGA_PhysicalSkill::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)

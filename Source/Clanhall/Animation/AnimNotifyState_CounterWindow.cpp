@@ -1,8 +1,10 @@
 #include "AnimNotifyState_CounterWindow.h"
+#include "Clanhall.h"
+#include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
-#include "AbilitySystem/Abilities/GA_EnemyActiveSkill.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
+#include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
 
 void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
@@ -11,31 +13,42 @@ void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshCom
 	IAbilitySystemInterface* Interface = Owner ? Cast<IAbilitySystemInterface>(Owner) : nullptr;
 	UAbilitySystemComponent* ASC = Interface ? Interface->GetAbilitySystemComponent() : nullptr;
 	UClanhallCounterComponent* CounterComp = Owner ? Owner->FindComponentByClass<UClanhallCounterComponent>() : nullptr;
-	if (!ASC || !CounterComp || !CounterTag.IsValid())
+	if (!ASC || !CounterComp)
 	{
 		return;
 	}
 
-	// Находим активную способность владельца с этим CounterTag — это и есть контримая активка,
-	// хендл и КД которой запоминает окно.
+	const UAnimMontage* Montage = Cast<UAnimMontage>(Animation);
+	if (!Montage)
+	{
+		UE_LOG(LogClanhall, Warning, TEXT("CounterWindow: notify is baked into a UAnimSequence, not a montage track — unsupported layout on %s"), *GetNameSafe(Owner));
+		return;
+	}
+
+	// Ключ поиска — сам монтаж: находим активный спек владельца, чей UAbilityData::CastMontage
+	// совпадает с этим монтажом. Идентичность навыка (CounteredBy/Cooldown/CounterStunDuration)
+	// приходит из ассета — один и тот же ассет размечает окно и для игрока, и для врага, которому
+	// этот навык выдан.
 	for (const FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
 	{
-		if (!Spec.IsActive() || !Spec.Ability || !Spec.Ability->GetAssetTags().HasTagExact(CounterTag))
+		if (!Spec.IsActive())
 		{
 			continue;
 		}
 
-		FGameplayTag CooldownTag;
-		float CooldownDuration = 0.0f;
-		float StunDuration = 0.0f;
-		if (const UGA_EnemyActiveSkill* EnemyAbility = Cast<UGA_EnemyActiveSkill>(Spec.Ability))
+		const UAbilityData* Data = Cast<UAbilityData>(Spec.SourceObject.Get());
+		if (!Data || Data->CastMontage != Montage)
 		{
-			CooldownTag = EnemyAbility->GetCooldownTag();
-			CooldownDuration = EnemyAbility->GetCooldownDuration();
-			StunDuration = EnemyAbility->GetCounterStunDuration();
+			continue;
 		}
 
-		CounterComp->OpenWindow(CounteredBy, Spec.Handle, CooldownTag, CooldownDuration, StunDuration);
+		if (Data->CounteredBy.IsEmpty())
+		{
+			// Навык не контрится ничем — вешать State.CounterWindow не за чем.
+			break;
+		}
+
+		CounterComp->OpenWindow(Data->CounteredBy, Spec.Handle, Data->CooldownTag, Data->Cooldown, Data->CounterStunDuration);
 		break;
 	}
 }

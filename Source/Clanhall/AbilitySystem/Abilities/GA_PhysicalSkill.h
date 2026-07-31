@@ -61,12 +61,26 @@ protected:
 	UFUNCTION()
 	void OnHitboxClosedReceived(FGameplayEventData Payload);
 
-	/** Терминатор контактного пути. Делегат AnimInstance, не GameplayEvent — биндится
-	 *  через Montage_SetEndDelegate после Montage_Play(Data->CastMontage), срабатывает и на
-	 *  нормальном завершении, и на прерывании монтажа. */
+	/** Терминатор контактного/фолбэк пути (первичный, см. bPrimaryTerminatorFired). Делегат
+	 *  AnimInstance, не GameplayEvent — биндится через Montage_SetEndDelegate после
+	 *  Montage_Play(Data->CastMontage), срабатывает и на нормальном завершении, и на
+	 *  прерывании монтажа. */
 	void OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
+	/** Терминатор рывка (см. bDashPending). Дублирован на оба финальных делегата задачи —
+	 *  оба означают конец Root Motion Source, различие (упёрся в стену/доехал) здесь не важно. */
+	UFUNCTION()
+	void OnDashFinished();
+
 private:
+	/** Запускает Root Motion Source рывка, если у навыка есть UDashFragment; иначе no-op.
+	 *  Аватар не ACharacter (нет CharacterMovementComponent) → рывок пропускается с варном. */
+	void StartDashIfNeeded(const UAbilityData* Data, AActor* Avatar);
+
+	/** EndAbility вызывается только когда отработали ОБА терминатора — иначе фолбэк-путь без
+	 *  рывка убил бы задачу рывка в тот же кадр, а контактный путь оборвал бы рывок на середине
+	 *  (task_dash_and_counter_window.md, Задача 1.3). */
+	void TryFinishAbility();
 	/** SourceObject ищется через Handle, а не GetCurrentSourceObject() — у InstancedPerExecution
 	 *  абилки на момент CanActivateAbility ещё нет персистентного инстанса (см. движок,
 	 *  AbilitySystemComponent_Abilities.cpp: CanActivateAbility может вызываться на CDO). */
@@ -85,6 +99,13 @@ private:
 
 	/** Сдвиг Balance уже применён за это применение навыка. */
 	bool bBalanceApplied = false;
+
+	/** Первичный терминатор отработал: конец каст-монтажа (контактный путь) либо завершённый
+	 *  мгновенный резолв (фолбэк). */
+	bool bPrimaryTerminatorFired = false;
+
+	/** Рывок запущен и ещё не финишировал. */
+	bool bDashPending = false;
 
 	/** Цели, по которым логика метки за это применение уже отработала. Урон идёт на КАЖДЫЙ
 	 *  контакт (два хитбокса на монтаже = два урона), а метка/синергия/ChargeGain — один раз
