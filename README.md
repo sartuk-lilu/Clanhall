@@ -10,8 +10,8 @@
 ---
 ## Design-docs 
 
-![design-doc](https://github.com/user-attachments/assets/fae4721f-fc54-47a4-b6cb-4d64d4d72d8e)
-
+| ![design-doc](https://github.com/user-attachments/assets/fae4721f-fc54-47a4-b6cb-4d64d4d72d8e) |
+| ---------------------------------------------------------------------------------------------- |
 
 ---
 ## Архитектура DataAsset + Fragments
@@ -197,9 +197,11 @@ Perk
 
 
 ---
-## Симуляция боевой системы
+## Прототип магической системы и симуляция боевой системы
 
-![CombatSystemSimulation](https://github.com/user-attachments/assets/26b030b2-c058-4553-8d0d-1cebcd7c49d8)
+| ![CombatSystemSimulation](https://github.com/user-attachments/assets/26b030b2-c058-4553-8d0d-1cebcd7c49d8) |
+| ---------------------------------------------------------------------------------------------------------- |
+| ![spells_prototype](https://github.com/user-attachments/assets/dcc6b793-cff8-4e09-945a-52b17984e5e3)       |
 
 ---
 ## Статус разработки прототипа
@@ -571,10 +573,6 @@ WASD-серии:
 ---
 ### Раздел 9 — Магическая система
 
-#### Прототип магической системы
-
-![spells_prototype](https://github.com/user-attachments/assets/dcc6b793-cff8-4e09-945a-52b17984e5e3)
-
 - RMB зажат = режим каста, движение заблокировано
 - 8 клавиш как syllable input (Q/A/W/S/E/D/R/F в режиме каста)
 - Lookup-таблица: комбо слогов → `GameplayAbility`
@@ -622,7 +620,10 @@ WASD-серии:
 ---
 ### Раздел 11 — Колесо классов и перков
 
-![progression_wheel](https://github.com/user-attachments/assets/e188554d-f339-4724-95f7-a9533642664e)
+| ![progression_wheel](https://github.com/user-attachments/assets/e188554d-f339-4724-95f7-a9533642664e) |
+| ----------------------------------------------------------------------------------------------------- |
+
+
 
 ---
 ## Бэклог пост-прототипа
