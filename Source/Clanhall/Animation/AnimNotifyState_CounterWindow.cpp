@@ -7,6 +7,40 @@
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
 
+namespace
+{
+	/** Общий поиск для NotifyBegin/NotifyEnd: активный спек владельца, чей UAbilityData::CastMontage
+	 *  совпадает с Montage и у которого непустой CounteredBy — тот же критерий в обоих местах,
+	 *  иначе Begin откроет окно одного навыка, а End закроет по критерию, не совпадающему с ним
+	 *  (task_counterwindow_symmetry.md, Задача 1). nullptr, если такого спека нет. */
+	const UAbilityData* FindOwningAbilityData(UAbilitySystemComponent* ASC, const UAnimMontage* Montage, FGameplayAbilitySpecHandle& OutHandle)
+	{
+		if (!ASC || !Montage)
+		{
+			return nullptr;
+		}
+
+		for (const FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+		{
+			if (!Spec.IsActive())
+			{
+				continue;
+			}
+
+			const UAbilityData* Data = Cast<UAbilityData>(Spec.SourceObject.Get());
+			if (!Data || Data->CastMontage != Montage || Data->CounteredBy.IsEmpty())
+			{
+				continue;
+			}
+
+			OutHandle = Spec.Handle;
+			return Data;
+		}
+
+		return nullptr;
+	}
+}
+
 void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
 	AActor* Owner = MeshComp ? MeshComp->GetOwner() : nullptr;
@@ -25,38 +59,30 @@ void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshCom
 		return;
 	}
 
-	// Ключ поиска — сам монтаж: находим активный спек владельца, чей UAbilityData::CastMontage
-	// совпадает с этим монтажом. Идентичность навыка (CounteredBy/Cooldown/CounterStunDuration)
-	// приходит из ассета — один и тот же ассет размечает окно и для игрока, и для врага, которому
-	// этот навык выдан.
-	for (const FGameplayAbilitySpec& Spec : ASC->GetActivatableAbilities())
+	FGameplayAbilitySpecHandle Handle;
+	if (const UAbilityData* Data = FindOwningAbilityData(ASC, Montage, Handle))
 	{
-		if (!Spec.IsActive())
-		{
-			continue;
-		}
-
-		const UAbilityData* Data = Cast<UAbilityData>(Spec.SourceObject.Get());
-		if (!Data || Data->CastMontage != Montage)
-		{
-			continue;
-		}
-
-		if (Data->CounteredBy.IsEmpty())
-		{
-			// Навык не контрится ничем — вешать State.CounterWindow не за чем.
-			break;
-		}
-
-		CounterComp->OpenWindow(Data->CounteredBy, Spec.Handle, Data->CooldownTag, Data->Cooldown, Data->CounterStunDuration);
-		break;
+		CounterComp->OpenWindow(Data->CounteredBy, Handle, Data->CooldownTag, Data->Cooldown, Data->CounterStunDuration);
 	}
 }
 
 void UAnimNotifyState_CounterWindow::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
 	AActor* Owner = MeshComp ? MeshComp->GetOwner() : nullptr;
-	if (UClanhallCounterComponent* CounterComp = Owner ? Owner->FindComponentByClass<UClanhallCounterComponent>() : nullptr)
+	IAbilitySystemInterface* Interface = Owner ? Cast<IAbilitySystemInterface>(Owner) : nullptr;
+	UAbilitySystemComponent* ASC = Interface ? Interface->GetAbilitySystemComponent() : nullptr;
+	UClanhallCounterComponent* CounterComp = Owner ? Owner->FindComponentByClass<UClanhallCounterComponent>() : nullptr;
+	if (!ASC || !CounterComp)
+	{
+		return;
+	}
+
+	// Тот же поиск, что в NotifyBegin: закрываем только окно, которое сами открыли бы —
+	// UAnimNotifyState разделяемый const-объект, состояние на нём не удержать, поэтому вместо
+	// хранения хендла между Begin/End критерий пересчитывается заново (см. FindOwningAbilityData).
+	const UAnimMontage* Montage = Cast<UAnimMontage>(Animation);
+	FGameplayAbilitySpecHandle Handle;
+	if (FindOwningAbilityData(ASC, Montage, Handle))
 	{
 		CounterComp->CloseWindow();
 	}

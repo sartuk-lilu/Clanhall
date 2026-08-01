@@ -6,16 +6,21 @@
 // Retribution), и каждый раз с другим SourceObject.
 //
 // Два режима резолва, выбираются на активации по Data->CastMontage (см.
-// UAnimNotifyState_Hitbox::MontageHasHitbox):
+// UAnimNotifyState_Hitbox::MontageHasHitbox). Монтажи Knight назначены и проигрываются —
+// выбор режима зависит только от того, расставлен ли на конкретном монтаже
+// AnimNotifyState_Hitbox (редакторная разметка, не код):
 //   - Контактный (монтаж есть и на нём расставлен AnimNotifyState_Hitbox): способность ждёт
-//     Event.Hitbox.Hit/Event.Hitbox.Closed от UClanhallHitboxComponent и резолвит цель(и) в
-//     момент реального касания зоны. Одна зона может задеть несколько целей за применение
-//     (Shield Charge — капсула на пелвисе на весь рывок, main_dev_plan.md §7 п.11) — см.
-//     правило мультицели ниже.
+//     Event.Hitbox.Hit от UClanhallHitboxComponent и резолвит цель(и) в момент реального
+//     касания зоны. Одна зона может задеть несколько целей за применение (Shield Charge —
+//     капсула на пелвисе на весь рывок, main_dev_plan.md §7 п.11) — см. правило мультицели ниже.
 //   - Мгновенный фолбэк (CastMontage == nullptr ИЛИ на нём не расставлена зона): резолв по
-//     FindMeleeTarget на активации, как до перехода на контактный резолв. Все четыре ассета
-//     Knight сейчас идут этим путём — разметка зон на монтажах ещё не сделана (редакторная
-//     работа, не код).
+//     FindMeleeTarget на активации, как до перехода на контактный резолв.
+//
+// Перемещение навыка (Shield Charge и подобные) приходит из UDashFragment через Root Motion
+// Source (StartDashIfNeeded), а не из root motion клипа — дистанция и длительность живут в
+// данных, не в анимации (task_dash_and_counter_window.md, Задача 1). Способность живёт до
+// позднейшего из двух терминаторов — конца каст-монтажа/фолбэка И конца рывка, см.
+// TryFinishAbility.
 //
 // Инвариант «один резолвер на актора»: Event.Hitbox.Hit и Event.Hitbox.Closed летят на весь
 // ASC владельца без адресации. Система корректна ровно потому, что в любой момент времени
@@ -50,16 +55,13 @@ public:
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
-	/** Переопределён ради страховки от залипания State.SkillCommitted (см. поле ниже) —
+	/** Единственная точка снятия State.SkillCommitted — переопределён именно ради этого,
 	 *  снимает loose-тег независимо от того, как способность закончилась. */
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 
 protected:
 	UFUNCTION()
 	void OnHitboxHitReceived(FGameplayEventData Payload);
-
-	UFUNCTION()
-	void OnHitboxClosedReceived(FGameplayEventData Payload);
 
 	/** Терминатор контактного/фолбэк пути (первичный, см. bPrimaryTerminatorFired). Делегат
 	 *  AnimInstance, не GameplayEvent — биндится через Montage_SetEndDelegate после
@@ -74,8 +76,10 @@ protected:
 
 private:
 	/** Запускает Root Motion Source рывка, если у навыка есть UDashFragment; иначе no-op.
-	 *  Аватар не ACharacter (нет CharacterMovementComponent) → рывок пропускается с варном. */
-	void StartDashIfNeeded(const UAbilityData* Data, AActor* Avatar);
+	 *  Аватар не ACharacter (нет CharacterMovementComponent) → рывок пропускается с варном.
+	 *  MontagePlayLength — длина каст-монтажа (0, если монтажа нет/не стартовал) для грубой
+	 *  проверки Dash->Duration против неё (Задача 5, task_counterwindow_symmetry.md). */
+	void StartDashIfNeeded(const UAbilityData* Data, AActor* Avatar, float MontagePlayLength);
 
 	/** EndAbility вызывается только когда отработали ОБА терминатора — иначе фолбэк-путь без
 	 *  рывка убил бы задачу рывка в тот же кадр, а контактный путь оборвал бы рывок на середине
