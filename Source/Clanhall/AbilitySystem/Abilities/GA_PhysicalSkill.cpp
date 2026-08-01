@@ -312,9 +312,14 @@ void UGA_PhysicalSkill::StartDashIfNeeded(const UAbilityData* Data, AActor* Avat
 		ERootMotionFinishVelocityMode::SetVelocity, FVector::ZeroVector, /*ClampVelocityOnFinish*/ 0.0f);
 	DashTask->OnTimedOut.AddDynamic(this, &UGA_PhysicalSkill::OnDashFinished);
 	DashTask->OnTimedOutAndDestinationReached.AddDynamic(this, &UGA_PhysicalSkill::OnDashFinished);
-	DashTask->ReadyForActivation();
 
+	// bDashPending выставлен ДО ReadyForActivation(): если задача когда-нибудь завершится
+	// синхронно внутри неё, OnDashFinished должен увидеть уже true и снять его сам, а не быть
+	// перезаписанным следующей строкой — иначе способность и State.SkillCommitted повисают
+	// навсегда. Сейчас ApplyRootMotionMoveToForce финиширует в TickTask, не в Activate, так что
+	// порядок ещё не стрелял, но полагаться на эту деталь реализации движка не стоит.
 	bDashPending = true;
+	DashTask->ReadyForActivation();
 }
 
 void UGA_PhysicalSkill::TryFinishAbility()
