@@ -13,21 +13,14 @@
 #include "Clanhall.h"
 #include "ClanhallCombatTypes.h"
 #include "AbilitySystemComponent.h"
-#include "AbilitySystemInterface.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/Abilities/GA_CombatStance.h"
 #include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
-#include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
-#include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/Effects/GE_BalanceDrift.h"
-#include "AbilitySystem/ClanhallMarkComponent.h"
-#include "AbilitySystem/ClanhallParryComponent.h"
-#include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
-#include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "Engine/Engine.h"
@@ -36,7 +29,7 @@ AClanhallCharacter::AClanhallCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
+
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -69,25 +62,6 @@ AClanhallCharacter::AClanhallCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-	// GAS: ASC живёт прямо на Character, владелец и аватар — один и тот же актор
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AbilitySystemComponent->SetIsReplicated(true);
-	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
-
-	AttributeSet = CreateDefaultSubobject<UClanhallAttributeSet>(TEXT("AttributeSet"));
-
-	// Метка персонажа — независимый трек (mark_system.md §3/§5), не связан с тем, что игрок
-	// сам кладёт на врагов. См. UClanhallMarkComponent.
-	MarkComponent = CreateDefaultSubobject<UClanhallMarkComponent>(TEXT("MarkComponent"));
-	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
-	// Раздел 6 (переработан): симметричный компонент окна контрнавыка, тот же класс на враге.
-	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
-	// combo_system.md: ворота ввода + владелец активации WASD-ударов.
-	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
-	// main_dev_plan.md §7: диспетчер зон поражения вместо жёстко зашитого weapon trace.
-	// Имя сабобъекта намеренно осталось прежним ("WeaponTraceComponent"): смена строки
-	// рвёт переопределения в BP-наследнике. Класс переименован, имя — нет.
-	HitboxComponent = CreateDefaultSubobject<UClanhallHitboxComponent>(TEXT("WeaponTraceComponent"));
 	// HUD: camera line trace, мягкая цель под удар/метку (Enemy Frame больше не водит).
 	TargetingComponent = CreateDefaultSubobject<UClanhallTargetingComponent>(TEXT("TargetingComponent"));
 	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (hud_dev_plan.md).
@@ -102,20 +76,9 @@ AClanhallCharacter::AClanhallCharacter()
 	AttackLowSweepClass   = UGA_DirectionalAttack_LowSweep::StaticClass();
 }
 
-UAbilitySystemComponent* AClanhallCharacter::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent;
-}
-
 void AClanhallCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (AbilitySystemComponent)
-	{
-		// OwnerActor == AvatarActor == this: ASC не на PlayerState
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-	}
 
 	if (AttributeSet)
 	{
@@ -149,36 +112,9 @@ void AClanhallCharacter::BeginPlay()
 			AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*DriftSpec.Data.Get(), AbilitySystemComponent);
 		}
 
-		// Грант способностей боевой стойки и 4 направлений WASD-удара (combat_system.md §3-4).
+		// Грант способности боевой стойки (combat_system.md §3). WASD-удары и активки Q/E/R/F
+		// гранятся выше по иерархии — см. AClanhallHumanoidCombatant::BeginPlay.
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
-		AttackOverheadHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackOverheadClass,   1, INDEX_NONE, this));
-		AttackRightSlashHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackRightSlashClass, 1, INDEX_NONE, this));
-		AttackLeftSlashHandle  = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLeftSlashClass,  1, INDEX_NONE, this));
-		AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
-
-		// Раздел 4: кит Knight — один класс GA_PhysicalSkill гранится 4 раза,
-		// каждый раз с разным UAbilityData как SourceObject (main_dev_plan.md).
-		// DataAsset'ы привязываются в Blueprint-наследнике в редакторе.
-		if (KnightSkillQ_ShieldSlam)
-		{
-			ActiveSkillQHandle = AbilitySystemComponent->GiveAbility(
-				FGameplayAbilitySpec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, KnightSkillQ_ShieldSlam));
-		}
-		if (KnightSkillE_PowerStrike)
-		{
-			ActiveSkillEHandle = AbilitySystemComponent->GiveAbility(
-				FGameplayAbilitySpec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, KnightSkillE_PowerStrike));
-		}
-		if (KnightSkillR_ShieldCharge)
-		{
-			ActiveSkillRHandle = AbilitySystemComponent->GiveAbility(
-				FGameplayAbilitySpec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, KnightSkillR_ShieldCharge));
-		}
-		if (KnightSkillF_Retribution)
-		{
-			ActiveSkillFHandle = AbilitySystemComponent->GiveAbility(
-				FGameplayAbilitySpec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, KnightSkillF_Retribution));
-		}
 	}
 }
 
@@ -204,7 +140,7 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
+
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -295,10 +231,10 @@ void AClanhallCharacter::DoMove(float Right, float Forward)
 		// get forward vector
 		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 
-		// get right vector 
+		// get right vector
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-		// add movement 
+		// add movement
 		AddMovementInput(ForwardDirection, Forward);
 		AddMovementInput(RightDirection, Right);
 	}
@@ -388,22 +324,11 @@ void AClanhallCharacter::OnAttackLowSweep()
 	}
 }
 
-FGameplayAbilitySpecHandle AClanhallCharacter::GetAttackHandle(EClanhallAttackDirection Direction) const
-{
-	switch (Direction)
-	{
-	case EClanhallAttackDirection::Overhead:   return AttackOverheadHandle;
-	case EClanhallAttackDirection::RightSlash: return AttackRightSlashHandle;
-	case EClanhallAttackDirection::LeftSlash:  return AttackLeftSlashHandle;
-	case EClanhallAttackDirection::LowSweep:   return AttackLowSweepHandle;
-	default:                                   return FGameplayAbilitySpecHandle();
-	}
-}
-
 UAnimSequence* AClanhallCharacter::GetStanceAnim(const ACharacter* Character)
 {
-	const AClanhallCharacter* ClanhallCharacter = Cast<AClanhallCharacter>(Character);
-	return ClanhallCharacter && ClanhallCharacter->ComboData ? ClanhallCharacter->ComboData->StanceAnim : nullptr;
+	const AClanhallHumanoidCombatant* Combatant = Cast<AClanhallHumanoidCombatant>(Character);
+	const UComboData* Data = Combatant ? Combatant->GetComboData() : nullptr;
+	return Data ? Data->StanceAnim : nullptr;
 }
 
 // ---------------------------------------------------------------------------

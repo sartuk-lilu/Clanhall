@@ -4,7 +4,7 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
-#include "ClanhallCharacter.h"
+#include "ClanhallHumanoidCombatant.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Abilities/GameplayAbilityTypes.h"
@@ -133,7 +133,7 @@ void UClanhallComboComponent::OnComboWindowClose()
 
 bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, UAnimMontage* Montage)
 {
-	AClanhallCharacter* Character = Cast<AClanhallCharacter>(GetOwner());
+	AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner());
 	UAbilitySystemComponent* ASC = GetASC();
 	const UComboData* Data = GetComboData();
 	if (!Character || !ASC || !Data || !Montage)
@@ -337,13 +337,13 @@ void UClanhallComboComponent::OnStanceExit()
 
 const UComboData* UClanhallComboComponent::GetComboData() const
 {
-	const AClanhallCharacter* Character = Cast<AClanhallCharacter>(GetOwner());
+	const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner());
 	return Character ? Character->GetComboData() : nullptr;
 }
 
 int32 UClanhallComboComponent::GetClassRank() const
 {
-	const AClanhallCharacter* Character = Cast<AClanhallCharacter>(GetOwner());
+	const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner());
 	return Character ? Character->ClassRank : 0;
 }
 

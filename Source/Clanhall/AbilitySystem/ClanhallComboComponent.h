@@ -3,7 +3,7 @@
 // "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (инверсия
 // потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP/Balance) и
 // сам проигрывает монтаж конкретного шага — GA_DirectionalAttackBase собственного монтажа больше
-// не играет. Живёт на AClanhallCharacter.
+// не играет. Живёт на AClanhallHumanoidCombatant (игрок и AI-боец, main_dev_plan.md §8).
 //
 // Резолв данных (combo_system.md): модель пар, не путей. Ход определяется только
 // парой «предыдущее направление -> новое» (UComboData::FindOpenerMontage/FindTransitionMontage) —
@@ -11,8 +11,8 @@
 // Урон берётся из UComboData::FindDamageByDirection (4 именованных поля профиля) по направлению
 // шага и передаётся в GA_DirectionalAttackBase через FGameplayEventData
 // (TriggerAbilityFromGameplayEvent) — Handle-активация сохраняется, тег события служебный.
-// Потолок длины серии = AClanhallCharacter::ClassRank + 1 (ранг 0 -> 1 удар, ранг 4 -> 5), а не
-// поле ассета.
+// Потолок длины серии = AClanhallHumanoidCombatant::ClassRank + 1 (ранг 0 -> 1 удар, ранг 4 -> 5),
+// а не поле ассета.
 //
 // State.ComboRecovery (уточнение намерения): блокирует НОВЫЕ атаки (WASD и физактивки Q/E/R/F —
 // см. UGA_ClanhallAbilityBase) и вход в стойку (UGA_CombatStance) ровно на время проигрывания

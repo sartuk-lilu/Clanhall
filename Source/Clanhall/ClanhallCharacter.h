@@ -3,30 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
-#include "AbilitySystemInterface.h"
-#include "GameplayAbilitySpecHandle.h"
-#include "GameplayTagContainer.h"
-#include "ClanhallCombatTypes.h"
+#include "ClanhallHumanoidCombatant.h"
 #include "ClanhallCharacter.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
-class UAbilitySystemComponent;
-class UClanhallAttributeSet;
-class UClanhallMarkComponent;
-class UClanhallParryComponent;
-class UClanhallCounterComponent;
-class UClanhallComboComponent;
-class UClanhallHitboxComponent;
 class UClanhallTargetingComponent;
 class UClanhallBossSensorComponent;
-class UAbilityData;
-class UComboData;
-class UGA_DirectionalAttackBase;
 class UAnimSequence;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -36,43 +22,9 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
  *  Implements a controllable orbiting camera
  */
 UCLASS(abstract)
-class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
+class AClanhallCharacter : public AClanhallHumanoidCombatant
 {
 	GENERATED_BODY()
-
-	// --- GAS: ASC и AttributeSet живут прямо на Character (не на PlayerState) ---
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallAttributeSet> AttributeSet;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallMarkComponent> MarkComponent;
-
-	/** Раздел 5: флаг bParrySuccessful — пишет ClanhallHitboxComponent, читает GA_EnemyWASDSeries. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallParryComponent> ParryComponent;
-
-	/** Раздел 6 (переработан): окно контрнавыка на самом игроке — держит State.CounterWindow,
-	 *  когда враг (в будущем — с AI-контром) мог бы прервать навык игрока. Симметричный компонент,
-	 *  тот же класс висит и на враге. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallCounterComponent> CounterComponent;
-
-	/** Ворота ввода, не буфер (combo_system.md): до открытия окна чтения ввод
-	 *  отбрасывается целиком, в окне — "последнее решает". Сам владеет активацией — решает,
-	 *  когда вызвать TryActivateAbility на GA_DirectionalAttack_* (инверсия потока активации),
-	 *  играет per-path монтаж и терминальный Recovery-хвост серии. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallComboComponent> ComboComponent;
-
-	/** Диспетчер активных зон поражения (main_dev_plan.md §7). Собственной геометрии
-	 *  не имеет — форма и роль каждой зоны приходят из AnimNotifyState_Hitbox на монтаже.
-	 *  При попадании во врага со State.Parrying (и bParryable зоны) вызывает ParryComponent->TryParry().
-	 *  Имя сабобъекта намеренно осталось прежним ("WeaponTraceComponent") — см. конструктор. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallHitboxComponent> HitboxComponent;
 
 	/** HUD: camera-forward line trace 20 м. CurrentTarget → Enemy Frame виджета.
 	 *  OnTargetChanged — делегат для биндинга в WBP_HUD. */
@@ -92,7 +44,7 @@ class AClanhallCharacter : public ACharacter, public IAbilitySystemInterface
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
-	
+
 protected:
 
 	/** Jump Input Action */
@@ -133,33 +85,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* AttackLowSweepAction;
 
-	/** Blueprint-наследники позволяют переопределить TraceRange/TraceRadius и т.п. в редакторе.
-	 *  Монтажи и урон — в UComboData (переходы FComboTransitionSet/профиль урона 4 поля), не на этих классах.
-	 *  По умолчанию — соответствующий C++ класс (работает без Blueprint). */
-	UPROPERTY(EditAnywhere, Category="Combat|WASD")
-	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
-
-	UPROPERTY(EditAnywhere, Category="Combat|WASD")
-	TSubclassOf<UGA_DirectionalAttackBase> AttackRightSlashClass;
-
-	UPROPERTY(EditAnywhere, Category="Combat|WASD")
-	TSubclassOf<UGA_DirectionalAttackBase> AttackLeftSlashClass;
-
-	UPROPERTY(EditAnywhere, Category="Combat|WASD")
-	TSubclassOf<UGA_DirectionalAttackBase> AttackLowSweepClass;
-
-	/** «Данные оружия» для комбо (combo_system.md): профиль урона, база ходов и
-	 *  дерево цепочек одним ассетом — без фрагментов-обёрток (состав комбо-данных фиксирован, в
-	 *  отличие от опциональных Fragments у UAbilityData). Назначается в Blueprint-наследнике
-	 *  персонажа, по образцу KnightSkill*. */
-	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
-	TObjectPtr<UComboData> ComboData;
-
 	FGameplayAbilitySpecHandle StanceAbilityHandle;
-	FGameplayAbilitySpecHandle AttackOverheadHandle;
-	FGameplayAbilitySpecHandle AttackRightSlashHandle;
-	FGameplayAbilitySpecHandle AttackLeftSlashHandle;
-	FGameplayAbilitySpecHandle AttackLowSweepHandle;
 
 	// --- Раздел 4: активные навыки Knight (Q/E/R/F) через GA_PhysicalSkill + DataAsset ---
 
@@ -179,24 +105,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* ActiveSkillFAction;
 
-	/** DataAsset'ы Knight привязываются в Blueprint-наследнике персонажа (Content/...) */
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillQ_ShieldSlam;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillE_PowerStrike;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillR_ShieldCharge;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillF_Retribution;
-
-	FGameplayAbilitySpecHandle ActiveSkillQHandle;
-	FGameplayAbilitySpecHandle ActiveSkillEHandle;
-	FGameplayAbilitySpecHandle ActiveSkillRHandle;
-	FGameplayAbilitySpecHandle ActiveSkillFHandle;
-
 	/** Раздел 2 placeholder: настоящий выбор оружия появится в Разделе 10. Переключает тег Weapon.Type.STR/DEX на ASC. */
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	bool bStartWithSTRWeapon = true;
@@ -205,10 +113,6 @@ public:
 
 	/** Constructor */
 	AClanhallCharacter();
-
-	// ~begin IAbilitySystemInterface
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	// ~end IAbilitySystemInterface
 
 protected:
 
@@ -271,32 +175,12 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
-	FORCEINLINE const UComboData* GetComboData() const { return ComboData; }
-
 	/** Loop-поза боевой стойки текущего оружия (UComboData::StanceAnim). Статичная и берёт ACharacter,
 	 *  а не член AClanhallCharacter: в Event Blueprint Update Animation обычно уже есть закэшированная
 	 *  и провалидированная (IsValid) переменная Character как ACharacter — так не нужен второй Cast
-	 *  To Clanhall Character поверх неё, каст на AClanhallCharacter делается внутри. nullptr, если
-	 *  Character не этого класса или ComboData не назначен. */
+	 *  To Clanhall Character поверх неё, каст на AClanhallHumanoidCombatant делается внутри. nullptr, если
+	 *  Character не этого класса или ComboData не назначен. Оставлена именно на этом классе (main_dev_plan.md
+	 *  §8, Блок A) — функция BlueprintPure читает ABP игрока по имени класса, перенос сломал бы ноду в графе. */
 	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
 	static UAnimSequence* GetStanceAnim(const ACharacter* Character);
-
-	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
-	 *  активировать (combo_system.md: инверсия потока активации). */
-	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
-
-	// TODO: вынести в общий предок с классом врага, когда враги поедут на общий исполнитель
-	// комбо-дерева (сейчас враги используют отдельный GA_EnemyWASDSeries, в этом резолве не
-	// участвуют — см. combo_system.md).
-
-	/** Тег класса персонажа (Ability.Class.Knight и т.д.). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (Categories = "Ability.Class"))
-	FGameplayTag ClassTag;
-
-	/** Потолок длины серии WASD-комбо (0-4). Плейсхолдер до системы прокачки —
-	 *  см. combo_system.md, ранг / потолок длины комбо. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (ClampMin = "0", ClampMax = "4"))
-	int32 ClassRank = 1;
 };
-
