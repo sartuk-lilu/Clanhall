@@ -7,15 +7,12 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
-#include "GameplayAbilitySpecHandle.h"
 #include "ClanhallTrainingDummy.generated.h"
 
 class UAbilitySystemComponent;
 class UClanhallAttributeSet;
 class UClanhallMarkComponent;
 class UClanhallCounterComponent;
-class UGA_EnemyWASDSeries;
-class UGA_EnemyActiveSkill;
 
 UCLASS()
 class AClanhallTrainingDummy : public ACharacter, public IAbilitySystemInterface
@@ -42,15 +39,4 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
-private:
-	FGameplayAbilitySpecHandle SeriesHandle;
-	FTimerHandle AttackLoopTimer;
-
-	// Раздел 6: Power Strike — активный навык врага для тестирования контрнавыка.
-	FGameplayAbilitySpecHandle PowerStrikeHandle;
-	FTimerHandle PowerStrikeLoopTimer;
-
-	void TryStartSeries();
-	void TryStartPowerStrike();
 };
