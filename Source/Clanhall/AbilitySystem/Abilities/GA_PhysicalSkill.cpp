@@ -192,17 +192,34 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// фолбэк путь — обязан работать на обоих путях.
 	StartDashIfNeeded(Data, Avatar, MontagePlayLength);
 
-	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(Data->CastMontage);
 	const bool bMontageStarted = (AnimInst != nullptr && MontagePlayLength > 0.0f);
+
+	// Первичный терминатор — конец каст-монтажа всегда, когда монтаж стартовал, независимо от
+	// режима резолва урона: длительность отыгрыша анимации не зависит от того, размечены ли на
+	// монтаже зоны контакта. Обе строки стоят до ветвления по bResolveOnContact ниже, иначе навык
+	// с назначенным, но ещё не размеченным монтажом (текущее состояние всех четырёх Knight,
+	// разметка — Блок D п.10) заканчивался бы мгновенно, и WASD-удар обрывал бы его анимацию
+	// на любом кадре (task_primary_terminator_fix.md).
+	if (bMontageStarted)
+	{
+		SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &UGA_PhysicalSkill::OnCastMontageEnded);
+		AnimInst->Montage_SetEndDelegate(EndDelegate, Data->CastMontage);
+	}
+
+	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(Data->CastMontage);
 
 	if (!bResolveOnContact || !bMontageStarted)
 	{
-		// Мгновенный фолбэк. Два случая ведут сюда: (1) нет монтажа или на монтаже не расставлены
-		// зоны — осознанный фолбэк, он позволяет проверять навык и его фрагменты до нарезки анимаций
-		// (инвариант Раздела 7), все четыре ассета Knight сейчас идут именно этим путём; (2) есть
-		// зона, но Montage_Play не смог стартовать монтаж (несовместимый скелет, невалидный слот) —
-		// тогда AnimNotifyState_Hitbox никогда не откроется и Event.Hitbox.Closed не придёт, а зона
-		// была объявлена — резолвим той же сферой, что и в (1), отдельной ветки поведения не нужно.
+		// Резолв урона сферой — два случая с разной причиной и разным временем жизни способности:
+		// (1) !bMontageStarted — монтажа нет, либо Montage_Play не смог его стартовать
+		//     (несовместимый скелет, невалидный слот): отыгрывать нечего, терминатором служит сам
+		//     этот мгновенный резолв.
+		// (2) bMontageStarted && !bResolveOnContact — монтаж есть и играет, но на нём не расставлен
+		//     AnimNotifyState_Hitbox: тег и делегат для этого случая уже поставлены выше,
+		//     первичный терминатор придёт из OnCastMontageEnded — здесь его не трогаем.
 		if (bResolveOnContact && !bMontageStarted)
 		{
 			UE_LOG(LogClanhall, Warning, TEXT("ActivateAbility: Montage_Play failed to start %s for %s, falling back to instant resolve"),
@@ -210,30 +227,22 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		}
 		ResolveHitOn(Target);
 
-		// Тег коммита имеет смысл на фолбэке только если запущен рывок: без него способность
-		// заканчивается в этом же кадре, и вешать тег было бы бессмысленно.
-		if (bDashPending)
+		if (!bMontageStarted)
 		{
-			SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+			// Монтажа нет — тег коммита нужен только если запущен рывок: без него способность
+			// обязана заканчиваться в этом же кадре, а не позже.
+			if (bDashPending)
+			{
+				SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+			}
+			bPrimaryTerminatorFired = true;
 		}
 
-		bPrimaryTerminatorFired = true;
+		// Подписка на Event.Hitbox.Hit при неразмеченных зонах бессмысленна — урон уже
+		// отрезолвлен сферой выше, независимо от того, какой из двух случаев сработал.
 		TryFinishAbility();
 		return;
 	}
-
-	// Тег коммита живёт весь каст-монтаж (и, если запущен, весь рывок — см. TryFinishAbility) —
-	// вешается loose'ом только здесь, на контактном пути (на фолбэке выше коммититься не во что
-	// без рывка, способность уже закончилась). Снимается только в EndAbility.
-	SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
-
-	// Первичный терминатор способности — конец каст-монтажа, а не Event.Hitbox.Closed (тот
-	// означает «сейчас нет открытых зон», а не «удар закончился»: между двумя последовательными
-	// зонами список зон пустеет, и способность на контактном Closed умерла бы в промежутке между
-	// фазами).
-	FOnMontageEnded EndDelegate;
-	EndDelegate.BindUObject(this, &UGA_PhysicalSkill::OnCastMontageEnded);
-	AnimInst->Montage_SetEndDelegate(EndDelegate, Data->CastMontage);
 
 	// Event.Hitbox.Hit резолвит попадания. Event.Hitbox.Closed никто из активки не слушает —
 	// он не несёт для неё сигнала: способность живёт до терминаторов (см. TryFinishAbility),
