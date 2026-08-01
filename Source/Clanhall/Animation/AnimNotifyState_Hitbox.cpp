@@ -74,6 +74,24 @@ bool UAnimNotifyState_Hitbox::MontageHasHitbox(const UAnimMontage* Montage)
 	return false;
 }
 
+bool UAnimNotifyState_Hitbox::MontageOwnsNotify(const UAnimMontage* Montage, const UObject* Notify)
+{
+	if (!Montage || !Notify)
+	{
+		return false;
+	}
+
+	for (const FAnimNotifyEvent& Event : Montage->Notifies)
+	{
+		if (Event.NotifyStateClass == Notify)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 #if WITH_EDITOR
 void UAnimNotifyState_Hitbox::DrawInEditor(FPrimitiveDrawInterface* PDI, USkeletalMeshComponent* MeshComp,
                                            const UAnimSequenceBase* Animation, const FAnimNotifyEvent& NotifyEvent) const

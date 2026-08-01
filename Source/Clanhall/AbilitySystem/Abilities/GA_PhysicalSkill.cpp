@@ -7,6 +7,7 @@
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
+#include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "Animation/AnimNotifyState_Hitbox.h"
@@ -203,6 +204,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	if (bMontageStarted)
 	{
 		SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+		PlayedCastMontage = Data->CastMontage;
 
 		FOnMontageEnded EndDelegate;
 		EndDelegate.BindUObject(this, &UGA_PhysicalSkill::OnCastMontageEnded);
@@ -332,6 +334,20 @@ void UGA_PhysicalSkill::TryFinishAbility()
 
 void UGA_PhysicalSkill::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
+	// Уборка за съеденным NotifyEnd: зона, чей NotifyEnd не пришёл, продолжила бы свипаться и
+	// слать Event.Hitbox.Hit после конца способности. Точечно по своему монтажу, а не
+	// EndAllHitboxes(): EndAbility приходит асинхронно (при UDashFragment — из OnDashFinished,
+	// много позже конца монтажа), и зонами к этому моменту может владеть уже следующий шаг комбо;
+	// вдобавок GA_DirectionalAttackBase слушает Event.Hitbox.Closed, и снос чужих зон оборвал бы
+	// живой WASD-удар. Нормальный путь (NotifyEnd пришёл) уже закрыл зону — вызов будет холостым.
+	if (AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr)
+	{
+		if (UClanhallHitboxComponent* Hitboxes = Avatar->FindComponentByClass<UClanhallHitboxComponent>())
+		{
+			Hitboxes->EndHitboxesFromMontage(PlayedCastMontage.Get());
+		}
+	}
+
 	// Единственная точка снятия State.SkillCommitted (не подстраховка — Closed-путь тег больше
 	// не трогает вовсе). Момент снятия — конец каст-монтажа и рывка одновременно: EndAbility
 	// вызывается только из TryFinishAbility, когда отработали оба терминатора.

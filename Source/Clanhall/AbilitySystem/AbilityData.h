@@ -65,8 +65,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	int32 ChargeCost = 0;
 
-	/** Монтаж навыка. Слот — upperbody для Q/E, fullbody для R/F (locomotion_structure.md).
-	 *  nullptr законен: механика навыка работает без монтажа. */
+	/** Монтаж навыка. Слот — fullbody, для ВСЕХ активок без исключения: активка отыгрывается
+	 *  целым телом, разбиение «лёгкие на верх, тяжёлые целиком» отменено (locomotion_structure.md §3).
+	 *  Типовая ошибка — монтаж остался в DefaultSlot: логика работает, анимации не видно.
+	 *  nullptr законен: механика навыка работает без монтажа, резолв уходит в мгновенный фолбэк. */
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	TObjectPtr<UAnimMontage> CastMontage;
 

@@ -39,6 +39,7 @@
 class USoundBase;
 class UClanhallParryComponent;
 class USkeletalMeshComponent;
+class UAnimMontage;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnClanhallHitboxHit, AActor*, HitActor, FVector, HitLocation, int32, HitboxHandle);
 
@@ -69,6 +70,12 @@ public:
 	/** Закрыть все зоны без разбора. Страховка от залипания при прерывании монтажа —
 	 *  зовётся из UClanhallComboComponent. */
 	void EndAllHitboxes();
+
+	/** Закрыть только те зоны, чей Source-нотифай принадлежит указанному монтажу. Уборка за
+	 *  съеденным NotifyEnd (Branching Point), зовётся из EndAbility активки. Точечно, а не
+	 *  EndAllHitboxes(): EndAbility приходит асинхронно (может прилететь из OnDashFinished много
+	 *  позже конца монтажа), и к этому моменту зоны может владеть уже следующий шаг комбо. */
+	void EndHitboxesFromMontage(const UAnimMontage* Montage);
 
 	bool IsAnyHitboxActive() const { return ActiveHitboxes.Num() > 0; }
 

@@ -35,6 +35,13 @@ public:
 	 *  Фолбэк — то, что сохраняет инвариант «дерево комбо тестируется до нарезки анимаций». */
 	static bool MontageHasHitbox(const UAnimMontage* Montage);
 
+	/** Принадлежит ли объект-нотифай (Source зоны поражения) дорожкам этого монтажа. Ключ
+	 *  идентичности для точечной уборки залипших зон: UAnimMontage::Notifies[i].NotifyStateClass —
+	 *  вопреки имени поля это указатель на инстанс нотифая, принадлежащий конкретному монтажу, и
+	 *  ровно он приходит в BeginHitbox как Source. Сравнение указателей, без каста: тип нам здесь
+	 *  не важен, важно владение. */
+	static bool MontageOwnsNotify(const UAnimMontage* Montage, const UObject* Notify);
+
 #if WITH_EDITOR
 	/** Превью зоны во вьюпорте Persona: рисует ту же форму, что свипается в рантайме, по той
 	 *  же математике (FClanhallHitboxDesc::GetWorldTransform). Без него зоны на каст-монтажах

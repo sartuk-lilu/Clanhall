@@ -1,5 +1,7 @@
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "Clanhall.h"
+#include "Animation/AnimNotifyState_Hitbox.h"
+#include "Animation/AnimMontage.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystemInterface.h"
@@ -50,6 +52,36 @@ void UClanhallHitboxComponent::EndHitbox(const UObject* Source)
 	{
 		return Box.Source.Get() == Source;
 	});
+
+	if (bWasActive && ActiveHitboxes.Num() == 0)
+	{
+		SetComponentTickEnabled(false);
+		NotifyAllHitboxesClosed();
+	}
+}
+
+void UClanhallHitboxComponent::EndHitboxesFromMontage(const UAnimMontage* Montage)
+{
+	if (!Montage)
+	{
+		return;
+	}
+
+	const bool bWasActive = ActiveHitboxes.Num() > 0;
+
+	const int32 Removed = ActiveHitboxes.RemoveAll([Montage](const FActiveHitbox& Box)
+	{
+		return UAnimNotifyState_Hitbox::MontageOwnsNotify(Montage, Box.Source.Get());
+	});
+
+	if (Removed > 0)
+	{
+		// Ненулевой Removed означает, что NotifyEnd не пришёл — зона дожила до конца
+		// способности. Это не норма, а диагностируемая ошибка разметки/блендаута: без варна
+		// она была бы невидимой, и «удар бьёт после конца анимации» искали бы в логике урона.
+		UE_LOG(LogClanhall, Warning, TEXT("EndHitboxesFromMontage: %d leaked hitbox(es) from %s closed by ability EndAbility — NotifyEnd was likely eaten by montage blend-out, move the notify end 1-2 frames earlier"),
+			Removed, *Montage->GetName());
+	}
 
 	if (bWasActive && ActiveHitboxes.Num() == 0)
 	{
