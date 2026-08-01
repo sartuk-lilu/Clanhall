@@ -189,6 +189,14 @@ bool AClanhallCharacter::CanJumpInternal_Implementation() const
 		return false;
 	}
 
+	// Fullbody-активка занимает всё тело, включая ноги — та же причина, что в DoMove
+	// (task_movement_lock_during_skill.md): иначе стойка отпущена, прыжок разрешён, персонаж
+	// подпрыгивает посреди рывка.
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
+	{
+		return false;
+	}
+
 	return Super::CanJumpInternal_Implementation();
 }
 
@@ -265,6 +273,15 @@ void AClanhallCharacter::DoMove(float Right, float Forward)
 	if (AbilitySystemComponent
 		&& AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag())
 		&& GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
+	{
+		return;
+	}
+
+	// Активка занимает слот fullbody целиком — свободных ног нет, в отличие от upperbody
+	// (WASD-удары, Recovery-хвосты), откуда убежать посреди доигрывания законно. State.SkillCommitted
+	// висит весь каст-монтаж (и рывок) и снимается только в EndAbility — не гейтить по
+	// State.ComboRecovery, тот про upperbody-хвост и сюда не относится (task_movement_lock_during_skill.md).
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
 		return;
 	}
