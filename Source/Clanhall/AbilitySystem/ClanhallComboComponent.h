@@ -34,6 +34,12 @@ class UAbilitySystemComponent;
 class UAnimMontage;
 class UAnimInstance;
 
+/** main_dev_plan.md §8, Блок B: единственное расширение публичного API под AI-водителя.
+ *  Открытие/закрытие окна чтения — момент, когда AI обязан подать направление в
+ *  HandleAttackInput; вне окна ввод отбрасывается так же, как и у игрока (ворота, не буфер). */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FClanhallOnComboWindowOpened);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FClanhallOnComboWindowClosed);
+
 UCLASS(ClassGroup="Clanhall", meta=(BlueprintSpawnableComponent))
 class CLANHALL_API UClanhallComboComponent : public UActorComponent
 {
@@ -45,9 +51,23 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float StanceExitBlendOutTime = 0.18f;
 
-	/** Вызывается из WASD-обработчика ввода (OnAttackX в ClanhallCharacter). Решает: опенер,
-	 *  запись в окне чтения (продолжение) или мусор вне окна — сама активирует направленный
-	 *  удар, когда решение валидно. */
+	/** main_dev_plan.md §8, Блок B: единственный публичный сигнал для AI/BT о том, что окно
+	 *  чтения ввода открылось/закрылось — по нему водитель узнаёт момент подать направление
+	 *  в HandleAttackInput. Решений компонент не принимает и не подсказывает — какое именно
+	 *  направление подать, решает вызывающий (BT/исполнитель, Раздел 8 Блок G). */
+	UPROPERTY(BlueprintAssignable, Category = "Combo")
+	FClanhallOnComboWindowOpened OnComboWindowOpened;
+
+	UPROPERTY(BlueprintAssignable, Category = "Combo")
+	FClanhallOnComboWindowClosed OnComboWindowClosed;
+
+	/** Вызывается из WASD-обработчика ввода (OnAttackX в ClanhallCharacter) — и, с Блока B,
+	 *  из AI-водителя (main_dev_plan.md §8): точка входа одна и та же и стороне-нейтральна,
+	 *  второй не заводим. Решает: опенер, запись в окне чтения (продолжение) или мусор вне
+	 *  окна — сама активирует направленный удар, когда решение валидно. BlueprintCallable —
+	 *  единственный способ прогнать серию боссу до появления BT-исполнителя (Блок G):
+	 *  временный отладочный вызов кнопкой/консолью из Блока B. */
+	UFUNCTION(BlueprintCallable, Category = "Combo")
 	void HandleAttackInput(EClanhallAttackDirection Direction);
 
 	/** Зовутся из UAnimNotifyState_ComboWindow, расставленного на монтаже текущего удара. */
@@ -63,6 +83,13 @@ public:
 	 *  чужой монтаж уже занимает слот, Recovery дрался бы с ним за него; наказания за прерывание
 	 *  нет — тот же принцип, что у невалидного продолжения. Зовётся ДО Montage_Play активки. */
 	void CancelSequenceForExternalMontage();
+
+	/** main_dev_plan.md §8, Блок B: публичный запрос состояния серии для AI — активна,
+	 *  текущая длина и потолок по ClassRank. Ничего из этого не решает за вызывающего:
+	 *  сравнивать со StepCount/ClassRank и выбирать следующее направление — дело водителя. */
+	bool IsSequenceActive() const { return StepCount > 0; }
+	int32 GetStepCount() const { return StepCount; }
+	int32 GetClassRank() const;
 
 private:
 	/** Последнее сыгранное направление серии. Не задано = нейтраль. Определяет и следующий переход,
@@ -116,7 +143,6 @@ private:
 	void EndSequenceWithRecovery();
 
 	const UComboData* GetComboData() const;
-	int32 GetClassRank() const;
 	UAbilitySystemComponent* GetASC() const;
 	UAnimInstance* GetAnimInstance() const;
 };

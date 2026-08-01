@@ -78,11 +78,16 @@ void UClanhallComboComponent::OnComboWindowOpen()
 {
 	bReadWindowOpen = true;
 	LatestInWindow.Reset();
+
+	// main_dev_plan.md §8, Блок B: единственный сигнал для AI о том, что можно подавать
+	// направление в HandleAttackInput — сама очерёдность решает AI/BT, компонент не подсказывает.
+	OnComboWindowOpened.Broadcast();
 }
 
 void UClanhallComboComponent::OnComboWindowClose()
 {
 	bReadWindowOpen = false;
+	OnComboWindowClosed.Broadcast();
 
 	if (!LatestInWindow.IsSet())
 	{
