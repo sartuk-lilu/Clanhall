@@ -65,7 +65,11 @@ namespace ClanhallGameplayTags
 	// ---- Cooldown.Slot.* ----
 	// КД принадлежит СЛОТУ, а не конкретному навыку (ability_system.md §3).
 	// Один таймер на слот — общий для всех оружий. Смена оружия не сбрасывает КД.
-	// DataAsset каждого навыка прописывает CooldownTag = Cooldown.Slot.Q/E/R/F/...
+	// Слот приходит из ключа UClassKitData::Skills и живёт как динамический тег спека
+	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его больше не хранит
+	// (main_dev_plan.md §8, Блок A2). Корень нужен GA_PhysicalSkill::GetCooldownSlotTag,
+	// чтобы отфильтровать слот среди прочих динамических тегов спека.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_Q);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_E);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_R);

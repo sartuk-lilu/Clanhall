@@ -44,6 +44,31 @@ const UAbilityData* UGA_PhysicalSkill::GetAbilityData(const FGameplayAbilitySpec
 	return Spec ? Cast<UAbilityData>(Spec->SourceObject.Get()) : nullptr;
 }
 
+FGameplayTag UGA_PhysicalSkill::GetCooldownSlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const
+{
+	UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr;
+	if (!ASC)
+	{
+		return FGameplayTag();
+	}
+
+	const FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(Handle);
+	if (!Spec)
+	{
+		return FGameplayTag();
+	}
+
+	for (const FGameplayTag& Tag : Spec->GetDynamicSpecSourceTags())
+	{
+		if (Tag.MatchesTag(ClanhallGameplayTags::Cooldown_Slot.GetTag()))
+		{
+			return Tag;
+		}
+	}
+
+	return FGameplayTag();
+}
+
 bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
 {
 	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
@@ -60,7 +85,8 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 
 	// КД проверяется здесь (тег вешается на активации, см. ActivateAbility), а Charges —
 	// на активацию (combat_system.md §1: "проверяется количество зарядов на активацию").
-	if (Data->CooldownTag.IsValid() && ASC->HasMatchingGameplayTag(Data->CooldownTag))
+	const FGameplayTag CooldownSlotTag = GetCooldownSlotTag(Handle, ActorInfo);
+	if (CooldownSlotTag.IsValid() && ASC->HasMatchingGameplayTag(CooldownSlotTag))
 	{
 		return false;
 	}
@@ -161,9 +187,14 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 
 	// КД уходит НА АКТИВАЦИИ безусловно, без исключения для контра — тот больше не бесплатен,
 	// он лишь побочный эффект попадания. Промах стоит зарядов и КД (combat_system.md §3).
-	if (Data->CooldownTag.IsValid())
+	const FGameplayTag CooldownSlotTag = GetCooldownSlotTag(Handle, ActorInfo);
+	if (CooldownSlotTag.IsValid())
 	{
-		ClanhallGameplayEffects::ApplyTimedTag(SourceASC, Data->CooldownTag, Data->Cooldown);
+		ClanhallGameplayEffects::ApplyTimedTag(SourceASC, CooldownSlotTag, Data->Cooldown);
+	}
+	else
+	{
+		UE_LOG(LogClanhall, Warning, TEXT("ActivateAbility: %s has no Cooldown.Slot dynamic tag on its spec — grant is broken, cooldown not applied"), *Data->DisplayName.ToString());
 	}
 
 	// Порядок критичен: серию гасим и монтаж запускаем ДО подписки на Event.Hitbox.*.

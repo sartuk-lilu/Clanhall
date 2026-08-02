@@ -36,6 +36,7 @@
 #pragma once
 
 #include "GA_ClanhallAbilityBase.h"
+#include "GameplayTagContainer.h"
 #include "GA_PhysicalSkill.generated.h"
 
 class UAbilityData;
@@ -89,6 +90,12 @@ private:
 	 *  абилки на момент CanActivateAbility ещё нет персистентного инстанса (см. движок,
 	 *  AbilitySystemComponent_Abilities.cpp: CanActivateAbility может вызываться на CDO). */
 	const UAbilityData* GetAbilityData(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
+
+	/** Слот КД навыка — больше не поле UAbilityData, а динамический тег спека (Cooldown.Slot.*,
+	 *  см. ClanhallHumanoidCombatant::BeginPlay). Ищет спек по Handle и фильтрует его
+	 *  GetDynamicSpecSourceTags() по корню Cooldown.Slot. Невалидный результат — баг гранта
+	 *  (слот не проставлен), не молчаливый fallback на что-либо ещё. */
+	FGameplayTag GetCooldownSlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
 	void ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent);
 

@@ -65,8 +65,12 @@ void AClanhallHumanoidCombatant::BeginPlay()
 				continue;
 			}
 
-			ActiveSkillHandles.Add(Skill.Key, AbilitySystemComponent->GiveAbility(
-				FGameplayAbilitySpec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value)));
+			// Слот доносится до способности штатным путём GAS — динамическим тегом спека
+			// (не полем в UAbilityData, main_dev_plan.md §8, Блок A2): один и тот же
+			// UAbilityData может лежать сразу в двух китах, слот же принадлежит гранту.
+			FGameplayAbilitySpec Spec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value);
+			Spec.GetDynamicSpecSourceTags().AddTag(Skill.Key);
+			ActiveSkillHandles.Add(Skill.Key, AbilitySystemComponent->GiveAbility(Spec));
 		}
 	}
 }

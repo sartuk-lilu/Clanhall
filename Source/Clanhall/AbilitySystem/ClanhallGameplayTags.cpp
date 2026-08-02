@@ -37,6 +37,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Parry_Incoming_A, "Parry.Incoming.A", "AI бьёт влево (A) — игрок должен нажать D");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Parry_Incoming_D, "Parry.Incoming.D", "AI бьёт вправо (D) — игрок должен нажать A");
 
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot, "Cooldown.Slot", "Корень слотов КД — фильтр динамических тегов спека в GA_PhysicalSkill::GetCooldownSlotTag");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Q, "Cooldown.Slot.Q", "Слот Q на перезарядке — общий для всех оружий (ability_system.md §3)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_E, "Cooldown.Slot.E", "Слот E на перезарядке — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_R, "Cooldown.Slot.R", "Слот R на перезарядке — общий для всех оружий");
