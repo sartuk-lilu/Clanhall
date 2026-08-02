@@ -4,6 +4,7 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
+#include "AbilitySystem/ClanhallParryComponent.h"
 #include "ClanhallHumanoidCombatant.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -13,6 +14,27 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameplayEffect.h"
+#include "GameplayTagContainer.h"
+
+namespace
+{
+	/** main_dev_plan.md §8, Блок D: направление своего шага -> тег, который на себя вешает
+	 *  атакующий на время удара (симметричный телеграф). Не путать со свитчем в
+	 *  UClanhallParryComponent::TryParry — там маппинг ОБРАТНЫЙ (своё направление -> тег,
+	 *  который парируется), это разные вопросы. */
+	FGameplayTag DirectionToOwnIncomingTag(EClanhallAttackDirection Direction)
+	{
+		switch (Direction)
+		{
+		case EClanhallAttackDirection::Overhead:    return ClanhallGameplayTags::Parry_Incoming_W.GetTag();
+		case EClanhallAttackDirection::RightSlash:  return ClanhallGameplayTags::Parry_Incoming_D.GetTag();
+		case EClanhallAttackDirection::LeftSlash:   return ClanhallGameplayTags::Parry_Incoming_A.GetTag();
+		case EClanhallAttackDirection::LowSweep:    return ClanhallGameplayTags::Parry_Incoming_S.GetTag();
+		default:                                    return FGameplayTag();
+		}
+	}
+}
 
 void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Direction)
 {
@@ -30,6 +52,14 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 		// E2.4: активка в фазе коммита — начатую активку нельзя оборвать (combat_system.md §3).
 		// Отбрасываем ввод здесь же, до ActivateStep и его ForceEndHitboxes(), иначе WASD сразу
 		// после Q обрывал бы активке окно контакта, хоть заряды и КД уже потрачены.
+		return;
+	}
+
+	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_Stunned.GetTag()))
+	{
+		// main_dev_plan.md §8, Блок D: оглушённый (в т.ч. полным парированием своей серии) не
+		// бьёт — дублирует ActivationBlockedTags на GA_ClanhallAbilityBase для WASD-пути
+		// конкретно, тем же паттерном, что и два тега выше.
 		return;
 	}
 
@@ -151,6 +181,11 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	// прилетит уже НОВОЙ способности и оборвёт её до открытия собственной зоны.
 	ForceEndHitboxes();
 
+	// main_dev_plan.md §8, Блок D: предыдущий шаг закончился здесь же — снять его
+	// Parry.Incoming.*, пока LastDirection ещё не перезаписан (это делает вызывающий,
+	// TryStartSequence/OnComboWindowClose, после успешного возврата отсюда).
+	ClearIncomingParryTag();
+
 	const FDirectionalDamage& Damage = Data->FindDamageByDirection(Direction);
 
 	// Точка вызова инвертирована — GA_DirectionalAttackBase::ActivateAbility
@@ -172,8 +207,131 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 		return false;
 	}
 
+	// main_dev_plan.md §8, Блок D: симметричный телеграф — State.Parrying вешает разметка
+	// монтажа (AnimNotifyState_ParryWindow, на владельца, кто бы им ни был), Parry.Incoming.*
+	// вешаем здесь же кодом, т.к. направление в анимации не читается. Оба тега — на СЕБЯ.
+	ApplyIncomingParryTag(Direction);
+
+	// Свой дедуп «я только что кого-то распарировал» сбрасываем перед КАЖДЫМ собственным
+	// шагом — раньше это делала GA_EnemyWASDSeries::PrepareHit, теперь единственный источник
+	// шагов — этот метод, у обеих сторон.
+	if (UClanhallParryComponent* OwnParry = Character->FindComponentByClass<UClanhallParryComponent>())
+	{
+		OwnParry->ResetParry();
+	}
+
 	PlayMontage(Montage);
 	return true;
+}
+
+void UClanhallComboComponent::ApplyIncomingParryTag(EClanhallAttackDirection Direction)
+{
+	if (UAbilitySystemComponent* ASC = GetASC())
+	{
+		ASC->AddLooseGameplayTag(DirectionToOwnIncomingTag(Direction));
+	}
+}
+
+void UClanhallComboComponent::ClearIncomingParryTag()
+{
+	if (!LastDirection.IsSet())
+	{
+		return;
+	}
+	if (UAbilitySystemComponent* ASC = GetASC())
+	{
+		ASC->RemoveLooseGameplayTag(DirectionToOwnIncomingTag(LastDirection.GetValue()));
+	}
+}
+
+void UClanhallComboComponent::NotifyStepParried(AActor* ParrierActor)
+{
+	++ParriedStepsThisSeries;
+	LastParrierActor = ParrierActor;
+}
+
+void UClanhallComboComponent::ResolveParryOutcome()
+{
+	if (ParriedStepsThisSeries != StepCount)
+	{
+		return;
+	}
+
+	// main_dev_plan.md §8, Блок D (было GA_EnemyWASDSeries::FinalizeSeries): все шаги серии
+	// отпарированы -> владелец серии оглушён, парировавший получает снижение КД. Симметрично —
+	// роль (игрок/AI) не участвует, решает только факт полного парирования.
+	if (UAbilitySystemComponent* ASC = GetASC())
+	{
+		ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_Stunned.GetTag(), FullParryStunDuration);
+	}
+
+	if (AActor* Parrier = LastParrierActor.Get())
+	{
+		if (const IAbilitySystemInterface* ParrierInterface = Cast<IAbilitySystemInterface>(Parrier))
+		{
+			if (UAbilitySystemComponent* ParrierASC = ParrierInterface->GetAbilitySystemComponent())
+			{
+				ReduceCooldowns(ParrierASC, FullParryCooldownReduction);
+			}
+		}
+	}
+}
+
+void UClanhallComboComponent::ReduceCooldowns(UAbilitySystemComponent* TargetASC, float ReductionSeconds) const
+{
+	if (!TargetASC) return;
+
+	// MakeQuery_MatchAnyOwningTags в UE 5.3+ проверяет и asset-теги, и granted-теги (DynamicGrantedTags).
+	// Наш GE_ApplyTimedTag хранит тег в DynamicGrantedTags → запрос с родительским тегом Cooldown его найдёт.
+	FGameplayTagContainer CooldownRoot;
+	CooldownRoot.AddTag(FGameplayTag::RequestGameplayTag("Cooldown"));
+	const FGameplayEffectQuery Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(CooldownRoot);
+	TArray<FActiveGameplayEffectHandle> Handles = TargetASC->GetActiveEffects(Query);
+
+	const float CurrentTime = GetWorld()->GetTimeSeconds();
+
+	// Собрать теги и новые длительности до изменения контейнера.
+	TArray<FGameplayTag> TagsToReapply;
+	TArray<float> NewDurations;
+
+	for (const FActiveGameplayEffectHandle& Handle : Handles)
+	{
+		const FActiveGameplayEffect* ActiveEffect = TargetASC->GetActiveGameplayEffect(Handle);
+		if (!ActiveEffect) continue;
+
+		FGameplayTag CooldownTag;
+		for (const FGameplayTag& Tag : ActiveEffect->Spec.DynamicGrantedTags)
+		{
+			if (Tag.MatchesTag(FGameplayTag::RequestGameplayTag("Cooldown")))
+			{
+				CooldownTag = Tag;
+				break;
+			}
+		}
+		if (!CooldownTag.IsValid()) continue;
+
+		float StartTime, TotalDuration;
+		TargetASC->GetGameplayEffectStartTimeAndDuration(Handle, StartTime, TotalDuration);
+		const float Remaining = (StartTime + TotalDuration) - CurrentTime;
+		const float NewRemaining = Remaining - ReductionSeconds;
+
+		if (NewRemaining > 0.0f)
+		{
+			TagsToReapply.Add(CooldownTag);
+			NewDurations.Add(NewRemaining);
+		}
+		// NewRemaining <= 0 → КД истёк сразу, не перевешиваем
+	}
+
+	// Снять все найденные КД-эффекты, затем перевесить те, что ещё не истекли.
+	for (const FActiveGameplayEffectHandle& Handle : Handles)
+	{
+		TargetASC->RemoveActiveGameplayEffect(Handle);
+	}
+	for (int32 i = 0; i < TagsToReapply.Num(); ++i)
+	{
+		ClanhallGameplayEffects::ApplyTimedTag(TargetASC, TagsToReapply[i], NewDurations[i]);
+	}
 }
 
 void UClanhallComboComponent::PlayMontage(UAnimMontage* Montage)
@@ -242,6 +400,10 @@ void UClanhallComboComponent::EndSequenceWithRecovery()
 		return;
 	}
 
+	// main_dev_plan.md §8, Блок D: исход серии — читает StepCount/ParriedStepsThisSeries,
+	// поэтому ДО ResetCombo() ниже (тот их обнулит).
+	ResolveParryOutcome();
+
 	const UComboData* Data = GetComboData();
 	// Резолв Recovery-анимации ДО ResetCombo(): сброс очищает LastDirection.
 	UAnimMontage* RecoveryMontage = (Data && LastDirection.IsSet()) ? Data->FindRecoveryMontage(LastDirection.GetValue()) : nullptr;
@@ -304,12 +466,21 @@ void UClanhallComboComponent::CancelSequenceForExternalMontage()
 
 void UClanhallComboComponent::ResetCombo()
 {
+	// main_dev_plan.md §8, Блок D: снять Parry.Incoming.* последнего шага ДО LastDirection.Reset()
+	// ниже — ClearIncomingParryTag читает LastDirection, чтобы знать, какой тег снимать.
+	ClearIncomingParryTag();
+
 	LastDirection.Reset();
 	StepCount = 0;
 	LatestInWindow.Reset();
 	// Упрочнение: гасим ворота даже если сброс пришёл при открытом окне (напр. OnStanceExit
 	// посреди чтения ввода) — не даём следующему нажатию попасть в уже мёртвое окно.
 	bReadWindowOpen = false;
+	// Исход серии уже прочитан (если серия завершилась штатно, ResolveParryOutcome отработал
+	// до этого вызова) — обнуляем безусловно, чтобы ни один путь завершения (внешнее
+	// прерывание, выход из стойки) не протащил чужой счёт в следующую серию.
+	ParriedStepsThisSeries = 0;
+	LastParrierActor.Reset();
 	// Тег State.ComboRecovery (если уже был повешен) НЕ снимается здесь — он живёт своим таймером
 	// независимо от состояния серии. Именно это не даёт связке "выйти из стойки и сразу войти
 	// обратно" бесплатно отменить лок-аут (см. OnStanceExit).

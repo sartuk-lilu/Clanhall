@@ -33,6 +33,7 @@ class UComboData;
 class UAbilitySystemComponent;
 class UAnimMontage;
 class UAnimInstance;
+class AActor;
 
 /** main_dev_plan.md §8, Блок B: единственное расширение публичного API под AI-водителя.
  *  Открытие/закрытие окна чтения — момент, когда AI обязан подать направление в
@@ -50,6 +51,15 @@ public:
 	 *  "порядка 0.15-0.2 с, чтобы верх плавно ушёл в локомоцию". */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float StanceExitBlendOutTime = 0.18f;
+
+	/** main_dev_plan.md §8, Блок D: оглушение владельца серии при полном парировании ВСЕХ
+	 *  её шагов (канон combat_system.md §5). Было GA_EnemyWASDSeries::StunDuration. */
+	UPROPERTY(EditDefaultsOnly, Category = "Combo|Parry")
+	float FullParryStunDuration = 2.0f;
+
+	/** Снижение КД парировавшего при полном парировании серии. Было GA_EnemyWASDSeries::CDReduction. */
+	UPROPERTY(EditDefaultsOnly, Category = "Combo|Parry")
+	float FullParryCooldownReduction = 5.0f;
 
 	/** main_dev_plan.md §8, Блок B: единственный публичный сигнал для AI/BT о том, что окно
 	 *  чтения ввода открылось/закрылось — по нему водитель узнаёт момент подать направление
@@ -91,6 +101,11 @@ public:
 	int32 GetStepCount() const { return StepCount; }
 	int32 GetClassRank() const;
 
+	/** main_dev_plan.md §8, Блок D: зовёт UClanhallParryComponent::TryParry владельца ЦЕЛИ —
+	 *  чужой counter-swing успешно распарировал ТЕКУЩИЙ шаг ЭТОЙ серии. Симметрично: роль
+	 *  (игрок/AI) в резолве не участвует, только факт «мой шаг только что отпарировали». */
+	void NotifyStepParried(AActor* ParrierActor);
+
 private:
 	/** Последнее сыгранное направление серии. Не задано = нейтраль. Определяет и следующий переход,
 	 *  и Recovery на завершении — история до него не хранится (модель пар). */
@@ -102,6 +117,11 @@ private:
 	bool bReadWindowOpen = false;
 	TOptional<EClanhallAttackDirection> LatestInWindow;
 	TWeakObjectPtr<UAnimMontage> LastPlayedMontage;
+
+	/** main_dev_plan.md §8, Блок D: исход текущей серии — сколько её шагов отпарировано и
+	 *  кем. Читаются в ResolveParryOutcome() перед ResetCombo(), который их обнуляет. */
+	int32 ParriedStepsThisSeries = 0;
+	TWeakObjectPtr<AActor> LastParrierActor;
 
 	/** Нейтраль + валидный опенер по данным -> активировать и стартовать серию. */
 	void TryStartSequence(EClanhallAttackDirection Direction);
@@ -141,6 +161,29 @@ private:
 	 *  лок-аута нет вообще, невидимого лока в системе не остаётся. Recovery-анимация должна
 	 *  быть резолвлена ДО ResetCombo() — сброс очищает LastDirection. */
 	void EndSequenceWithRecovery();
+
+	/** main_dev_plan.md §8, Блок D: симметричный телеграф направления. Вешает/снимает
+	 *  Parry.Incoming.<Direction> на СЕБЯ — State.Parrying по-прежнему на разметке монтажа
+	 *  (AnimNotifyState_ParryWindow), но кому какое направление парировать, до сих пор решает
+	 *  только код, т.к. в анимации направление не читается. TryParry читает оба тега с актора,
+	 *  которого задели — сторона (игрок/AI) в резолве больше не участвует. */
+	void ApplyIncomingParryTag(EClanhallAttackDirection Direction);
+
+	/** Снимает тег предыдущего шага (LastDirection, ещё не перезаписан вызывающим) —
+	 *  зовётся и в начале ActivateStep (переход между шагами), и в ResetCombo() (конец серии). */
+	void ClearIncomingParryTag();
+
+	/** main_dev_plan.md §8, Блок D: было GA_EnemyWASDSeries::FinalizeSeries. Все шаги серии
+	 *  отпарированы -> владелец серии оглушён (FullParryStunDuration), парировавший получает
+	 *  снижение КД (FullParryCooldownReduction). Зовётся из EndSequenceWithRecovery ДО
+	 *  ResetCombo() — тот обнуляет ParriedStepsThisSeries/LastParrierActor. */
+	void ResolveParryOutcome();
+
+	/** Снижает остаток всех активных Cooldown.*-эффектов на ASC на ReductionSeconds: снимает
+	 *  и перевешивает с укороченной длительностью те, что ещё не истекли. Было
+	 *  GA_EnemyWASDSeries::ReducePlayerCooldowns, обобщено — теперь применяется к любому ASC,
+	 *  не только к игроку. */
+	void ReduceCooldowns(UAbilitySystemComponent* TargetASC, float ReductionSeconds) const;
 
 	const UComboData* GetComboData() const;
 	UAbilitySystemComponent* GetASC() const;

@@ -25,6 +25,12 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	// нельзя оборвать» (combat_system.md §3). Выход из стойки тег не трогает: тот идёт через
 	// CancelAbilityHandle на способности стойки, не через TryActivateAbility.
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+
+	// main_dev_plan.md §8, Блок D: оглушение (полное парирование серии — ClanhallComboComponent,
+	// либо успешный контрнавык — ClanhallCounterComponent) блокирует новые физдействия. Раньше
+	// это гейтила только умирающая GA_EnemyWASDSeries, то есть только у врага; тег теперь
+	// симметричен (вешается и на игрока), и блокировка обязана быть тоже.
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());
 }
 
 AActor* UGA_ClanhallAbilityBase::FindMeleeTarget(AActor* Avatar) const

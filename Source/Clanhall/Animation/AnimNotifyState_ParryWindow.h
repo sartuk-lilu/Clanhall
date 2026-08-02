@@ -4,7 +4,8 @@
 #include "AnimNotifyState_ParryWindow.generated.h"
 
 /** Окно парирования: Begin/End добавляют/снимают loose-тег State.Parrying на ASC владельца
- *  (владелец = враг, он паррируемый актор — см. combat_system.md §5).
+ *  (владелец = тот, кто играет этот удар-монтаж — паррируемый актор, симметрично для игрока
+ *  и AI, main_dev_plan.md §8, Блок D; см. combat_system.md §5).
  *  Заменил пару AnimNotify_ParryWindowStart/End — одиночный End не срабатывал при
  *  прерывании монтажа и оставлял State.Parrying висеть бессрочно. */
 UCLASS(const, hidecategories=Object, collapsecategories, meta=(DisplayName="Parry Window"))
