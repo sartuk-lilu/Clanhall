@@ -123,6 +123,13 @@ private:
 	int32 ParriedStepsThisSeries = 0;
 	TWeakObjectPtr<AActor> LastParrierActor;
 
+	/** main_dev_plan.md §8, Блок D (хвост, ревью): индекс (StepCount) шага, за который уже
+	 *  засчитан парированный — дедуп NotifyStepParried. Без него два разных актора, задевшие
+	 *  один и тот же шаг в одном окне, дадут два инкремента ParriedStepsThisSeries, тот
+	 *  перескочит StepCount, и ResolveParryOutcome() тихо не увидит полное парирование. 0 —
+	 *  безопасный сброс: StepCount живого шага всегда ≥ 1. */
+	int32 LastParriedStepIndex = 0;
+
 	/** Нейтраль + валидный опенер по данным -> активировать и стартовать серию. */
 	void TryStartSequence(EClanhallAttackDirection Direction);
 

@@ -181,11 +181,6 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	// прилетит уже НОВОЙ способности и оборвёт её до открытия собственной зоны.
 	ForceEndHitboxes();
 
-	// main_dev_plan.md §8, Блок D: предыдущий шаг закончился здесь же — снять его
-	// Parry.Incoming.*, пока LastDirection ещё не перезаписан (это делает вызывающий,
-	// TryStartSequence/OnComboWindowClose, после успешного возврата отсюда).
-	ClearIncomingParryTag();
-
 	const FDirectionalDamage& Damage = Data->FindDamageByDirection(Direction);
 
 	// Точка вызова инвертирована — GA_DirectionalAttackBase::ActivateAbility
@@ -207,9 +202,16 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 		return false;
 	}
 
-	// main_dev_plan.md §8, Блок D: симметричный телеграф — State.Parrying вешает разметка
-	// монтажа (AnimNotifyState_ParryWindow, на владельца, кто бы им ни был), Parry.Incoming.*
-	// вешаем здесь же кодом, т.к. направление в анимации не читается. Оба тега — на СЕБЯ.
+	// main_dev_plan.md §8, Блок D (хвост, ревью): снять тег ПРЕДЫДУЩЕГО шага и повесить тег
+	// НОВОГО — только здесь, по одну сторону от раннего выхода выше. Раньше Clear стоял ДО
+	// попытки активации: на провале тег предыдущего шага снимался, LastDirection не
+	// перезаписывался (это делает вызывающий только на успехе), и ResetCombo() снимал тот же
+	// тег ещё раз — рефкаунт расходился (сейчас безвредно из-за клампа на нуле в
+	// UpdateTagCount, но не в общем случае).
+	// State.Parrying по-прежнему вешает разметка монтажа (AnimNotifyState_ParryWindow, на
+	// владельца, кто бы им ни был); Parry.Incoming.* — код, т.к. направление в анимации не
+	// читается. Оба тега — на СЕБЯ.
+	ClearIncomingParryTag();
 	ApplyIncomingParryTag(Direction);
 
 	// Свой дедуп «я только что кого-то распарировал» сбрасываем перед КАЖДЫМ собственным
@@ -246,6 +248,15 @@ void UClanhallComboComponent::ClearIncomingParryTag()
 
 void UClanhallComboComponent::NotifyStepParried(AActor* ParrierActor)
 {
+	if (LastParriedStepIndex == StepCount)
+	{
+		// main_dev_plan.md §8, Блок D (хвост, ревью): этот шаг уже засчитан — второй актор,
+		// задевший его в том же окне, не должен задвоить счёт (иначе ParriedStepsThisSeries
+		// обгонит StepCount, и ResolveParryOutcome() != тихо не увидит полное парирование).
+		return;
+	}
+
+	LastParriedStepIndex = StepCount;
 	++ParriedStepsThisSeries;
 	LastParrierActor = ParrierActor;
 }
@@ -481,6 +492,7 @@ void UClanhallComboComponent::ResetCombo()
 	// прерывание, выход из стойки) не протащил чужой счёт в следующую серию.
 	ParriedStepsThisSeries = 0;
 	LastParrierActor.Reset();
+	LastParriedStepIndex = 0;
 	// Тег State.ComboRecovery (если уже был повешен) НЕ снимается здесь — он живёт своим таймером
 	// независимо от состояния серии. Именно это не даёт связке "выйти из стойки и сразу войти
 	// обратно" бесплатно отменить лок-аут (см. OnStanceExit).
