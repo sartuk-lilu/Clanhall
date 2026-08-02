@@ -1,4 +1,5 @@
 #include "ClanhallHumanoidCombatant.h"
+#include "Clanhall.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
@@ -49,11 +50,23 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	{
 		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : ClassKit->Skills)
 		{
-			if (Skill.Value)
+			// Невалидный ключ грантится, но GetActiveSkillHandle его никогда не найдёт —
+			// навык есть, вызвать нельзя. Симптом без этого варна — "Q не нажимается",
+			// причина не ищется (main_dev_plan.md §8, Блок A2, ревью Опуса).
+			if (!Skill.Key.IsValid())
 			{
-				ActiveSkillHandles.Add(Skill.Key, AbilitySystemComponent->GiveAbility(
-					FGameplayAbilitySpec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value)));
+				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в ClassKit->Skills с пустым ключом (Cooldown.Slot.*) — навык не будет вызываем."), *GetName());
+				continue;
 			}
+
+			if (!Skill.Value)
+			{
+				UE_LOG(LogClanhall, Warning, TEXT("%s: слот %s в ClassKit->Skills не заполнен — навык не грантится."), *GetName(), *Skill.Key.ToString());
+				continue;
+			}
+
+			ActiveSkillHandles.Add(Skill.Key, AbilitySystemComponent->GiveAbility(
+				FGameplayAbilitySpec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value)));
 		}
 	}
 }

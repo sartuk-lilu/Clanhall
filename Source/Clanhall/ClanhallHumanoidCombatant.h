@@ -55,8 +55,8 @@ protected:
 	TObjectPtr<UClassKitData> ClassKit;
 
 	/** Не UPROPERTY (main_dev_plan.md §8, Блок A2): значение одинаково у всех китов — это
-	 *  плумбинг GAS, не контент класса. Blueprint-наследники по-прежнему могут переопределить
-	 *  их в C++, если когда-то понадобится, — дефолт хардкожен в конструкторе. */
+	 *  плумбинг GAS, не контент класса. Не видно ни редактору, ни Blueprint — переопределить
+	 *  дефолт может только C++-наследник в своём конструкторе, если когда-то понадобится. */
 	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
 	TSubclassOf<UGA_DirectionalAttackBase> AttackRightSlashClass;
 	TSubclassOf<UGA_DirectionalAttackBase> AttackLeftSlashClass;
@@ -81,7 +81,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (ClampMin = "0", ClampMax = "4"))
 	int32 ClassRank = 1;
 
-	/** Ability.Class.Knight и т.д. — читает ClassKit->ClassTag. */
+	/** Ability.Class.Knight и т.д. — читает ClassKit->ClassTag. BlueprintPure: старое поле
+	 *  ClassTag было BlueprintReadWrite, и хотя в C++ его сейчас не читает ничто (GA_ClanhallAbilityBase
+	 *  и GA_PhysicalSkill его не используют — чистый задел), нода в ABP/виджете, если она есть,
+	 *  не должна остаться без замены при перекомпиляции BP. */
+	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
 	FGameplayTag GetClassTag() const;
 
 	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
