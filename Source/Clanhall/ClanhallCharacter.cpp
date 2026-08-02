@@ -336,7 +336,7 @@ void AClanhallCharacter::OnActiveSkillQ()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(ActiveSkillQHandle);
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Cooldown_Slot_Q.GetTag()));
 	}
 }
 
@@ -344,7 +344,7 @@ void AClanhallCharacter::OnActiveSkillE()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(ActiveSkillEHandle);
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Cooldown_Slot_E.GetTag()));
 	}
 }
 
@@ -352,7 +352,7 @@ void AClanhallCharacter::OnActiveSkillR()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(ActiveSkillRHandle);
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Cooldown_Slot_R.GetTag()));
 	}
 }
 
@@ -360,6 +360,6 @@ void AClanhallCharacter::OnActiveSkillF()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(ActiveSkillFHandle);
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Cooldown_Slot_F.GetTag()));
 	}
 }

@@ -1,12 +1,19 @@
 // Второй слой иерархии бойцов — те, кто дерётся на данных игрока: комбо-дерево WASD,
-// парирование и слоты активных навыков Q/E/R/F (main_dev_plan.md §8, Блок A). Не для
-// мобов/монстров — у тех будут свои навыки и свои монтажи («Принятые решения» п.7), их
-// точка входа — AClanhallCombatantBase напрямую.
+// парирование и активные навыки (main_dev_plan.md §8, Блок A). Не для мобов/монстров — у
+// тех будут свои навыки и свои монтажи («Принятые решения» п.7), их точка входа —
+// AClanhallCombatantBase напрямую.
 //
-// Грант WASD-ударов и активок Q/E/R/F живёт здесь, а не в AClanhallCharacter: и игрок, и
-// AClanhallHumanoidBoss дерутся одним и тем же набором данных (UComboData, UAbilityData),
+// Грант WASD-ударов и активок живёт здесь, а не в AClanhallCharacter: и игрок, и
+// AClanhallHumanoidBoss дерутся одним и тем же набором данных (UClassKitData),
 // поэтому обслуживающий их код общий. Ввод (Enhanced Input / AI) остаётся снаружи —
 // HandleAttackInput на UClanhallComboComponent уже нейтрален к источнику (Раздел 7).
+//
+// Класс бойца — один ассет (main_dev_plan.md §8, Блок A2): ComboData, ClassTag и слоты
+// активных навыков раньше были шестью отдельными именованными полями на бойце (по одному
+// на каждый скилл Knight), из-за чего забыть заполнить/перенести одно поле означало
+// молчаливый рассинхрон — ровно так однажды остались нулевыми дефолты WASD-классов
+// у AClanhallHumanoidBoss. Теперь на бойце одно поле ClassKit, GetComboData()/GetClassTag()
+// читают его.
 
 #pragma once
 
@@ -19,7 +26,7 @@
 
 class UClanhallComboComponent;
 class UClanhallParryComponent;
-class UAbilityData;
+class UClassKitData;
 class UComboData;
 class UGA_DirectionalAttackBase;
 
@@ -40,24 +47,19 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallParryComponent> ParryComponent;
 
-	/** «Данные оружия» для комбо (combo_system.md): профиль урона, база ходов и дерево
-	 *  цепочек одним ассетом — без фрагментов-обёрток. Назначается в Blueprint-наследнике. */
+	/** main_dev_plan.md §8, Блок A2: класс бойца одним ассетом — ComboData, ClassTag и
+	 *  карта активных навыков по слоту (Cooldown.Slot.*) вместо шести отдельных полей.
+	 *  Назначается в Blueprint-наследнике (и игрока, и AClanhallHumanoidBoss — один и тот
+	 *  же кит на класс). */
 	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
-	TObjectPtr<UComboData> ComboData;
+	TObjectPtr<UClassKitData> ClassKit;
 
-	/** Blueprint-наследники позволяют переопределить TraceRange/TraceRadius и т.п. в редакторе.
-	 *  Монтажи и урон — в UComboData, не на этих классах. По умолчанию — соответствующий
-	 *  C++ класс (работает без Blueprint). */
-	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
+	/** Не UPROPERTY (main_dev_plan.md §8, Блок A2): значение одинаково у всех китов — это
+	 *  плумбинг GAS, не контент класса. Blueprint-наследники по-прежнему могут переопределить
+	 *  их в C++, если когда-то понадобится, — дефолт хардкожен в конструкторе. */
 	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackRightSlashClass;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackLeftSlashClass;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
 	TSubclassOf<UGA_DirectionalAttackBase> AttackLowSweepClass;
 
 	FGameplayAbilitySpecHandle AttackOverheadHandle;
@@ -65,48 +67,36 @@ protected:
 	FGameplayAbilitySpecHandle AttackLeftSlashHandle;
 	FGameplayAbilitySpecHandle AttackLowSweepHandle;
 
-	// --- Раздел 4: активные навыки Knight (Q/E/R/F) через GA_PhysicalSkill + DataAsset ---
-	// Отдельных «вражеских» ассетов не существует (main_dev_plan.md §8) — те же слоты и тот
-	// же грант обслужат AClanhallHumanoidBoss, когда Блок C назначит их в его Blueprint.
-
-	/** DataAsset'ы Knight привязываются в Blueprint-наследнике (Content/...) */
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillQ_ShieldSlam;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillE_PowerStrike;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillR_ShieldCharge;
-
-	UPROPERTY(EditAnywhere, Category = "Combat|Knight")
-	TObjectPtr<UAbilityData> KnightSkillF_Retribution;
-
-	FGameplayAbilitySpecHandle ActiveSkillQHandle;
-	FGameplayAbilitySpecHandle ActiveSkillEHandle;
-	FGameplayAbilitySpecHandle ActiveSkillRHandle;
-	FGameplayAbilitySpecHandle ActiveSkillFHandle;
+	/** main_dev_plan.md §8, Блок A2: хэндлы активок кита по слоту (Cooldown.Slot.*), гранятся
+	 *  в BeginPlay из ClassKit->Skills — один цикл на любой класс, а не четыре именованных поля. */
+	TMap<FGameplayTag, FGameplayAbilitySpecHandle> ActiveSkillHandles;
 
 public:
 	AClanhallHumanoidCombatant();
 
-	/** Тег класса персонажа (Ability.Class.Knight и т.д.). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (Categories = "Ability.Class"))
-	FGameplayTag ClassTag;
-
 	/** Потолок длины серии WASD-комбо (0-4). Плейсхолдер до системы прокачки —
-	 *  см. combo_system.md, ранг / потолок длины комбо. */
+	 *  см. combo_system.md, ранг / потолок длины комбо. Свойство ЭКЗЕМПЛЯРА, не кита
+	 *  (main_dev_plan.md §8, Блок A2, DO NOT): один кит обслуживает и рядового бойца, и босса
+	 *  того же класса, у них разный ранг. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (ClampMin = "0", ClampMax = "4"))
 	int32 ClassRank = 1;
 
+	/** Ability.Class.Knight и т.д. — читает ClassKit->ClassTag. */
+	FGameplayTag GetClassTag() const;
+
 	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
-	FORCEINLINE const UComboData* GetComboData() const { return ComboData; }
+	const UComboData* GetComboData() const;
 
 	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
 	 *  активировать (combo_system.md: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 
+	/** Хэндл активного навыка по слоту (Cooldown.Slot.Q/E/R/F/...) — не найден в
+	 *  ClassKit->Skills на момент BeginPlay = невалидный хэндл, TryActivateAbility просто
+	 *  откажет (main_dev_plan.md §8, Блок A2). */
+	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag CooldownSlotTag) const;
+
 protected:
-	/** Грант WASD-ударов и активок Q/E/R/F — общий для игрока и AClanhallHumanoidBoss. */
+	/** Грант WASD-ударов и активок из ClassKit — общий для игрока и AClanhallHumanoidBoss. */
 	virtual void BeginPlay() override;
 };
