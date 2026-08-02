@@ -51,7 +51,7 @@ protected:
 	 *  карта активных навыков по слоту (Cooldown.Slot.*) вместо шести отдельных полей.
 	 *  Назначается в Blueprint-наследнике (и игрока, и AClanhallHumanoidBoss — один и тот
 	 *  же кит на класс). */
-	UPROPERTY(EditAnywhere, Category = "Combat|WASD")
+	UPROPERTY(EditAnywhere, Category = "Combat|Class")
 	TObjectPtr<UClassKitData> ClassKit;
 
 	/** Не UPROPERTY (main_dev_plan.md §8, Блок A2): значение одинаково у всех китов — это
@@ -78,14 +78,14 @@ public:
 	 *  см. combo_system.md, ранг / потолок длины комбо. Свойство ЭКЗЕМПЛЯРА, не кита
 	 *  (main_dev_plan.md §8, Блок A2, DO NOT): один кит обслуживает и рядового бойца, и босса
 	 *  того же класса, у них разный ранг. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|WASD", meta = (ClampMin = "0", ClampMax = "4"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Class", meta = (ClampMin = "0", ClampMax = "4"))
 	int32 ClassRank = 1;
 
 	/** Ability.Class.Knight и т.д. — читает ClassKit->ClassTag. BlueprintPure: старое поле
 	 *  ClassTag было BlueprintReadWrite, и хотя в C++ его сейчас не читает ничто (GA_ClanhallAbilityBase
 	 *  и GA_PhysicalSkill его не используют — чистый задел), нода в ABP/виджете, если она есть,
 	 *  не должна остаться без замены при перекомпиляции BP. */
-	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
+	UFUNCTION(BlueprintPure, Category = "Combat|Class")
 	FGameplayTag GetClassTag() const;
 
 	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
