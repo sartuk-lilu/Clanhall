@@ -4,6 +4,7 @@
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/ClassKitData.h"
+#include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
@@ -50,12 +51,15 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	{
 		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : ClassKit->Skills)
 		{
-			// Невалидный ключ грантится, но GetActiveSkillHandle его никогда не найдёт —
-			// навык есть, вызвать нельзя. Симптом без этого варна — "Q не нажимается",
-			// причина не ищется (main_dev_plan.md §8, Блок A2, ревью Опуса).
-			if (!Skill.Key.IsValid())
+			// Невалидный ключ ИЛИ сам корень Cooldown.Slot (а не лист Q/E/R/F/...) грантится, но
+			// GetActiveSkillHandle(Cooldown_Slot_Q) его никогда не найдёт — ключ карты другой.
+			// Корень стал выбираемым значением поля, как только завели native-тег Cooldown.Slot
+			// под фильтр GetCooldownSlotTag (ревью Опуса, Блок A2): meta=(Categories="Cooldown.Slot")
+			// пропускает и его самого, не только листья. Симптом без этой проверки — "Q не
+			// нажимается", причина не ищется.
+			if (!Skill.Key.IsValid() || Skill.Key == ClanhallGameplayTags::Cooldown_Slot.GetTag())
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в ClassKit->Skills с пустым ключом (Cooldown.Slot.*) — навык не будет вызываем."), *GetName());
+				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в ClassKit->Skills с невалидным ключом или корнем Cooldown.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
 				continue;
 			}
 
