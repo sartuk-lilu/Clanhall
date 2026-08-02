@@ -17,7 +17,6 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/Abilities/GA_CombatStance.h"
-#include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/Effects/GE_BalanceDrift.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
@@ -67,13 +66,9 @@ AClanhallCharacter::AClanhallCharacter()
 	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (hud_dev_plan.md).
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
-	// WASD-классы дефолтно равны C++ классам; Blueprint персонажа может переопределить их
-	// на BP-наследников (см. GA_DirectionalAttackBase.h). Монтажи — в UComboData, модель
-	// пар переходов (FromStance/From*/Recovery).
-	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
-	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
-	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
-	AttackLowSweepClass   = UGA_DirectionalAttack_LowSweep::StaticClass();
+	// WASD-классы дефолтятся в AClanhallHumanoidCombatant — общий конструктор для игрока
+	// и AClanhallHumanoidBoss (main_dev_plan.md §8, Блок A2). Здесь их больше нет намеренно:
+	// у пустого конструктора AClanhallHumanoidBoss эти поля оставались бы nullptr.
 }
 
 void AClanhallCharacter::BeginPlay()

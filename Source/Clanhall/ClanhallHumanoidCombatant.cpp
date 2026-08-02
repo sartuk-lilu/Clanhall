@@ -3,12 +3,22 @@
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
+#include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
 
 AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
 {
 	// combo_system.md: ворота ввода + владелец активации WASD-ударов.
 	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
+
+	// WASD-классы дефолтно равны C++ классам — общий конструктор для игрока и
+	// AClanhallHumanoidBoss (main_dev_plan.md §8, Блок A2): раньше жили в конструкторе
+	// AClanhallCharacter, из-за чего у пустого конструктора Boss они оставались nullptr, и
+	// GiveAbility грантовал WASD-удары с null-классом — серии у босса не было вообще.
+	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
+	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
+	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
+	AttackLowSweepClass   = UGA_DirectionalAttack_LowSweep::StaticClass();
 }
 
 void AClanhallHumanoidCombatant::BeginPlay()
