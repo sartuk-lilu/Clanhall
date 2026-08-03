@@ -11,6 +11,7 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "Animation/AnimNotifyState_Hitbox.h"
+#include "Animation/AnimNotifyState_CounterWindow.h"
 #include "Animation/AnimMontage.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
@@ -19,6 +20,52 @@
 #include "Animation/AnimInstance.h"
 #include "GameFramework/Character.h"
 #include "Engine/Engine.h"
+
+namespace
+{
+	/** Открытый вопрос 3 (task_section8_enemies.md, Блок E): если зона поражения открывается позже
+	 *  конца окна контра, контр физически не мог сработать раньше, чем удар нанёс урон — разметчик
+	 *  посадил Hitbox не в ту фазу замаха. Рантайм-варн один раз за монтаж; полноценная редакторная
+	 *  проверка — в бэклог. */
+	void WarnIfHitboxOutlivesCounterWindow(const UAnimMontage* Montage, const FString& AbilityName)
+	{
+		if (!Montage)
+		{
+			return;
+		}
+
+		static TSet<const UAnimMontage*> WarnedMontages;
+		if (WarnedMontages.Contains(Montage))
+		{
+			return;
+		}
+
+		float CounterWindowEnd = -1.0f;
+		for (const FAnimNotifyEvent& Event : Montage->Notifies)
+		{
+			if (Cast<UAnimNotifyState_CounterWindow>(Event.NotifyStateClass))
+			{
+				CounterWindowEnd = FMath::Max(CounterWindowEnd, Event.GetEndTriggerTime());
+			}
+		}
+
+		if (CounterWindowEnd < 0.0f)
+		{
+			return; // на монтаже вовсе нет окна контра — сравнивать не с чем
+		}
+
+		for (const FAnimNotifyEvent& Event : Montage->Notifies)
+		{
+			if (Cast<UAnimNotifyState_Hitbox>(Event.NotifyStateClass) && Event.GetTriggerTime() > CounterWindowEnd)
+			{
+				UE_LOG(LogClanhall, Warning, TEXT("%s: Hitbox on %s opens at %.2fs, after CounterWindow closes at %.2fs — counter cannot land before the hit resolves"),
+					*AbilityName, *Montage->GetName(), Event.GetTriggerTime(), CounterWindowEnd);
+				WarnedMontages.Add(Montage);
+				return;
+			}
+		}
+	}
+}
 
 UGA_PhysicalSkill::UGA_PhysicalSkill()
 {
@@ -243,6 +290,11 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	}
 
 	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(Data->CastMontage);
+
+	if (bResolveOnContact)
+	{
+		WarnIfHitboxOutlivesCounterWindow(Data->CastMontage, Data->DisplayName.ToString());
+	}
 
 	if (!bResolveOnContact || !bMontageStarted)
 	{
