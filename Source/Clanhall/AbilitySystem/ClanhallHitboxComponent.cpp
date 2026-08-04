@@ -321,6 +321,18 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 			continue;   // парирование обработано, обычный хит не нужен
 		}
 
+		// task_section8_blocks_fgh.md §0.3: подавление зоны цели и хитстоп бьющему живут ЗДЕСЬ,
+		// на самом контакте — а не в расчёте урона (ResolveStandardDamage), куда не доходят удар,
+		// полностью поглощённый DT (0 урона -> bConfirmedHit=false), и утилитарные навыки без
+		// UDamageFragment (War Shout и подобные). Контакт — факт, произошедший независимо от того,
+		// что дальше решит формула урона. Симметрично клэшу (UClanhallParryComponent::TryParry):
+		// хитстоп — владельцу зоны (this), подавление — цели, чья зона получила контакт.
+		if (UClanhallHitboxComponent* TargetHitbox = Pending.Actor->FindComponentByClass<UClanhallHitboxComponent>())
+		{
+			TargetHitbox->SuppressHitboxes();
+		}
+		ApplyHitstop(HitstopDurationOnDamage);
+
 		OnHitboxHit.Broadcast(Pending.Actor, Pending.ImpactPoint, HitboxHandle);
 
 		FGameplayEventData Payload;

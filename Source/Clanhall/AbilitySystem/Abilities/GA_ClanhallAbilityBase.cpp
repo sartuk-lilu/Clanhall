@@ -1,7 +1,6 @@
 #include "GA_ClanhallAbilityBase.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
-#include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -91,27 +90,10 @@ bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* Sou
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, TargetASC, UGE_ModifyHP::StaticClass(), -Overflow);
 	}
 
-	// task_parry_rework.md §1.4/§1.5: подтверждённый (не парированный) удар — второй сквозной
-	// принцип «кто первым нанёс контакт, сбивает другого». Цель получила контакт по себе — её
-	// собственная зона (если есть/скоро откроется) гасится до конца текущего шага, симметрично
-	// клэшу в UClanhallParryComponent::TryParry. Атакующий — тот, чья зона нанесла контакт —
-	// получает хитстоп; роль (игрок/AI) нигде не проверяется.
-	if (AActor* TargetAvatar = TargetASC->GetAvatarActor())
-	{
-		if (UClanhallHitboxComponent* TargetHitbox = TargetAvatar->FindComponentByClass<UClanhallHitboxComponent>())
-		{
-			TargetHitbox->SuppressHitboxes();
-		}
-	}
-
-	if (AActor* SourceAvatar = SourceASC->GetAvatarActor())
-	{
-		if (UClanhallHitboxComponent* SourceHitbox = SourceAvatar->FindComponentByClass<UClanhallHitboxComponent>())
-		{
-			SourceHitbox->ApplyHitstop(SourceHitbox->HitstopDurationOnDamage);
-		}
-	}
-
+	// task_section8_blocks_fgh.md §0.3: подавление зоны цели и хитстоп бьющему переехали на сам
+	// контакт (UClanhallHitboxComponent::TickHitbox, цикл по PendingHits) — эта функция их больше
+	// не делает. Здесь урон мог обнулиться (DT поглотил всё), а контакт при этом уже случился;
+	// дублировать вызов тут значило бы делать его дважды на обычном хите и ни разу на поглощённом.
 	return true;
 }
 
