@@ -13,7 +13,6 @@
 #include "Clanhall.h"
 #include "ClanhallCombatTypes.h"
 #include "AbilitySystemComponent.h"
-#include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/Abilities/GA_CombatStance.h"
@@ -75,24 +74,8 @@ void AClanhallCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (AttributeSet)
-	{
-		// Хардкод стартовых значений — плейсхолдеры прототипа из combat_system.md.
-		// Допустимо на текущем этапе (см. main_dev_plan.md); DataAsset/GameplayEffect
-		// для инициализации атрибутов появится позже вместе с остальной системой данных.
-		AttributeSet->InitMaxAP(300.0f);
-		AttributeSet->InitAP(300.0f);
-		AttributeSet->InitMaxHP(500.0f);
-		AttributeSet->InitHP(500.0f);
-		AttributeSet->InitMaxMP(200.0f);
-		AttributeSet->InitMP(200.0f);
-		AttributeSet->InitMaxCharges(4.0f);
-		AttributeSet->InitCharges(4.0f);
-		AttributeSet->InitBalance(0.0f);
-		// task_parry_rework.md §1.3: усталость парирования, потолок-плейсхолдер — подбирается плейтестом.
-		AttributeSet->InitMaxStagger(4.0f);
-		AttributeSet->InitStagger(0.0f);
-	}
+	// Стартовые значения ресурсов инициализирует AClanhallCombatantBase::BeginPlay (Default*
+	// поля) — общий путь для игрока и AI, см. task_section8_blocks_fgh.md, блокер ревью §0.3.
 
 	if (AbilitySystemComponent)
 	{

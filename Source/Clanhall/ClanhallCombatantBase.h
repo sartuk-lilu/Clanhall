@@ -49,6 +49,30 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitySystem", meta = (Categories = "Unit.Role"))
 	FGameplayTag RoleTag;
 
+	/** Стартовые значения ресурсов (combat_system.md §1) — хардкод-плейсхолдеры прототипа,
+	 *  переопределяются per-class в defaults Blueprint-наследника (main_dev_plan.md §8, Блок G:
+	 *  у Часового свои AP/HP/MP/Charges). Раньше жили только в AClanhallCharacter::BeginPlay —
+	 *  экземпляр без этого пути (AClanhallHumanoidBoss, пустой конструктор) оставался с нулевыми
+	 *  атрибутами: MaxStagger=0 клампил Stagger в [0,0], и GetStagger()>=GetMaxStagger() было
+	 *  истиной уже на первом клэше — босс станился с одного парирования вместо положенных четырёх
+	 *  (task_section8_blocks_fgh.md, блокер ревью §0.3). */
+	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
+	float DefaultMaxAP = 300.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
+	float DefaultMaxHP = 500.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
+	float DefaultMaxMP = 200.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
+	float DefaultMaxCharges = 4.0f;
+
+	/** task_parry_rework.md §1.3: потолок усталости парирования, плейсхолдер — подбирается
+	 *  плейтестом (Часовой/Страж получат свой в Блоке G). */
+	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
+	float DefaultMaxStagger = 4.0f;
+
 public:
 	AClanhallCombatantBase();
 

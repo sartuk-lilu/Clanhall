@@ -105,8 +105,9 @@ void UClanhallHitboxComponent::SuppressHitboxes()
 		// Своя зона ещё не успела открыться (типичный случай клэша — окно парирования всегда
 		// закрывается раньше Hitbox-нотифая, см. AnimNotifyState_ParryWindow разметку). Без
 		// этого явного вызова EndAllHitboxes() выше не эмитит Closed (не было перехода
-		// «были->нет»), а способность, ждущая терминатор, зависнет вместе с State.SkillCommitted
-		// до конца каст-монтажа (task_parry_rework.md §1.4, «Ловушка»).
+		// «были->нет»), а UGA_DirectionalAttackBase на контактном пути ждёт именно этот ивент
+		// как единственный терминатор — без него способность не заканчивается вовсе, а не только
+		// подвисает (task_section8_blocks_fgh.md §0.1, «Ловушка»).
 		NotifyAllHitboxesClosed();
 	}
 }

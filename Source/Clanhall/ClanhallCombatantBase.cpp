@@ -34,6 +34,25 @@ void AClanhallCombatantBase::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (AttributeSet)
+	{
+		// Хардкод стартовых значений — плейсхолдеры прототипа (combat_system.md §1); DataAsset/
+		// GameplayEffect для инициализации атрибутов появится позже вместе с остальной системой
+		// данных. Здесь, а не в AClanhallCharacter — нужно ЛЮБОМУ бойцу, включая AI без
+		// собственного BeginPlay-пути (task_section8_blocks_fgh.md, блокер ревью §0.3).
+		AttributeSet->InitMaxAP(DefaultMaxAP);
+		AttributeSet->InitAP(DefaultMaxAP);
+		AttributeSet->InitMaxHP(DefaultMaxHP);
+		AttributeSet->InitHP(DefaultMaxHP);
+		AttributeSet->InitMaxMP(DefaultMaxMP);
+		AttributeSet->InitMP(DefaultMaxMP);
+		AttributeSet->InitMaxCharges(DefaultMaxCharges);
+		AttributeSet->InitCharges(DefaultMaxCharges);
+		AttributeSet->InitBalance(0.0f);
+		AttributeSet->InitMaxStagger(DefaultMaxStagger);
+		AttributeSet->InitStagger(0.0f);
+	}
+
 	if (AbilitySystemComponent)
 	{
 		// OwnerActor == AvatarActor == this: ASC не на PlayerState, ни у игрока, ни у врага.
