@@ -89,6 +89,9 @@ void AClanhallCharacter::BeginPlay()
 		AttributeSet->InitMaxCharges(4.0f);
 		AttributeSet->InitCharges(4.0f);
 		AttributeSet->InitBalance(0.0f);
+		// task_parry_rework.md §1.3: усталость парирования, потолок-плейсхолдер — подбирается плейтестом.
+		AttributeSet->InitMaxStagger(4.0f);
+		AttributeSet->InitStagger(0.0f);
 	}
 
 	if (AbilitySystemComponent)

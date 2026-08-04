@@ -52,6 +52,12 @@ UGE_ModifyCharges::UGE_ModifyCharges()
 	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetChargesAttribute()));
 }
 
+UGE_ModifyStagger::UGE_ModifyStagger()
+{
+	DurationPolicy = EGameplayEffectDurationType::Instant;
+	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetStaggerAttribute()));
+}
+
 void ClanhallGameplayEffects::ApplyModifyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass, float Magnitude)
 {
 	if (!SourceASC || !TargetASC || !EffectClass)

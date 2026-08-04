@@ -53,14 +53,16 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Balance_Overload_STR);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Balance_Overload_DEX);
 
-	// ---- Parry.Incoming.* ----
-	// Тег, который AI-способность вешает на ASC игрока перед ударом.
-	// Имя тега = направление АТАКИ AI (не ответа игрока).
-	// Обратное направление: W↔S, A↔D (combat_system.md §5).
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Parry_Incoming_W); // AI бьёт W → игрок жмёт S
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Parry_Incoming_S); // AI бьёт S → игрок жмёт W
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Parry_Incoming_A); // AI бьёт A → игрок жмёт D
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Parry_Incoming_D); // AI бьёт D → игрок жмёт A
+	// ---- Attack.Direction.* ----
+	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
+	// замаха (UClanhallComboComponent::ActivateStep), стороне-нейтрален (и игрок, и AI).
+	// Раньше назывался Parry.Incoming.* — имя лгало (описывало «летит откуда-то», а не
+	// «я бью туда-то»); переименован в task_parry_rework.md. Обратная пара для клэша:
+	// W↔S, A↔D (combat_system.md §5).
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_W);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_S);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_A);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_D);
 
 	// ---- Cooldown.Slot.* ----
 	// КД принадлежит СЛОТУ, а не конкретному навыку (ability_system.md §3).

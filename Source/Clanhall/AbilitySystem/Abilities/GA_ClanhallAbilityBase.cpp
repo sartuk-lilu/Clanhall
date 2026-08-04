@@ -1,6 +1,7 @@
 #include "GA_ClanhallAbilityBase.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
+#include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -88,6 +89,27 @@ bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* Sou
 	if (Overflow > 0.0f)
 	{
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, TargetASC, UGE_ModifyHP::StaticClass(), -Overflow);
+	}
+
+	// task_parry_rework.md §1.4/§1.5: подтверждённый (не парированный) удар — второй сквозной
+	// принцип «кто первым нанёс контакт, сбивает другого». Цель получила контакт по себе — её
+	// собственная зона (если есть/скоро откроется) гасится до конца текущего шага, симметрично
+	// клэшу в UClanhallParryComponent::TryParry. Атакующий — тот, чья зона нанесла контакт —
+	// получает хитстоп; роль (игрок/AI) нигде не проверяется.
+	if (AActor* TargetAvatar = TargetASC->GetAvatarActor())
+	{
+		if (UClanhallHitboxComponent* TargetHitbox = TargetAvatar->FindComponentByClass<UClanhallHitboxComponent>())
+		{
+			TargetHitbox->SuppressHitboxes();
+		}
+	}
+
+	if (AActor* SourceAvatar = SourceASC->GetAvatarActor())
+	{
+		if (UClanhallHitboxComponent* SourceHitbox = SourceAvatar->FindComponentByClass<UClanhallHitboxComponent>())
+		{
+			SourceHitbox->ApplyHitstop(SourceHitbox->HitstopDurationOnDamage);
+		}
 	}
 
 	return true;

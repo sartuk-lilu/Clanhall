@@ -219,6 +219,13 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		return;
 	}
 
+	// task_parry_rework.md §1.4: новая активка — снимаем подавление зон прошлого шага/промаха,
+	// независимо от того, есть ли у навыка каст-монтаж (фолбэк-путь тоже открывает зону сферой).
+	if (UClanhallHitboxComponent* HitboxComp = Avatar->FindComponentByClass<UClanhallHitboxComponent>())
+	{
+		HitboxComp->ResetSuppression();
+	}
+
 	// Поиск цели нужен фолбэк-пути (урон мгновенно, без ожидания контакта). Контрнавык цель
 	// отсюда НЕ берёт — он резолвится по контакту, в ResolveHitOn: зона атакующего касается
 	// тела защищающегося, состояние защищающегося проверяется в момент касания, тем же

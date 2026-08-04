@@ -64,6 +64,17 @@ public:
 	FGameplayAttributeData Balance;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, Balance);
 
+	// --- Stagger: усталость от парирования (task_parry_rework.md §1.3). Копится владельцу
+	// зоны на каждом отпарированном шаге, распадается таймером на UClanhallParryComponent
+	// после паузы без парирований; на потолке — сброс в 0 + State.Stunned владельцу. ---
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Stagger, Category = "Clanhall|Stagger")
+	FGameplayAttributeData Stagger;
+	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, Stagger);
+
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxStagger, Category = "Clanhall|Stagger")
+	FGameplayAttributeData MaxStagger;
+	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxStagger);
+
 protected:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
@@ -87,6 +98,10 @@ protected:
 	void OnRep_MaxCharges(const FGameplayAttributeData& OldValue);
 	UFUNCTION()
 	void OnRep_Balance(const FGameplayAttributeData& OldValue);
+	UFUNCTION()
+	void OnRep_Stagger(const FGameplayAttributeData& OldValue);
+	UFUNCTION()
+	void OnRep_MaxStagger(const FGameplayAttributeData& OldValue);
 
 private:
 	/** Держит AP/HP/MP/Charges в [0, Max] и Balance в [-100, 100] при любом источнике изменения. */

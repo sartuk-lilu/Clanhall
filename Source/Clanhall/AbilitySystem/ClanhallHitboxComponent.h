@@ -32,6 +32,7 @@
 #pragma once
 
 #include "Components/ActorComponent.h"
+#include "Engine/TimerHandle.h"
 #include "ClanhallCombatTypes.h"
 #include "ClanhallHitboxTypes.h"
 #include "ClanhallHitboxComponent.generated.h"
@@ -61,7 +62,8 @@ public:
 	bool bDrawDebugHitboxes = false;
 
 	/** Открыть зону. Source — объект-владелец окна (нотифай), по нему же зона закрывается.
-	 *  Возвращает хендл зоны (>0) или 0 при отказе. */
+	 *  Возвращает хендл зоны (>0) или 0 при отказе — в т.ч. если зоны сейчас подавлены
+	 *  (см. IsSuppressed). */
 	int32 BeginHitbox(const FClanhallHitboxDesc& Desc, const UObject* Source);
 
 	/** Закрыть все зоны, открытые этим Source. */
@@ -82,6 +84,41 @@ public:
 	/** Установить направление текущего WASD-удара — вызывается из GA_DirectionalAttackBase до
 	 *  открытия зоны. Читается ТОЛЬКО зонами с bParryable == true. */
 	void SetCurrentDirection(EClanhallAttackDirection Dir);
+
+	/** task_parry_rework.md §1.4: по владельцу пришёл любой контакт (клэш или пропущенный
+	 *  урон) — зоны глушатся до конца текущего шага. Закрывает уже открытые зоны (как
+	 *  EndAllHitboxes) и взводит флаг, из-за которого BeginHitbox() дальше не открывает новые.
+	 *  Если открытых зон не было (типичный случай для клэша — своя зона ещё не успела
+	 *  открыться), Event.Hitbox.Closed шлётся здесь явно: иначе ждущая способность
+	 *  (GA_DirectionalAttackBase/GA_PhysicalSkill) не получит терминатор, а State.SkillCommitted
+	 *  зависнет до конца каст-монтажа. */
+	void SuppressHitboxes();
+
+	/** Снимает подавление — зовётся на СЛЕДУЮЩЕМ шаге/активации владельца
+	 *  (UClanhallComboComponent::ActivateStep, UGA_PhysicalSkill::ActivateAbility). */
+	void ResetSuppression() { bHitboxesSuppressed = false; }
+
+	bool IsSuppressed() const { return bHitboxesSuppressed; }
+
+	/** task_parry_rework.md §1.5: кратковременно замедляет текущий проигрываемый монтаж
+	 *  владельца — вызывается у того, ЧЬЯ зона нанесла контакт (не у обоих, не у получившего).
+	 *  Play rate восстанавливается таймером через Duration секунд. Duration <= 0 — no-op. */
+	void ApplyHitstop(float Duration);
+
+	/** Скорость проигрывания монтажа на время хитстопа. */
+	UPROPERTY(EditDefaultsOnly, Category = "Hitbox|Hitstop")
+	float HitstopPlayRate = 0.15f;
+
+	/** Длительность хитстопа при подтверждённом уроне (~3-5 кадров @ 30fps). */
+	UPROPERTY(EditDefaultsOnly, Category = "Hitbox|Hitstop")
+	float HitstopDurationOnDamage = 0.1f;
+
+	/** Длительность хитстопа при клэше (~5-8 кадров @ 30fps). Держать ≤ 5 кадров (0.166с) —
+	 *  на игроке хитстоп сдвигает вправо его собственное освобождение, а у босса нет
+	 *  симметричного сдвига; при 8+ кадрах цепочка парирований по расчёту перестаёт сходиться
+	 *  (task_parry_rework.md §1.5). */
+	UPROPERTY(EditDefaultsOnly, Category = "Hitbox|Hitstop")
+	float HitstopDurationOnClash = 0.166f;
 
 	/** Обычный хит (не парирование). HitboxHandle позволяет подписчику отличить свою зону от
 	 *  чужой — нужно способности, ждущей своё окно контакта (Event.Hitbox.Hit несёт тот же
@@ -114,6 +151,14 @@ private:
 	TArray<FActiveHitbox> ActiveHitboxes;
 	int32 NextHitboxHandle = 1;
 	EClanhallAttackDirection CurrentDirection = EClanhallAttackDirection::Overhead;
+
+	/** task_parry_rework.md §1.4: взведено — BeginHitbox() отказывает, до сброса на
+	 *  следующем шаге/активации владельца. */
+	bool bHitboxesSuppressed = false;
+
+	/** Хендл восстановления play rate после ApplyHitstop — переиспользуется, повторный вызов
+	 *  просто отодвигает восстановление, двух параллельных хитстопов быть не должно. */
+	FTimerHandle HitstopRestoreHandle;
 
 	void TickHitbox(FActiveHitbox& Box, USkeletalMeshComponent* Mesh);
 

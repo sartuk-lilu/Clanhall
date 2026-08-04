@@ -10,9 +10,12 @@
 #include "GameplayEffectTypes.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 
 UClanhallHitboxComponent::UClanhallHitboxComponent()
 {
@@ -27,7 +30,7 @@ void UClanhallHitboxComponent::SetCurrentDirection(EClanhallAttackDirection Dir)
 
 int32 UClanhallHitboxComponent::BeginHitbox(const FClanhallHitboxDesc& Desc, const UObject* Source)
 {
-	if (!Source)
+	if (!Source || bHitboxesSuppressed)
 	{
 		return 0;
 	}
@@ -88,6 +91,52 @@ void UClanhallHitboxComponent::EndHitboxesFromMontage(const UAnimMontage* Montag
 		SetComponentTickEnabled(false);
 		NotifyAllHitboxesClosed();
 	}
+}
+
+void UClanhallHitboxComponent::SuppressHitboxes()
+{
+	bHitboxesSuppressed = true;
+
+	const bool bHadActiveZones = ActiveHitboxes.Num() > 0;
+	EndAllHitboxes();   // закрывает открытые зоны, шлёт Event.Hitbox.Closed, если они были
+
+	if (!bHadActiveZones)
+	{
+		// Своя зона ещё не успела открыться (типичный случай клэша — окно парирования всегда
+		// закрывается раньше Hitbox-нотифая, см. AnimNotifyState_ParryWindow разметку). Без
+		// этого явного вызова EndAllHitboxes() выше не эмитит Closed (не было перехода
+		// «были->нет»), а способность, ждущая терминатор, зависнет вместе с State.SkillCommitted
+		// до конца каст-монтажа (task_parry_rework.md §1.4, «Ловушка»).
+		NotifyAllHitboxesClosed();
+	}
+}
+
+void UClanhallHitboxComponent::ApplyHitstop(float Duration)
+{
+	if (Duration <= 0.0f)
+	{
+		return;
+	}
+
+	ACharacter* Char = Cast<ACharacter>(GetOwner());
+	UAnimInstance* AnimInst = Char && Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr;
+	UAnimMontage* ActiveMontage = AnimInst ? AnimInst->GetCurrentActiveMontage() : nullptr;
+	if (!AnimInst || !ActiveMontage)
+	{
+		return;
+	}
+
+	AnimInst->Montage_SetPlayRate(ActiveMontage, HitstopPlayRate);
+
+	const TWeakObjectPtr<UAnimInstance> WeakAnimInst = AnimInst;
+	const TWeakObjectPtr<UAnimMontage> WeakMontage = ActiveMontage;
+	GetWorld()->GetTimerManager().SetTimer(HitstopRestoreHandle, FTimerDelegate::CreateLambda([WeakAnimInst, WeakMontage]()
+	{
+		if (WeakAnimInst.IsValid() && WeakMontage.IsValid())
+		{
+			WeakAnimInst->Montage_SetPlayRate(WeakMontage.Get(), 1.0f);
+		}
+	}), Duration, false);
 }
 
 void UClanhallHitboxComponent::EndAllHitboxes()

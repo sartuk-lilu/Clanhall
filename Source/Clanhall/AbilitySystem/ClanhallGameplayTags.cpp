@@ -32,10 +32,10 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_STR, "Balance.Overload.STR", "Шкала DEX↔STR в зоне перегруза STR (+60..+100) — STR-навыки ×2 Charges");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_DEX, "Balance.Overload.DEX", "Шкала DEX↔STR в зоне перегруза DEX (−60..−100) — DEX-навыки ×2 Charges");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Parry_Incoming_W, "Parry.Incoming.W", "AI бьёт сверху (W) — игрок должен нажать S");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Parry_Incoming_S, "Parry.Incoming.S", "AI бьёт снизу (S) — игрок должен нажать W");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Parry_Incoming_A, "Parry.Incoming.A", "AI бьёт влево (A) — игрок должен нажать D");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Parry_Incoming_D, "Parry.Incoming.D", "AI бьёт вправо (D) — игрок должен нажать A");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "Владелец сейчас бьёт Overhead (W) — висит на время замаха");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_S, "Attack.Direction.S", "Владелец сейчас бьёт Low Sweep (S) — висит на время замаха");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_A, "Attack.Direction.A", "Владелец сейчас бьёт Left Slash (A) — висит на время замаха");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_D, "Attack.Direction.D", "Владелец сейчас бьёт Right Slash (D) — висит на время замаха");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot, "Cooldown.Slot", "Корень слотов КД — фильтр динамических тегов спека в GA_PhysicalSkill::GetCooldownSlotTag");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Q, "Cooldown.Slot.Q", "Слот Q на перезарядке — общий для всех оружий (ability_system.md §3)");

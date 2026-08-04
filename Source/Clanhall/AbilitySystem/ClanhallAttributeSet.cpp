@@ -35,6 +35,10 @@ void UClanhallAttributeSet::ClampAttribute(const FGameplayAttribute& Attribute, 
 	{
 		NewValue = FMath::Clamp(NewValue, -100.0f, 100.0f);
 	}
+	else if (Attribute == GetStaggerAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, MaxStagger.GetCurrentValue());
+	}
 }
 
 void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -66,6 +70,10 @@ void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCa
 	{
 		SetBalance(FMath::Clamp(GetBalance(), -100.0f, 100.0f));
 	}
+	else if (ChangedAttribute == GetStaggerAttribute())
+	{
+		SetStagger(FMath::Clamp(GetStagger(), 0.0f, GetMaxStagger()));
+	}
 }
 
 void UClanhallAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -81,6 +89,8 @@ void UClanhallAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, Charges, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxCharges, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, Balance, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, Stagger, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxStagger, COND_None, REPNOTIFY_Always);
 }
 
 void UClanhallAttributeSet::OnRep_AP(const FGameplayAttributeData& OldValue)
@@ -126,4 +136,14 @@ void UClanhallAttributeSet::OnRep_MaxCharges(const FGameplayAttributeData& OldVa
 void UClanhallAttributeSet::OnRep_Balance(const FGameplayAttributeData& OldValue)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, Balance, OldValue);
+}
+
+void UClanhallAttributeSet::OnRep_Stagger(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, Stagger, OldValue);
+}
+
+void UClanhallAttributeSet::OnRep_MaxStagger(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, MaxStagger, OldValue);
 }

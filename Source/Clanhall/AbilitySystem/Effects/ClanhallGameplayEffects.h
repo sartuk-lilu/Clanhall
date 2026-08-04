@@ -52,6 +52,14 @@ public:
 	UGE_ModifyCharges();
 };
 
+UCLASS()
+class CLANHALL_API UGE_ModifyStagger : public UGameplayEffect
+{
+	GENERATED_BODY()
+public:
+	UGE_ModifyStagger();
+};
+
 namespace ClanhallGameplayEffects
 {
 	/** Собирает FGameplayEffectSpec из EffectClass, выставляет его единственную SetByCaller-магнитуду

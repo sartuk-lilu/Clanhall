@@ -42,8 +42,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallComboComponent> ComboComponent;
 
-	/** Раздел 5: флаг bParrySuccessful, TryParry(). Стороне-нейтрален (main_dev_plan.md §8,
-	 *  Блок D) — работает одинаково у игрока и у AI. */
+	/** Раздел 5: флаг bStepParried, TryParry(). Стороне-нейтрален (task_parry_rework.md) —
+	 *  работает одинаково у игрока и у AI. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallParryComponent> ParryComponent;
 
