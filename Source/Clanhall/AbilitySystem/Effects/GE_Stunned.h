@@ -24,4 +24,10 @@ class CLANHALL_API UGE_Stunned : public UGameplayEffect
 
 public:
 	UGE_Stunned();
+
+	// FindOrAddComponent создаёт GE-компонент через NewObject(this, NAME_None, ...) — движок фатально
+	// падает, если это происходит внутри собственного конструктора this (ObjectInitializer ловит
+	// попытку создать субобъект без стабильного имени). PostInitProperties выполняется уже после
+	// того, как конструктор отработал, поэтому безопасен для FindOrAddComponent.
+	virtual void PostInitProperties() override;
 };
