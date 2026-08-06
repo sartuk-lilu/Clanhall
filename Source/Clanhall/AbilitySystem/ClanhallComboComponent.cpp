@@ -89,6 +89,19 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 
 void UClanhallComboComponent::TryStartSequence(EClanhallAttackDirection Direction)
 {
+	// task_stagger_control_code.md §2.2: единственная точка, где реально СТАРТУЕТ новая серия —
+	// сброс счётчика отпарированных шагов здесь, безусловно и до попытки активации. Корректность
+	// не зависит от того, каким путём закончилась предыдущая серия (их несколько и станет больше):
+	// между сериями счётчик обязан быть нулём, а активация ниже может и провалиться — сброс от
+	// этого не должен зависеть, вреда простою нулём нет. Не дублировать в ResetCombo().
+	if (AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner()))
+	{
+		if (UClanhallParryComponent* OwnParry = Character->FindComponentByClass<UClanhallParryComponent>())
+		{
+			OwnParry->ResetStaggerSeries();
+		}
+	}
+
 	const UComboData* Data = GetComboData();
 	UAnimMontage* Montage = Data ? Data->FindOpenerMontage(Direction) : nullptr;
 	if (!Montage)

@@ -42,26 +42,26 @@ public:
 	UPROPERTY(EditAnywhere, Category="VFX")
 	TObjectPtr<USoundBase> ClashSound;
 
-	/** Оглушение владельца серии при заполнении Stagger до потолка (task_parry_rework.md §1.3).
-	 *  Было UClanhallComboComponent::FullParryStunDuration. */
+	/** Пауза без единого события, кормящего шкалу, после которой Stagger начинает распадаться
+	 *  (task_stagger_control_code.md §3). */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo|Parry")
-	float FullParryStunDuration = 2.0f;
+	float StaggerDecayDelay = 10.0f;
 
-	/** Снижение КД парировавшего при заполнении Stagger владельца до потолка.
-	 *  Было UClanhallComboComponent::FullParryCooldownReduction. */
+	/** Сколько секунд идёт слив ПОЛНОЙ шкалы (не деления!) — интервал между тиками считается как
+	 *  StaggerDrainDuration / MaxStagger, так скорость слива фиксирована и не зависит от потолка
+	 *  конкретного бойца (task_stagger_control_code.md §3). */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo|Parry")
-	float FullParryCooldownReduction = 5.0f;
+	float StaggerDrainDuration = 5.0f;
 
-	/** Пауза без единого парирования, после которой Stagger начинает распадаться. */
-	UPROPERTY(EditDefaultsOnly, Category = "Combo|Parry")
-	float StaggerDecayDelay = 3.0f;
-
-	/** Интервал между тиками распада (−1 Stagger за тик), пока Stagger > 0. */
-	UPROPERTY(EditDefaultsOnly, Category = "Combo|Parry")
-	float StaggerDecayInterval = 1.5f;
-
-	/** Вызывается UClanhallComboComponent::ActivateStep перед каждым новым шагом владельца. */
+	/** Вызывается UClanhallComboComponent::ActivateStep перед каждым новым шагом владельца —
+	 *  дедуп многофазной зоны ВНУТРИ шага. Не путать с ResetStaggerSeries() (счётчик серии). */
 	void ResetParry();
+
+	/** Сбрасывает счётчик отпарированных шагов серии (ParriedStepsThisSeries) — зовётся
+	 *  UClanhallComboComponent::TryStartSequence в момент, когда реально стартует новая серия
+	 *  ВЛАДЕЛЬЦА (task_stagger_control_code.md §2.2). Отличается от ResetParry(): тот дедуп-guard
+	 *  на шаге, этот — счётчик дохода на серии. */
+	void ResetStaggerSeries() { ParriedStepsThisSeries = 0; }
 
 	/** Зовётся из UClanhallHitboxComponent::CheckAndHandleParry на ЗОНЕ АТАКУЮЩЕГО (владельца
 	 *  этого компонента) — только для зон с bParryable == true (ability_system.md §2: активки
@@ -69,27 +69,50 @@ public:
 	 *  вызывающим на State.Parrying; MyDirection — направление СВОЕГО удара. Успех — MyDirection
 	 *  обратно направлению, которое HitTarget повесил на СЕБЯ тегом Attack.Direction.*
 	 *  (UClanhallComboComponent::ActivateStep). При успехе: владелец (атакующий) получает
-	 *  Stagger + хитстоп, HitTarget (парировавший) — Charge, его собственная зона подавляется. */
+	 *  Stagger (со второго отпарированного шага серии) + хитстоп, HitTarget (парировавший) —
+	 *  Charge, его собственная зона подавляется. */
 	bool TryParry(AActor* HitTarget, EClanhallAttackDirection MyDirection, FVector HitLocation);
 
+	/** Единственная точка входа в шкалу Stagger владельца (task_stagger_control_code.md §1).
+	 *  Прямых записей в атрибут Stagger в проекте больше нет — только через этот метод. Порядок
+	 *  внутри строгий: прервать активный слив -> прибавить Amount (если > 0) -> обработать
+	 *  потолок (Mark.Staggered, не стан) -> перезапустить отсчёт паузы перед распадом.
+	 *  AddStagger(0) легален и обязателен для первого отпарированного шага серии: контр-действие
+	 *  было, выплаты нет, но слив всё равно рвётся и пауза перезапускается. No-op целиком, включая
+	 *  таймеры, если у противника владельца нет навыка, обналичивающего Mark.Staggered (§7).
+	 *  Третий кормилец (после парирования и контрнавыка) появится в Разделе 9 — антимагия,
+	 *  Amount = число слов перехваченного заклинания. */
+	void AddStagger(float Amount);
+
 private:
-	/** Снижает остаток всех активных Cooldown.*-эффектов на ASC на ReductionSeconds — было
-	 *  UClanhallComboComponent::ReduceCooldowns, переехало сюда вместе с выплатой при полном
-	 *  заполнении Stagger (task_parry_rework.md §1.3). Умрёт в task_skill_economy_concept.md,
-	 *  не здесь. */
-	void ReduceCooldowns(UAbilitySystemComponent* TargetASC, float ReductionSeconds) const;
+	/** Сколько шагов ТЕКУЩЕЙ серии владельца уже отпарировано — со второго Stagger растёт на 1
+	 *  (task_stagger_control_code.md §2). Приватно и без геттера: это счётчик ДОХОДА, а не признак
+	 *  "подряд идущих" парирований, который понадобится BT для решения об отступлении (Блок G) —
+	 *  разная семантика (см. пример D->A->D в задании), общий счётчик под оба назначения не подходит.
+	 *  Сбрасывается ИСКЛЮЧИТЕЛЬНО через ResetStaggerSeries(), из UClanhallComboComponent::
+	 *  TryStartSequence — не здесь и не в ResetParry(). */
+	int32 ParriedStepsThisSeries = 0;
+
+	/** task_stagger_control_code.md §7: подсистема Stagger владельца включена, только если у его
+	 *  противника есть навык с синергией на Mark.Staggered — иначе AddStagger no-op целиком.
+	 *  Считается один раз в BeginPlay (см. .cpp) — пересчёт при смене оружия в бэклог, оружие в
+	 *  бою прототипа не меняется. */
+	bool bStaggerGateOpen = false;
+
+	virtual void BeginPlay() override;
 
 	UAbilitySystemComponent* GetASC() const;
 
-	/** (Пере)запускает отсчёт паузы перед распадом — зовётся при каждом +1 Stagger. */
+	/** (Пере)запускает отсчёт паузы перед распадом — зовётся из AddStagger при каждом вызове. */
 	void ScheduleStaggerDecay();
-	/** Пауза истекла без новых парирований — запускает повторяющийся тик распада. */
+	/** Пауза истекла без новых событий — запускает повторяющийся тик распада с интервалом
+	 *  StaggerDrainDuration / MaxStagger (текущий потолок владельца). */
 	void OnStaggerDecayDelayElapsed();
 	/** Один тик распада: −1 Stagger; останавливает себя, когда Stagger дошёл до 0. */
 	void DecayStaggerStep();
 
 	/** Общий хендл: сначала держит одноразовую паузу (StaggerDecayDelay), затем сам себя
-	 *  перезапускает как повторяющийся тик (StaggerDecayInterval) — SetTimer с тем же хендлом
-	 *  полностью заменяет предыдущее расписание. */
+	 *  перезапускает как повторяющийся тик (StaggerDrainDuration / MaxStagger) — SetTimer с тем же
+	 *  хендлом полностью заменяет предыдущее расписание. */
 	FTimerHandle StaggerDecayTimer;
 };

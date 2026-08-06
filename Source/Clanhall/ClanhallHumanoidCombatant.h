@@ -100,7 +100,21 @@ public:
 	 *  откажет (main_dev_plan.md §8, Блок A2). */
 	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag CooldownSlotTag) const;
 
+	/** task_stagger_control_code.md §7: есть ли у ПРОТИВНИКА этого бойца (см. FindPrototypeOpponent)
+	 *  навык с синергией на RequiredMark в ClassKit->Skills. Читает UClanhallParryComponent в
+	 *  BeginPlay, чтобы решить, копится ли Stagger владельца вообще. */
+	bool HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const;
+
 protected:
 	/** Грант WASD-ударов и активок из ClassKit — общий для игрока и AClanhallHumanoidBoss. */
 	virtual void BeginPlay() override;
+
+private:
+	/** Прототип 1v1: единственный ДРУГОЙ AClanhallHumanoidCombatant в мире. Полноценного
+	 *  таргетинга (кто чей противник) в проекте ещё нет — AIController/BT тоже нет (main_dev_plan.md
+	 *  §8, Блок G). Заменить, когда одновременно появится больше одного противника. */
+	AClanhallHumanoidCombatant* FindPrototypeOpponent() const;
+
+	/** Есть ли у ЭТОГО бойца (не противника) в ClassKit->Skills навык с синергией RequiredMark. */
+	bool HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const;
 };

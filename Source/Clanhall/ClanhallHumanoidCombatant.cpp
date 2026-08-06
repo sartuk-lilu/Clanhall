@@ -6,9 +6,12 @@
 #include "AbilitySystem/ClassKitData.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Fragments/ComboData.h"
+#include "AbilitySystem/Fragments/GameplayFragments.h"
+#include "AbilitySystem/ClanhallMarkTypes.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
 #include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
+#include "EngineUtils.h"
 
 AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
 {
@@ -104,4 +107,52 @@ FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetAttackHandle(EClanhall
 FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetActiveSkillHandle(FGameplayTag CooldownSlotTag) const
 {
 	return ActiveSkillHandles.FindRef(CooldownSlotTag);
+}
+
+bool AClanhallHumanoidCombatant::HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const
+{
+	const AClanhallHumanoidCombatant* Opponent = FindPrototypeOpponent();
+	return Opponent && Opponent->HasAbilityWithMarkSynergy(RequiredMark);
+}
+
+AClanhallHumanoidCombatant* AClanhallHumanoidCombatant::FindPrototypeOpponent() const
+{
+	for (TActorIterator<AClanhallHumanoidCombatant> It(GetWorld()); It; ++It)
+	{
+		if (*It != this)
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
+bool AClanhallHumanoidCombatant::HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const
+{
+	if (!ClassKit || !RequiredMark.IsValid())
+	{
+		return false;
+	}
+
+	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : ClassKit->Skills)
+	{
+		const UAbilityData* Data = Skill.Value;
+		const UMarkTriggerFragment* Trigger = Data ? Data->FindFragment<UMarkTriggerFragment>() : nullptr;
+		if (!Trigger)
+		{
+			continue;
+		}
+
+		for (const FMarkSynergy& Synergy : Trigger->Synergies)
+		{
+			// Тот же приём, что в GA_PhysicalSkill::ResolveMarkLogic: MatchesTag, а не == —
+			// корневой RequiredMark (родовой "Mark") матчит любую конкретную метку, в т.ч. Staggered.
+			if (Synergy.RequiredMark.IsValid() && RequiredMark.MatchesTag(Synergy.RequiredMark))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }

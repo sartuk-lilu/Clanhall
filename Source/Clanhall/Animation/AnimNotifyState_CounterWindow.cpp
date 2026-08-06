@@ -80,7 +80,7 @@ void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshCom
 		{
 			UE_LOG(LogClanhall, Warning, TEXT("CounterWindow: %s has no Cooldown.Slot dynamic tag on its spec — grant is broken, successful counter won't apply cooldown"), *Data->DisplayName.ToString());
 		}
-		CounterComp->OpenWindow(Data->CounteredBy, Handle, SlotTag, Data->Cooldown, Data->CounterStunDuration);
+		CounterComp->OpenWindow(Data->CounteredBy, Handle, SlotTag, Data->Cooldown);
 	}
 }
 

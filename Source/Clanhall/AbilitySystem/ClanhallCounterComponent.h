@@ -27,10 +27,10 @@ class CLANHALL_API UClanhallCounterComponent : public UActorComponent
 
 public:
 	/** Открывает окно: запоминает набор навыков, которыми контримую активку можно прервать
-	 *  (CounteredByTags), её хендл, КД (чтобы наложить на владельца при успешном контре) и
-	 *  длительность стана (свойство СБИТОГО навыка — см. AbilityData::CounterStunDuration),
-	 *  вешает State.CounterWindow на ASC владельца. */
-	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration, float InStunDuration);
+	 *  (CounteredByTags), её хендл и КД (чтобы наложить на владельца при успешном контре),
+	 *  вешает State.CounterWindow на ASC владельца. Стан больше не параметр — успешный контр
+	 *  сбитого не оглушает, а начисляет Stagger (task_stagger_control_code.md §5). */
+	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration);
 
 	/** Транслирует получателям, что владельца этого окна сбили контром (флинч/VFX/звук). */
 	UPROPERTY(BlueprintAssignable, Category = "Counter")
@@ -42,7 +42,8 @@ public:
 	/** true, если сейчас открыто окно и IncomingTag входит в CounteredByTags (HasTag — матчит и родительские теги). */
 	bool IsCounterableBy(FGameplayTag IncomingTag) const;
 
-	/** Отменяет контримую активку (CancelAbilityHandle), навешивает ей полный КД, закрывает окно. */
+	/** Отменяет контримую активку (CancelAbilityHandle), навешивает ей полный КД, начисляет
+	 *  сбитому +1 Stagger и хитстоп (task_stagger_control_code.md §5.2), закрывает окно. */
 	void ConsumeCounter();
 
 	/** Общий резолвер для навыков: если у Target открыто окно с тем же CounterTag — сбивает его
@@ -57,7 +58,6 @@ private:
 	FGameplayAbilitySpecHandle CounteredHandle;
 	FGameplayTag CounteredCooldownTag;
 	float CounteredCooldownDuration = 0.0f;
-	float CounteredStunDuration = 0.0f;
 
 	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
 	UAbilitySystemComponent* GetASC();

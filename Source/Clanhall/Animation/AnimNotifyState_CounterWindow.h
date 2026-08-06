@@ -7,7 +7,7 @@
  *  Своих данных не несёт — источник истины UAbilityData, тот же ассет, что описывает навык и для
  *  игрока, и для врага, которому этот навык выдан. Ключ поиска активной активки — сам монтаж, на
  *  котором стоит нотифай: NotifyBegin ищет активный спек владельца, чей UAbilityData::CastMontage
- *  совпадает с этим монтажом, и берёт CounteredBy/Cooldown/CounterStunDuration из него
+ *  совпадает с этим монтажом, и берёт CounteredBy/Cooldown из него
  *  (task_dash_and_counter_window.md, Задача 3). */
 UCLASS(const, hidecategories=Object, collapsecategories, meta=(DisplayName="Counter Window"))
 class CLANHALL_API UAnimNotifyState_CounterWindow : public UAnimNotifyState

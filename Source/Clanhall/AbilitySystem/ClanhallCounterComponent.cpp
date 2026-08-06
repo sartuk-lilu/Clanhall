@@ -1,18 +1,19 @@
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
+#include "AbilitySystem/ClanhallParryComponent.h"
+#include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Engine/Engine.h"
 
-void UClanhallCounterComponent::OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration, float InStunDuration)
+void UClanhallCounterComponent::OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration)
 {
 	bWindowOpen = true;
 	CounteredByTags = InCounteredBy;
 	CounteredHandle = InCounteredHandle;
 	CounteredCooldownTag = InCooldownTag;
 	CounteredCooldownDuration = InCooldownDuration;
-	CounteredStunDuration = InStunDuration;
 
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
@@ -27,7 +28,6 @@ void UClanhallCounterComponent::CloseWindow()
 	CounteredHandle = FGameplayAbilitySpecHandle();
 	CounteredCooldownTag = FGameplayTag();
 	CounteredCooldownDuration = 0.0f;
-	CounteredStunDuration = 0.0f;
 
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
@@ -56,14 +56,26 @@ void UClanhallCounterComponent::ConsumeCounter()
 			ClanhallGameplayEffects::ApplyTimedTag(ASC, CounteredCooldownTag, CounteredCooldownDuration);
 		}
 
-		if (CounteredStunDuration > 0.0f)
-		{
-			ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_Stunned.GetTag(), CounteredStunDuration);
-		}
-
 #if !UE_BUILD_SHIPPING
 		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, полный КД"));
 #endif
+	}
+
+	// task_stagger_control_code.md §5.2: +1 усталости сбитому и хитстоп — переиспользуем
+	// UClanhallHitboxComponent::ApplyHitstop, ту же реализацию, что резолв клэша в TryParry.
+	// Синхронно, не через OnCounterConsumed — тот делегат для будущей реакции получателя (флинч/VFX),
+	// хитстоп должен ударить в тот же кадр, что и сам контр.
+	if (AActor* Owner = GetOwner())
+	{
+		if (UClanhallParryComponent* OwnParry = Owner->FindComponentByClass<UClanhallParryComponent>())
+		{
+			OwnParry->AddStagger(1.0f);
+		}
+
+		if (UClanhallHitboxComponent* OwnHitbox = Owner->FindComponentByClass<UClanhallHitboxComponent>())
+		{
+			OwnHitbox->ApplyHitstop(OwnHitbox->HitstopDurationOnClash);
+		}
 	}
 
 	OnCounterConsumed.Broadcast();

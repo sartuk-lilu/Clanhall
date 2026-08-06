@@ -2,7 +2,9 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
+#include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
+#include "ClanhallHumanoidCombatant.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayEffect.h"
@@ -11,6 +13,20 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Engine/Engine.h"
+
+void UClanhallParryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// task_stagger_control_code.md §7: гейт подсистемы, посчитан один раз на входе в бой.
+	// Прототип 1v1 — "противник" ищет AClanhallHumanoidCombatant::HasOpponentWithMarkSynergy,
+	// у которой пока нет полноценного таргетинга (см. её комментарий); пересчёт при смене
+	// оружия сознательно не делается.
+	if (const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner()))
+	{
+		bStaggerGateOpen = Character->HasOpponentWithMarkSynergy(ClanhallGameplayTags::Mark_Staggered.GetTag());
+	}
+}
 
 void UClanhallParryComponent::ResetParry()
 {
@@ -70,27 +86,58 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 		TargetHitbox->SuppressHitboxes();
 	}
 
+	// task_stagger_control_code.md §2: со второго отпарированного шага серии — первый идёт
+	// бесплатно (рвёт слив, перезапускает паузу, но шкалу не растит).
+	++ParriedStepsThisSeries;
+	AddStagger(ParriedStepsThisSeries > 1 ? 1.0f : 0.0f);
+
 	if (UAbilitySystemComponent* OwnASC = GetASC())
 	{
-		// Мне (владельцу зоны, атакующему) — усталость.
-		ClanhallGameplayEffects::ApplyModifyEffect(OwnASC, OwnASC, UGE_ModifyStagger::StaticClass(), 1.0f);
-		ScheduleStaggerDecay();
-
-		const UClanhallAttributeSet* OwnAttributes = OwnASC->GetSet<UClanhallAttributeSet>();
-		if (OwnAttributes && OwnAttributes->GetStagger() >= OwnAttributes->GetMaxStagger())
-		{
-			// Потолок — сброс в 0 и стан владельцу, парировавшему — снижение КД
-			// (task_parry_rework.md §1.3). Одиночное парирование стан НЕ выдаёт никому.
-			ClanhallGameplayEffects::ApplyModifyEffect(OwnASC, OwnASC, UGE_ModifyStagger::StaticClass(), -OwnAttributes->GetStagger());
-			ClanhallGameplayEffects::ApplyTimedTag(OwnASC, ClanhallGameplayTags::State_Stunned.GetTag(), FullParryStunDuration);
-			ReduceCooldowns(TargetASC, FullParryCooldownReduction);
-		}
-
-		// Парировавшему (цели) — заряд.
+		// Парировавшему (цели) — заряд. Заряд платится за само действие, не зависит от AddStagger/гейта.
 		ClanhallGameplayEffects::ApplyModifyEffect(OwnASC, TargetASC, UGE_ModifyCharges::StaticClass(), 1.0f);
 	}
 
 	return true;
+}
+
+void UClanhallParryComponent::AddStagger(float Amount)
+{
+	// §7: без обналичивающего навыка у противника шкала не существует — no-op целиком,
+	// включая перезапуск таймеров распада.
+	if (!bStaggerGateOpen)
+	{
+		return;
+	}
+
+	// §3: любой вызов, включая AddStagger(0), прерывает текущий слив и сохраняет остаток —
+	// тот же FTimerHandle, что ниже перезапускает ScheduleStaggerDecay().
+	GetWorld()->GetTimerManager().ClearTimer(StaggerDecayTimer);
+
+	UAbilitySystemComponent* ASC = GetASC();
+	const UClanhallAttributeSet* Attributes = ASC ? ASC->GetSet<UClanhallAttributeSet>() : nullptr;
+	if (ASC && Attributes)
+	{
+		if (Amount > 0.0f)
+		{
+			ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), Amount);
+		}
+
+		if (Attributes->GetStagger() >= Attributes->GetMaxStagger())
+		{
+			// Потолок (task_stagger_control_code.md §4): сброс в 0 и метка Staggered владельцу —
+			// стан отсюда больше не выдаётся, State.Stunned выдаёт только обналичивающая синергия (§6).
+			ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), -Attributes->GetStagger());
+
+			if (UClanhallMarkComponent* MarkComp = GetOwner() ? GetOwner()->FindComponentByClass<UClanhallMarkComponent>() : nullptr)
+			{
+				// Источник неизвестен на этом уровне (AddStagger несёт только Amount) — nullptr
+				// легален, IsOwnMark для Mark.Staggered потребителя пока не имеет.
+				MarkComp->ApplyMark(ClanhallGameplayTags::Mark_Staggered.GetTag(), nullptr);
+			}
+		}
+	}
+
+	ScheduleStaggerDecay();
 }
 
 UAbilitySystemComponent* UClanhallParryComponent::GetASC() const
@@ -109,7 +156,18 @@ void UClanhallParryComponent::ScheduleStaggerDecay()
 
 void UClanhallParryComponent::OnStaggerDecayDelayElapsed()
 {
-	GetWorld()->GetTimerManager().SetTimer(StaggerDecayTimer, this, &UClanhallParryComponent::DecayStaggerStep, StaggerDecayInterval, true);
+	// task_stagger_control_code.md §3: скорость слива фиксирована, не длительность — интервал
+	// между тиками пересчитывается от ТЕКУЩЕГО потолка владельца (свой у каждого бойца и тира).
+	const UAbilitySystemComponent* ASC = GetASC();
+	const UClanhallAttributeSet* Attributes = ASC ? ASC->GetSet<UClanhallAttributeSet>() : nullptr;
+	const float MaxStagger = Attributes ? Attributes->GetMaxStagger() : 0.0f;
+	if (MaxStagger <= 0.0f)
+	{
+		return;
+	}
+
+	const float TickInterval = StaggerDrainDuration / MaxStagger;
+	GetWorld()->GetTimerManager().SetTimer(StaggerDecayTimer, this, &UClanhallParryComponent::DecayStaggerStep, TickInterval, true);
 }
 
 void UClanhallParryComponent::DecayStaggerStep()
@@ -123,61 +181,4 @@ void UClanhallParryComponent::DecayStaggerStep()
 	}
 
 	ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), -1.0f);
-}
-
-void UClanhallParryComponent::ReduceCooldowns(UAbilitySystemComponent* TargetASC, float ReductionSeconds) const
-{
-	if (!TargetASC) return;
-
-	// MakeQuery_MatchAnyOwningTags в UE 5.3+ проверяет и asset-теги, и granted-теги (DynamicGrantedTags).
-	// Наш GE_ApplyTimedTag хранит тег в DynamicGrantedTags → запрос с родительским тегом Cooldown его найдёт.
-	FGameplayTagContainer CooldownRoot;
-	CooldownRoot.AddTag(FGameplayTag::RequestGameplayTag("Cooldown"));
-	const FGameplayEffectQuery Query = FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(CooldownRoot);
-	TArray<FActiveGameplayEffectHandle> Handles = TargetASC->GetActiveEffects(Query);
-
-	const float CurrentTime = GetWorld()->GetTimeSeconds();
-
-	// Собрать теги и новые длительности до изменения контейнера.
-	TArray<FGameplayTag> TagsToReapply;
-	TArray<float> NewDurations;
-
-	for (const FActiveGameplayEffectHandle& Handle : Handles)
-	{
-		const FActiveGameplayEffect* ActiveEffect = TargetASC->GetActiveGameplayEffect(Handle);
-		if (!ActiveEffect) continue;
-
-		FGameplayTag CooldownTag;
-		for (const FGameplayTag& Tag : ActiveEffect->Spec.DynamicGrantedTags)
-		{
-			if (Tag.MatchesTag(FGameplayTag::RequestGameplayTag("Cooldown")))
-			{
-				CooldownTag = Tag;
-				break;
-			}
-		}
-		if (!CooldownTag.IsValid()) continue;
-
-		float StartTime, TotalDuration;
-		TargetASC->GetGameplayEffectStartTimeAndDuration(Handle, StartTime, TotalDuration);
-		const float Remaining = (StartTime + TotalDuration) - CurrentTime;
-		const float NewRemaining = Remaining - ReductionSeconds;
-
-		if (NewRemaining > 0.0f)
-		{
-			TagsToReapply.Add(CooldownTag);
-			NewDurations.Add(NewRemaining);
-		}
-		// NewRemaining <= 0 → КД истёк сразу, не перевешиваем
-	}
-
-	// Снять все найденные КД-эффекты, затем перевесить те, что ещё не истекли.
-	for (const FActiveGameplayEffectHandle& Handle : Handles)
-	{
-		TargetASC->RemoveActiveGameplayEffect(Handle);
-	}
-	for (int32 i = 0; i < TagsToReapply.Num(); ++i)
-	{
-		ClanhallGameplayEffects::ApplyTimedTag(TargetASC, TagsToReapply[i], NewDurations[i]);
-	}
 }
