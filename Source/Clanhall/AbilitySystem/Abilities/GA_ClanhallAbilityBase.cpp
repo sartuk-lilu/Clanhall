@@ -102,3 +102,21 @@ float UGA_ClanhallAbilityBase::GetBalanceSign(const UAbilitySystemComponent* Sou
 	const bool bIsSTR = SourceASC && SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
 	return bIsSTR ? 1.0f : -1.0f;
 }
+
+bool UGA_ClanhallAbilityBase::IsBalanceOverloaded(const UAbilitySystemComponent* SourceASC) const
+{
+	if (!SourceASC)
+	{
+		return false;
+	}
+
+	const UClanhallAttributeSet* Attributes = SourceASC->GetSet<UClanhallAttributeSet>();
+	if (!Attributes)
+	{
+		return false;
+	}
+
+	const bool bIsSTR = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
+	const float Balance = Attributes->GetBalance();
+	return bIsSTR ? (Balance >= 60.0f) : (Balance <= -60.0f);
+}

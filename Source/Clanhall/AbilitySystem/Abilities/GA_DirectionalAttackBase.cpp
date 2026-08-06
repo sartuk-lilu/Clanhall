@@ -2,6 +2,7 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
+#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "Animation/AnimNotifyState_Hitbox.h"
 #include "Animation/AnimMontage.h"
@@ -39,6 +40,16 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 	}
 
 	PendingBaseDamage = TriggerEventData ? TriggerEventData->EventMagnitude : 0.0f;
+
+	// Снимок ДО инкремента UClanhallComboComponent::StepCount (см. комментарий у bChargeEligible
+	// в заголовке) — ActivateStep вызывает TriggerAbilityFromGameplayEvent, которая синхронно
+	// доходит и досюда, ДО собственного `++StepCount`/`StepCount = 1` в ComboComponent. Значение
+	// StepCount в этот момент — число УЖЕ завершённых до этого удара шагов: 0 на первом ударе,
+	// 1+ на втором и далее.
+	if (const UClanhallComboComponent* Combo = Avatar->FindComponentByClass<UClanhallComboComponent>())
+	{
+		bChargeEligible = Combo->GetStepCount() >= 1;
+	}
 
 	const UAnimMontage* StepMontage = TriggerEventData ? Cast<UAnimMontage>(TriggerEventData->OptionalObject.Get()) : nullptr;
 	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(StepMontage);
@@ -99,12 +110,8 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 
 	if (ResolveStandardDamage(SourceASC, TargetASC, PendingBaseDamage))
 	{
-		// combat_system.md §4: STR-удар → MP +10, Balance +5..+15; DEX-удар → MP +5, Balance -5..-15.
-		const bool bIsSTR = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
-
-		// MP — ресурс: начисляется на КАЖДУЮ задетую цель (mark_system.md §2 Правило 5).
-		const float MPGain = bIsSTR ? 10.0f : 5.0f;
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyMP::StaticClass(), MPGain);
+		// combat_system.md §4: Balance +5..+15 (STR) / -5..-15 (DEX). Мана с WASD-ударов больше
+		// не капает (ability_system.md §1) — переехала на подтверждённое попадание физактивки.
 
 		// Balance — состояние: сдвигается ОДИН раз за взмах, сколько бы целей ни задело. Иначе
 		// удар по троим давал бы до 45 ед. при пороге перегруза ±60 (mark_system.md §2 Правило 5).
@@ -115,13 +122,22 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 			bBalanceApplied = true;
 		}
 
+		// Charges — доход начиная со ВТОРОГО удара серии (bChargeEligible, снятый в
+		// ActivateAbility), раз за взмах, сколько бы целей ни задело (combat_system.md §1).
+		// Симметрично для игрока и врага — ResolveHitOn общий, проверок на роль нет.
+		if (!bChargeApplied && bChargeEligible)
+		{
+			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), 1.0f);
+			bChargeApplied = true;
+		}
+
 #if !UE_BUILD_SHIPPING
 		if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, FString::Printf(
-				TEXT("WASD hit | self AP %.0f/%.0f  MP %.0f/%.0f  Balance %.1f"),
+				TEXT("WASD hit | self AP %.0f/%.0f  Charges %.0f/%.0f  Balance %.1f"),
 				SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
-				SelfAttributes->GetMP(), SelfAttributes->GetMaxMP(), SelfAttributes->GetBalance()));
+				SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
 		}
 #endif
 	}

@@ -51,7 +51,7 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 	{
 		// E2.4: активка в фазе коммита — начатую активку нельзя оборвать (combat_system.md §3).
 		// Отбрасываем ввод здесь же, до ActivateStep и его ForceEndHitboxes(), иначе WASD сразу
-		// после Q обрывал бы активке окно контакта, хоть заряды и КД уже потрачены.
+		// после Q обрывал бы активке окно контакта, хоть заряды уже потрачены.
 		return;
 	}
 

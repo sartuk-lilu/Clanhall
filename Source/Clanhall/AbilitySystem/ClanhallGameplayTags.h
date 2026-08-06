@@ -64,13 +64,31 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_A);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_D);
 
-	// ---- Cooldown.Slot.* ----
-	// КД принадлежит СЛОТУ, а не конкретному навыку (ability_system.md §3).
-	// Один таймер на слот — общий для всех оружий. Смена оружия не сбрасывает КД.
-	// Слот приходит из ключа UClassKitData::Skills и живёт как динамический тег спека
-	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его больше не хранит
-	// (main_dev_plan.md §8, Блок A2). Корень нужен GA_PhysicalSkill::GetCooldownSlotTag,
-	// чтобы отфильтровать слот среди прочих динамических тегов спека.
+	// ---- Ability.Slot.* ----
+	// Слот принадлежит клавише, а не конкретному навыку (ability_system.md §3) — общий для всех
+	// оружий, ключует UClassKitData::Skills и живёт как динамический тег спека
+	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит
+	// (main_dev_plan.md §8, Блок A2). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
+	// отфильтровать слот среди прочих динамических тегов спека.
+	// Мигрировано из Cooldown.Slot.* (task_economy_no_cooldowns_code.md §1): слот пережил смерть
+	// кулдаунов, но неймспейс Cooldown.* стал бы врать. Ключи существующих UClassKitData-ассетов
+	// нужно перекинуть на новые теги ВРУЧНУЮ в редакторе — код их не трогает.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_Q);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_E);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_R);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_F);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_Z);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_X);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_C);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_V);
+
+	// ---- Cooldown.Slot.* [DEPRECATED] ----
+	// Кулдаунов в проекте больше нет (task_skill_economy_loops.md, «смерть кулдаунов») — эти теги
+	// заменены на Ability.Slot.* выше и код их больше не читает. Оставлены не удалёнными до
+	// проверки Reference Viewer на ассетах (правило тегов CLAUDE.md — переименование/удаление
+	// без проверки рвёт ссылки молча) и до ручного переноса ключей UClassKitData::Skills на
+	// новые теги. Удалить, когда Reference Viewer будет чист.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_Q);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_E);
@@ -80,6 +98,13 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_X);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_C);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Slot_V);
+
+	// ---- Ability.Denied.* ----
+	// Причина отказа TryActivateAbility, пробрасывается в OptionalRelevantTags у
+	// CanActivateAbility и долетает до UAbilitySystemComponent::AbilityFailedCallbacks
+	// (main_dev_plan.md, Denied-фидбек). Charges — единственная причина, которую HUD обязан
+	// показать игроку отдельно от прочих отказов (State.SkillCommitted/State.Stunned).
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Denied_Charges);
 
 	// ---- SetByCaller.* ----
 	// Служебный тег: все наши generic GameplayEffect-классы (GE_Modify*) несут

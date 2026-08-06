@@ -1,8 +1,10 @@
 // Компонент на бойце (игрок и враг, симметрично), который держит окно контрнавыка.
 // Пока висит окно, на владельце State.CounterWindow и запомнен набор навыков, которыми эту
 // активку можно прервать (CounteredByTags), + её хендл. Совпадение (через HasTag, с учётом
-// иерархии тегов) идентичности входящего навыка с этим набором = контр: активка сбивается
-// и уходит на полный КД, окно закрывается.
+// иерархии тегов) идентичности входящего навыка с этим набором = контр: активка сбивается,
+// сбитому +1 Stagger и хитстоп, окно закрывается. Полного КД у сбитого больше нет — заряды
+// уже списаны на активации безусловно, кулдауна в проекте не осталось нигде
+// (task_skill_economy_loops.md).
 //
 // ability_system.md §2.
 
@@ -27,10 +29,11 @@ class CLANHALL_API UClanhallCounterComponent : public UActorComponent
 
 public:
 	/** Открывает окно: запоминает набор навыков, которыми контримую активку можно прервать
-	 *  (CounteredByTags), её хендл и КД (чтобы наложить на владельца при успешном контре),
-	 *  вешает State.CounterWindow на ASC владельца. Стан больше не параметр — успешный контр
-	 *  сбитого не оглушает, а начисляет Stagger (task_stagger_control_code.md §5). */
-	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration);
+	 *  (CounteredByTags) и её хендл, вешает State.CounterWindow на ASC владельца. Ни стан, ни
+	 *  КД больше не параметры: успешный контр сбитого не оглушает и не откатывает — начисляет
+	 *  Stagger (task_stagger_control_code.md §5) и хитстоп, кулдауна в проекте нет
+	 *  (task_skill_economy_loops.md). */
+	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle);
 
 	/** Транслирует получателям, что владельца этого окна сбили контром (флинч/VFX/звук). */
 	UPROPERTY(BlueprintAssignable, Category = "Counter")
@@ -42,22 +45,20 @@ public:
 	/** true, если сейчас открыто окно и IncomingTag входит в CounteredByTags (HasTag — матчит и родительские теги). */
 	bool IsCounterableBy(FGameplayTag IncomingTag) const;
 
-	/** Отменяет контримую активку (CancelAbilityHandle), навешивает ей полный КД, начисляет
-	 *  сбитому +1 Stagger и хитстоп (task_stagger_control_code.md §5.2), закрывает окно. */
+	/** Отменяет контримую активку (CancelAbilityHandle), начисляет сбитому +1 Stagger и хитстоп
+	 *  (task_stagger_control_code.md §5.2), закрывает окно. */
 	void ConsumeCounter();
 
 	/** Общий резолвер для навыков: если у Target открыто окно с тем же CounterTag — сбивает его
 	 *  активку и возвращает true. Резолвится ПО КОНТАКТУ (GA_PhysicalSkill::ResolveHitOn), не на
 	 *  активации — возвращаемое значение сейчас не влияет на коммит вызывающего навыка, тот
-	 *  списывает Charges/КД безусловно (combat_system.md §3). Иначе false — штатный путь. */
+	 *  списывает Charges безусловно (combat_system.md §3). Иначе false — штатный путь. */
 	static bool TryResolveCounter(AActor* Target, FGameplayTag IncomingCounterTag);
 
 private:
 	bool bWindowOpen = false;
 	FGameplayTagContainer CounteredByTags;
 	FGameplayAbilitySpecHandle CounteredHandle;
-	FGameplayTag CounteredCooldownTag;
-	float CounteredCooldownDuration = 0.0f;
 
 	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
 	UAbilitySystemComponent* GetASC();

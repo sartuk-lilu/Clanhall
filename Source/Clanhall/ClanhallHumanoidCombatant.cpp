@@ -39,6 +39,16 @@ void AClanhallHumanoidCombatant::BeginPlay()
 		return;
 	}
 
+	// task_skill_economy_loops.md §3: ранга 0 не существует — на нём нет ни одного активного
+	// навыка, то есть нет потребителя зарядов. UPROPERTY ClampMin=1 гейтит только ввод в
+	// редакторе, не старые сериализованные данные и не программную установку — варн, не тихий
+	// проход, если 0 всё же просочился.
+	if (ClassRank < 1)
+	{
+		UE_LOG(LogClanhall, Warning, TEXT("%s: ClassRank = %d — ранга 0 не существует, клампится до 1."), *GetName(), ClassRank);
+		ClassRank = 1;
+	}
+
 	// Грант способностей 4 направлений WASD-удара (combat_system.md §3-4). Классы дефолтно
 	// заполнены соответствующим C++ GA (см. конструктор), BP-наследник может переопределить.
 	AttackOverheadHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackOverheadClass,   1, INDEX_NONE, this));
@@ -47,22 +57,22 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 	// main_dev_plan.md §8, Блок A2: один класс GA_PhysicalSkill гранится по числу записей в
-	// ClassKit->Skills, каждый раз с UAbilityData как SourceObject — ключ карты (Cooldown.Slot.*)
+	// ClassKit->Skills, каждый раз с UAbilityData как SourceObject — ключ карты (Ability.Slot.*)
 	// сохраняется как адрес хэндла для GetActiveSkillHandle(). Тот же цикл обслуживает и игрока,
 	// и AClanhallHumanoidBoss (§8, Блок C) — DataAsset'ы назначаются в Blueprint-наследнике.
 	if (ClassKit)
 	{
 		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : ClassKit->Skills)
 		{
-			// Невалидный ключ ИЛИ сам корень Cooldown.Slot (а не лист Q/E/R/F/...) грантится, но
-			// GetActiveSkillHandle(Cooldown_Slot_Q) его никогда не найдёт — ключ карты другой.
-			// Корень стал выбираемым значением поля, как только завели native-тег Cooldown.Slot
-			// под фильтр GetCooldownSlotTag (ревью Опуса, Блок A2): meta=(Categories="Cooldown.Slot")
-			// пропускает и его самого, не только листья. Симптом без этой проверки — "Q не
-			// нажимается", причина не ищется.
-			if (!Skill.Key.IsValid() || Skill.Key == ClanhallGameplayTags::Cooldown_Slot.GetTag())
+			// Невалидный ключ ИЛИ сам корень Ability.Slot (а не лист Q/E/R/F/...) грантится, но
+			// GetActiveSkillHandle(Ability_Slot_Q) его никогда не найдёт — ключ карты другой.
+			// Корень стал выбираемым значением поля, как только завели native-тег Ability.Slot
+			// под фильтр GetAbilitySlotTag: meta=(Categories="Ability.Slot") пропускает и его
+			// самого, не только листья. Симптом без этой проверки — "Q не нажимается", причина
+			// не ищется.
+			if (!Skill.Key.IsValid() || Skill.Key == ClanhallGameplayTags::Ability_Slot.GetTag())
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в ClassKit->Skills с невалидным ключом или корнем Cooldown.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
+				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в ClassKit->Skills с невалидным ключом или корнем Ability.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
 				continue;
 			}
 
@@ -104,9 +114,9 @@ FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetAttackHandle(EClanhall
 	}
 }
 
-FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetActiveSkillHandle(FGameplayTag CooldownSlotTag) const
+FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const
 {
-	return ActiveSkillHandles.FindRef(CooldownSlotTag);
+	return ActiveSkillHandles.FindRef(AbilitySlotTag);
 }
 
 bool AClanhallHumanoidCombatant::HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const

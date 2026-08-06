@@ -41,7 +41,8 @@ public:
 	FGameplayAttributeData MaxHP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxHP);
 
-	// --- MP (Mana Points): восполняется только WASD-ударами и пассивным регеном ---
+	// --- MP (Mana Points): восполняется подтверждённым попаданием физической активки, раз за
+	// применение (UAbilityData::ManaGain, ability_system.md §1) — WASD-удары маны не дают ---
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MP, Category = "Clanhall|MP")
 	FGameplayAttributeData MP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MP);
@@ -50,7 +51,9 @@ public:
 	FGameplayAttributeData MaxMP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxMP);
 
-	// --- Charges: ресурс активных навыков (Q/E=0, R/F=2, Z/X=4, C/V=6) ---
+	// --- Charges: ресурс активных навыков (Q/E=2, R/F=4, Z/X=6, C/V=8) — единственный гейт
+	// применения, кулдауна в проекте не осталось нигде. MaxCharges клампится на 12 —
+	// предел отрисовки WBP_ChargesPanel, не дизайнерское решение (combat_system.md §1). ---
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Charges, Category = "Clanhall|Charges")
 	FGameplayAttributeData Charges;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, Charges);

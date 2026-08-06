@@ -8,10 +8,10 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Class_Lancer, "Ability.Class.Lancer", "Требуемый класс: Lancer (Копьё)");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight, "Ability.Skill.Knight", "Корень навыков Knight");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_ShieldSlam, "Ability.Skill.Knight.ShieldSlam", "Knight Q — Shield Slam (Ранг 1, КД 10 сек)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_PowerStrike, "Ability.Skill.Knight.PowerStrike", "Knight E — Power Strike (Ранг 1, КД 10 сек)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_ShieldCharge, "Ability.Skill.Knight.ShieldCharge", "Knight R — Shield Charge (Ранг 2, КД 20 сек, 2 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_Retribution, "Ability.Skill.Knight.Retribution", "Knight F — Retribution (Ранг 2, КД 20 сек, 2 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_ShieldSlam, "Ability.Skill.Knight.ShieldSlam", "Knight Q — Shield Slam (Ранг 1, тир Q/E — 2 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_PowerStrike, "Ability.Skill.Knight.PowerStrike", "Knight E — Power Strike (Ранг 1, тир Q/E — 2 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_ShieldCharge, "Ability.Skill.Knight.ShieldCharge", "Knight R — Shield Charge (Ранг 2, тир R/F — 4 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_Retribution, "Ability.Skill.Knight.Retribution", "Knight F — Retribution (Ранг 2, тир R/F — 4 Charges)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Warrior, "Ability.Skill.Warrior", "Корень навыков Warrior");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Assassin, "Ability.Skill.Assassin", "Корень навыков Assassin");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Lancer, "Ability.Skill.Lancer", "Корень навыков Lancer");
@@ -29,23 +29,35 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_STR, "Weapon.Type.STR", "Текущее оружие относится к STR-ветке");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_DEX, "Weapon.Type.DEX", "Текущее оружие относится к DEX-ветке");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_STR, "Balance.Overload.STR", "Шкала DEX↔STR в зоне перегруза STR (+60..+100) — STR-навыки ×2 Charges");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_DEX, "Balance.Overload.DEX", "Шкала DEX↔STR в зоне перегруза DEX (−60..−100) — DEX-навыки ×2 Charges");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_STR, "Balance.Overload.STR", "Шкала DEX↔STR в зоне перегруза STR (+60..+100) — не читается кодом, перегруз резолвится по значению Balance напрямую (UGA_ClanhallAbilityBase::IsBalanceOverloaded), множитель — UAbilityData::OverloadCostMultiplier");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_DEX, "Balance.Overload.DEX", "Шкала DEX↔STR в зоне перегруза DEX (−60..−100) — та же оговорка, что у Balance.Overload.STR");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "Владелец сейчас бьёт Overhead (W) — висит на время замаха");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_S, "Attack.Direction.S", "Владелец сейчас бьёт Low Sweep (S) — висит на время замаха");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_A, "Attack.Direction.A", "Владелец сейчас бьёт Left Slash (A) — висит на время замаха");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_D, "Attack.Direction.D", "Владелец сейчас бьёт Right Slash (D) — висит на время замаха");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot, "Cooldown.Slot", "Корень слотов КД — фильтр динамических тегов спека в GA_PhysicalSkill::GetCooldownSlotTag");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Q, "Cooldown.Slot.Q", "Слот Q на перезарядке — общий для всех оружий (ability_system.md §3)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_E, "Cooldown.Slot.E", "Слот E на перезарядке — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_R, "Cooldown.Slot.R", "Слот R на перезарядке — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_F, "Cooldown.Slot.F", "Слот F на перезарядке — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Z, "Cooldown.Slot.Z", "Слот Z на перезарядке — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_X, "Cooldown.Slot.X", "Слот X на перезарядке — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_C, "Cooldown.Slot.C", "Слот C на перезарядке — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_V, "Cooldown.Slot.V", "Слот V на перезарядке — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot, "Ability.Slot", "Корень слотов активок — фильтр динамических тегов спека в GA_PhysicalSkill::GetAbilitySlotTag");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_Q, "Ability.Slot.Q", "Слот Q — общий для всех оружий (ability_system.md §3)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_E, "Ability.Slot.E", "Слот E — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_R, "Ability.Slot.R", "Слот R — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_F, "Ability.Slot.F", "Слот F — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_Z, "Ability.Slot.Z", "Слот Z — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_X, "Ability.Slot.X", "Слот X — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_C, "Ability.Slot.C", "Слот C — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_V, "Ability.Slot.V", "Слот V — общий для всех оружий");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot, "Cooldown.Slot", "[DEPRECATED] Заменён Ability.Slot — удалить после проверки Reference Viewer");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Q, "Cooldown.Slot.Q", "[DEPRECATED] Заменён Ability.Slot.Q");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_E, "Cooldown.Slot.E", "[DEPRECATED] Заменён Ability.Slot.E");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_R, "Cooldown.Slot.R", "[DEPRECATED] Заменён Ability.Slot.R");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_F, "Cooldown.Slot.F", "[DEPRECATED] Заменён Ability.Slot.F");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Z, "Cooldown.Slot.Z", "[DEPRECATED] Заменён Ability.Slot.Z");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_X, "Cooldown.Slot.X", "[DEPRECATED] Заменён Ability.Slot.X");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_C, "Cooldown.Slot.C", "[DEPRECATED] Заменён Ability.Slot.C");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_V, "Cooldown.Slot.V", "[DEPRECATED] Заменён Ability.Slot.V");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Denied_Charges, "Ability.Denied.Charges", "CanActivateAbility отказал из-за нехватки Charges — причина для Denied-фидбека на HUD");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP/Balance)");
 

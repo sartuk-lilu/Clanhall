@@ -4,6 +4,7 @@
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
+#include "AbilitySystem/ClanhallGameplayTags.h"
 
 AClanhallCombatantBase::AClanhallCombatantBase()
 {
@@ -62,5 +63,17 @@ void AClanhallCombatantBase::BeginPlay()
 		{
 			AbilitySystemComponent->AddLooseGameplayTag(RoleTag);
 		}
+
+		// Denied-фидбек (main_dev_plan.md): AbilityFailedCallbacks — обычный C++ мультикаст, не
+		// BlueprintAssignable, поэтому ретранслируем в OnChargesDenied для Blueprint HUD.
+		AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &AClanhallCombatantBase::HandleAbilityFailed);
+	}
+}
+
+void AClanhallCombatantBase::HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason)
+{
+	if (FailureReason.HasTagExact(ClanhallGameplayTags::Ability_Denied_Charges.GetTag()))
+	{
+		OnChargesDenied.Broadcast();
 	}
 }

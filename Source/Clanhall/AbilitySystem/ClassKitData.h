@@ -35,10 +35,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "ClassKit")
 	TObjectPtr<UComboData> ComboData;
 
-	/** Активные навыки класса. Ключ — Cooldown.Slot.* (Q/E/R/F и далее по канону восьми
+	/** Активные навыки класса. Ключ — Ability.Slot.* (Q/E/R/F и далее по канону восьми
 	 *  слотов, ability_system.md §3), а не имя скилла: слот один и тот же для всех оружий,
 	 *  а именованные поля-на-скилл зашивали бы имя класса в поле, которое обязано
-	 *  обслужить все классы, и их пришлось бы переписывать на восемь. */
-	UPROPERTY(EditAnywhere, Category = "ClassKit", meta = (Categories = "Cooldown.Slot"))
+	 *  обслужить все классы, и их пришлось бы переписывать на восемь.
+	 *  Миграция с Cooldown.Slot.* (task_economy_no_cooldowns_code.md §1): существующие
+	 *  ассеты хранят старые ключи и требуют ручного переноса в редакторе — код их не трогает. */
+	UPROPERTY(EditAnywhere, Category = "ClassKit", meta = (Categories = "Ability.Slot"))
 	TMap<FGameplayTag, TObjectPtr<UAbilityData>> Skills;
 };

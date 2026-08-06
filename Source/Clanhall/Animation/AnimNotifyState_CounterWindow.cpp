@@ -2,7 +2,6 @@
 #include "Clanhall.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
-#include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "Animation/AnimMontage.h"
@@ -13,10 +12,8 @@ namespace
 	/** Общий поиск для NotifyBegin/NotifyEnd: активный спек владельца, чей UAbilityData::CastMontage
 	 *  совпадает с Montage и у которого непустой CounteredBy — тот же критерий в обоих местах,
 	 *  иначе Begin откроет окно одного навыка, а End закроет по критерию, не совпадающему с ним
-	 *  (task_counterwindow_symmetry.md, Задача 1). nullptr, если такого спека нет.
-	 *  OutSlotTag — слот КД спека (Cooldown.Slot.*, динамический тег, main_dev_plan.md §8, Блок A2),
-	 *  нужен вызывающему для OpenWindow: UAbilityData слот больше не хранит. */
-	const UAbilityData* FindOwningAbilityData(UAbilitySystemComponent* ASC, const UAnimMontage* Montage, FGameplayAbilitySpecHandle& OutHandle, FGameplayTag& OutSlotTag)
+	 *  (task_counterwindow_symmetry.md, Задача 1). nullptr, если такого спека нет. */
+	const UAbilityData* FindOwningAbilityData(UAbilitySystemComponent* ASC, const UAnimMontage* Montage, FGameplayAbilitySpecHandle& OutHandle)
 	{
 		if (!ASC || !Montage)
 		{
@@ -37,16 +34,6 @@ namespace
 			}
 
 			OutHandle = Spec.Handle;
-
-			for (const FGameplayTag& Tag : Spec.GetDynamicSpecSourceTags())
-			{
-				if (Tag.MatchesTag(ClanhallGameplayTags::Cooldown_Slot.GetTag()))
-				{
-					OutSlotTag = Tag;
-					break;
-				}
-			}
-
 			return Data;
 		}
 
@@ -73,14 +60,9 @@ void UAnimNotifyState_CounterWindow::NotifyBegin(USkeletalMeshComponent* MeshCom
 	}
 
 	FGameplayAbilitySpecHandle Handle;
-	FGameplayTag SlotTag;
-	if (const UAbilityData* Data = FindOwningAbilityData(ASC, Montage, Handle, SlotTag))
+	if (const UAbilityData* Data = FindOwningAbilityData(ASC, Montage, Handle))
 	{
-		if (!SlotTag.IsValid())
-		{
-			UE_LOG(LogClanhall, Warning, TEXT("CounterWindow: %s has no Cooldown.Slot dynamic tag on its spec — grant is broken, successful counter won't apply cooldown"), *Data->DisplayName.ToString());
-		}
-		CounterComp->OpenWindow(Data->CounteredBy, Handle, SlotTag, Data->Cooldown);
+		CounterComp->OpenWindow(Data->CounteredBy, Handle);
 	}
 }
 
@@ -100,8 +82,7 @@ void UAnimNotifyState_CounterWindow::NotifyEnd(USkeletalMeshComponent* MeshComp,
 	// хранения хендла между Begin/End критерий пересчитывается заново (см. FindOwningAbilityData).
 	const UAnimMontage* Montage = Cast<UAnimMontage>(Animation);
 	FGameplayAbilitySpecHandle Handle;
-	FGameplayTag SlotTag;
-	if (FindOwningAbilityData(ASC, Montage, Handle, SlotTag))
+	if (FindOwningAbilityData(ASC, Montage, Handle))
 	{
 		CounterComp->CloseWindow();
 	}

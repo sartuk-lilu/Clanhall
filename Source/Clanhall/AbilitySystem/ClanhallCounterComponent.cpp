@@ -2,18 +2,15 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
-#include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Engine/Engine.h"
 
-void UClanhallCounterComponent::OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle, FGameplayTag InCooldownTag, float InCooldownDuration)
+void UClanhallCounterComponent::OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle)
 {
 	bWindowOpen = true;
 	CounteredByTags = InCounteredBy;
 	CounteredHandle = InCounteredHandle;
-	CounteredCooldownTag = InCooldownTag;
-	CounteredCooldownDuration = InCooldownDuration;
 
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
@@ -26,8 +23,6 @@ void UClanhallCounterComponent::CloseWindow()
 	bWindowOpen = false;
 	CounteredByTags.Reset();
 	CounteredHandle = FGameplayAbilitySpecHandle();
-	CounteredCooldownTag = FGameplayTag();
-	CounteredCooldownDuration = 0.0f;
 
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
@@ -51,13 +46,8 @@ void UClanhallCounterComponent::ConsumeCounter()
 	{
 		ASC->CancelAbilityHandle(CounteredHandle);
 
-		if (CounteredCooldownTag.IsValid() && CounteredCooldownDuration > 0.0f)
-		{
-			ClanhallGameplayEffects::ApplyTimedTag(ASC, CounteredCooldownTag, CounteredCooldownDuration);
-		}
-
 #if !UE_BUILD_SHIPPING
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, полный КД, +1 Stagger"));
+		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, заряды сгорели, +1 Stagger"));
 #endif
 	}
 

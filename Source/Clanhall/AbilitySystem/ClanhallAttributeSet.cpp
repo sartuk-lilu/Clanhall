@@ -31,6 +31,13 @@ void UClanhallAttributeSet::ClampAttribute(const FGameplayAttribute& Attribute, 
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, MaxCharges.GetCurrentValue());
 	}
+	else if (Attribute == GetMaxChargesAttribute())
+	{
+		// Предел отрисовки WBP_ChargesPanel (четыре ряда ромбов), не дизайнерское решение
+		// (combat_system.md §1). Открытый вопрос «что делать с прибавками сверх трёх физических
+		// веток ранга 4» — main_dev_plan.md, «Открытые вопросы», п.16.
+		NewValue = FMath::Clamp(NewValue, 0.0f, 12.0f);
+	}
 	else if (Attribute == GetBalanceAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, -100.0f, 100.0f);
@@ -65,6 +72,10 @@ void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCa
 	else if (ChangedAttribute == GetChargesAttribute())
 	{
 		SetCharges(FMath::Clamp(GetCharges(), 0.0f, GetMaxCharges()));
+	}
+	else if (ChangedAttribute == GetMaxChargesAttribute())
+	{
+		SetMaxCharges(FMath::Clamp(GetMaxCharges(), 0.0f, 12.0f));
 	}
 	else if (ChangedAttribute == GetBalanceAttribute())
 	{

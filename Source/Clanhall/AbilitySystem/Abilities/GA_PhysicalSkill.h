@@ -1,6 +1,6 @@
 // Раздел 4: один навык-класс для всех физических активных способностей (Q/E/R/F/...).
 // Канон CLAUDE.md: "Логика абилки не меняется при правке данных — меняется только DataAsset".
-// Конкретное содержание (урон/метка/синергия/баланс/КД/стоимость) приходит из UAbilityData,
+// Конкретное содержание (урон/метка/синергия/баланс/мана/стоимость) приходит из UAbilityData,
 // который привязывается к каждому гранту через FGameplayAbilitySpec::SourceObject —
 // то есть один и тот же класс граннтится 4 раза (Shield Slam/Power Strike/Shield Charge/
 // Retribution), и каждый раз с другим SourceObject.
@@ -91,11 +91,18 @@ private:
 	 *  AbilitySystemComponent_Abilities.cpp: CanActivateAbility может вызываться на CDO). */
 	const UAbilityData* GetAbilityData(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
-	/** Слот КД навыка — больше не поле UAbilityData, а динамический тег спека (Cooldown.Slot.*,
-	 *  см. ClanhallHumanoidCombatant::BeginPlay). Ищет спек по Handle и фильтрует его
-	 *  GetDynamicSpecSourceTags() по корню Cooldown.Slot. Невалидный результат — баг гранта
-	 *  (слот не проставлен), не молчаливый fallback на что-либо ещё. */
-	FGameplayTag GetCooldownSlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
+	/** Слот навыка — не поле UAbilityData, а динамический тег спека (Ability.Slot.*, см.
+	 *  ClanhallHumanoidCombatant::BeginPlay). Ищет спек по Handle и фильтрует его
+	 *  GetDynamicSpecSourceTags() по корню Ability.Slot. Невалидный результат — баг гранта
+	 *  (слот не проставлен), не молчаливый fallback на что-либо ещё. Кулдауна слот больше не
+	 *  считает — только ключует ActiveSkillHandles и привязку ввода. */
+	FGameplayTag GetAbilitySlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
+
+	/** Цена навыка с учётом перегруза Balance: Data->ChargeCost, умноженный на
+	 *  Data->OverloadCostMultiplier, когда шкала перегружена в СТОРОНУ ТЕКУЩЕГО оружия
+	 *  (UGA_ClanhallAbilityBase::IsBalanceOverloaded). Общая точка для CanActivateAbility
+	 *  (проверка) и ActivateAbility (списание) — иначе проверка и списание могли бы разойтись. */
+	float GetEffectiveChargeCost(const UAbilityData* Data, const UAbilitySystemComponent* SourceASC) const;
 
 	void ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent);
 
@@ -103,13 +110,15 @@ private:
 	 *  Вызывается ОДИН раз на каждую задетую цель. */
 	void ResolveHitOn(AActor* Target);
 
-	/** Баф на себя из синергии (EffectOnSelf) уже применён за это применение навыка.
-	 *  ChargeGain этим флагом НЕ гатится: заряды — ресурс и начисляются за каждую
-	 *  задетую цель (mark_system.md §2, правило мультицели). */
+	/** Баф на себя из синергии (EffectOnSelf) уже применён за это применение навыка. */
 	bool bSelfSynergySpent = false;
 
 	/** Сдвиг Balance уже применён за это применение навыка. */
 	bool bBalanceApplied = false;
+
+	/** Мана (Data->ManaGain) уже начислена за это применение навыка — тем же приёмом, что
+	 *  и Balance: раз за применение, сколько бы целей ни задело (ability_system.md §1). */
+	bool bManaApplied = false;
 
 	/** Первичный терминатор отработал: конец каст-монтажа (контактный путь) либо завершённый
 	 *  мгновенный резолв (фолбэк). */
@@ -125,10 +134,10 @@ private:
 	TWeakObjectPtr<UAnimMontage> PlayedCastMontage;
 
 	/** Цели, по которым логика метки за это применение уже отработала. Урон идёт на КАЖДЫЙ
-	 *  контакт (два хитбокса на монтаже = два урона), а метка/синергия/ChargeGain — один раз
+	 *  контакт (два хитбокса на монтаже = два урона), а метка/синергия — один раз
 	 *  на цель за применение: иначе вторая фаза увидит метку, которую положила первая, и
 	 *  синергия с корневым RequiredMark (Retribution — «любая метка») сработает на собственной
-	 *  метке, выдав заряды дважды. InstancedPerExecution — сбрасывать вручную не нужно. */
+	 *  метке, отработав дважды за одно применение. InstancedPerExecution — сбрасывать вручную не нужно. */
 	TArray<TWeakObjectPtr<AActor>> MarkResolvedTargets;
 
 	// Все поля выше — обычные, без сброса: InstancingPolicy == InstancedPerExecution,

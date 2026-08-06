@@ -91,7 +91,7 @@ const UAbilityData* UGA_PhysicalSkill::GetAbilityData(const FGameplayAbilitySpec
 	return Spec ? Cast<UAbilityData>(Spec->SourceObject.Get()) : nullptr;
 }
 
-FGameplayTag UGA_PhysicalSkill::GetCooldownSlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const
+FGameplayTag UGA_PhysicalSkill::GetAbilitySlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const
 {
 	UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr;
 	if (!ASC)
@@ -107,13 +107,24 @@ FGameplayTag UGA_PhysicalSkill::GetCooldownSlotTag(const FGameplayAbilitySpecHan
 
 	for (const FGameplayTag& Tag : Spec->GetDynamicSpecSourceTags())
 	{
-		if (Tag.MatchesTag(ClanhallGameplayTags::Cooldown_Slot.GetTag()))
+		if (Tag.MatchesTag(ClanhallGameplayTags::Ability_Slot.GetTag()))
 		{
 			return Tag;
 		}
 	}
 
 	return FGameplayTag();
+}
+
+float UGA_PhysicalSkill::GetEffectiveChargeCost(const UAbilityData* Data, const UAbilitySystemComponent* SourceASC) const
+{
+	if (!Data)
+	{
+		return 0.0f;
+	}
+
+	const float Multiplier = IsBalanceOverloaded(SourceASC) ? Data->OverloadCostMultiplier : 1.0f;
+	return static_cast<float>(Data->ChargeCost) * Multiplier;
 }
 
 bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
@@ -130,19 +141,21 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return false;
 	}
 
-	// КД проверяется здесь (тег вешается на активации, см. ActivateAbility), а Charges —
-	// на активацию (combat_system.md §1: "проверяется количество зарядов на активацию").
-	const FGameplayTag CooldownSlotTag = GetCooldownSlotTag(Handle, ActorInfo);
-	if (CooldownSlotTag.IsValid() && ASC->HasMatchingGameplayTag(CooldownSlotTag))
-	{
-		return false;
-	}
-
-	if (Data->ChargeCost > 0)
+	// Единственный гейт применения активки — Charges. Кулдауна в проекте не осталось нигде
+	// (combat_system.md §1, task_skill_economy_loops.md).
+	const float EffectiveCost = GetEffectiveChargeCost(Data, ASC);
+	if (EffectiveCost > 0.0f)
 	{
 		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
-		if (!Attributes || Attributes->GetCharges() < static_cast<float>(Data->ChargeCost))
+		if (!Attributes || Attributes->GetCharges() < EffectiveCost)
 		{
+			// Причина отказа — специально для Denied-фидбека на HUD (main_dev_plan.md):
+			// отдельный тег, не спутать с отказом по State.SkillCommitted/State.Stunned,
+			// которые отсеиваются Super::CanActivateAbility ещё до этой точки.
+			if (OptionalRelevantTags)
+			{
+				OptionalRelevantTags->AddTag(ClanhallGameplayTags::Ability_Denied_Charges.GetTag());
+			}
 			return false;
 		}
 	}
@@ -189,13 +202,11 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 					bSelfSynergySpent = true;
 				}
 
-				// Заряды — РЕСУРС, а не состояние: начисляются ЗА КАЖДУЮ задетую цель и НЕ
-				// гатятся bSelfSynergySpent. Мультицель — редкая ситуация повышенного риска, и она
-				// должна награждать. От переполнения защищает кламп MaxCharges в UClanhallAttributeSet.
-				if (Synergy.ChargeGain > 0)
-				{
-					ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), static_cast<float>(Synergy.ChargeGain));
-				}
+				// Синергия зарядов не платит (FMarkSynergy::ChargeGain удалён вместе с
+				// Правилом 4 mark_system.md). Заряды — валюта темпа: единственные источники
+				// дохода — подтверждённый WASD-удар и парирование (combat_system.md §1), оба
+				// дают ровно +1 и не масштабируются размером толпы. Награда за мультицель
+				// живёт в уроне и метках (левая колонка Правила 5), не в зарядах.
 				break;
 			}
 		}
@@ -234,21 +245,12 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 
 	// Активка коммитится в момент нажатия: заряды уходят всегда, включая промах и контр —
 	// цена решения «придержать навык на контратаку» и есть эти заряды (ability_system.md §2).
-	if (Data->ChargeCost > 0)
+	// Эффективная цена (с учётом перегруза Balance) та же, что проверялась в CanActivateAbility —
+	// GetEffectiveChargeCost общая точка для обоих, иначе проверка и списание могли бы разойтись.
+	const float EffectiveCost = GetEffectiveChargeCost(Data, SourceASC);
+	if (EffectiveCost > 0.0f)
 	{
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(Data->ChargeCost));
-	}
-
-	// КД уходит НА АКТИВАЦИИ безусловно, без исключения для контра — тот больше не бесплатен,
-	// он лишь побочный эффект попадания. Промах стоит зарядов и КД (combat_system.md §3).
-	const FGameplayTag CooldownSlotTag = GetCooldownSlotTag(Handle, ActorInfo);
-	if (CooldownSlotTag.IsValid())
-	{
-		ClanhallGameplayEffects::ApplyTimedTag(SourceASC, CooldownSlotTag, Data->Cooldown);
-	}
-	else
-	{
-		UE_LOG(LogClanhall, Warning, TEXT("ActivateAbility: %s has no Cooldown.Slot dynamic tag on its spec — grant is broken, cooldown not applied"), *Data->DisplayName.ToString());
+		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -EffectiveCost);
 	}
 
 	// Порядок критичен: серию гасим и монтаж запускаем ДО подписки на Event.Hitbox.*.
@@ -474,7 +476,7 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	else
 	{
 		// Утилитарный навык без урона — попадание подтверждено самим фактом найденной цели,
-		// иначе КД и метки у таких навыков никогда бы не срабатывали.
+		// иначе метки и мана у таких навыков никогда бы не срабатывали.
 		bConfirmedHit = (TargetASC != nullptr);
 	}
 
@@ -488,7 +490,7 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	// Двойное срабатывание невозможно: ConsumeCounter закрывает окно, второй вызов вернёт false.
 	UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag);
 
-	// Метка/синергия/ChargeGain — один раз НА ЦЕЛЬ за применение, а не на каждый контакт: два
+	// Метка/синергия — один раз НА ЦЕЛЬ за применение, а не на каждый контакт: два
 	// хитбокса на монтаже дают два урона, но вторая фаза не должна видеть метку, которую только
 	// что положила первая (синергия с корневым RequiredMark сработала бы на собственной метке).
 	const bool bMarkAlreadyResolved = MarkResolvedTargets.ContainsByPredicate([Target](const TWeakObjectPtr<AActor>& Weak)
@@ -512,6 +514,15 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 		const float Shift = GetBalanceSign(SourceASC) * Data->BalanceShift;
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), Shift);
 		bBalanceApplied = true;
+	}
+
+	// Мана — тем же приёмом, что Balance: раз за применение, сколько бы целей ни задело
+	// (ability_system.md §1). Мана больше не капает с обычных WASD-ударов — единственный
+	// источник теперь подтверждённое попадание физической активки.
+	if (!bManaApplied && Data->ManaGain > 0.0f)
+	{
+		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyMP::StaticClass(), Data->ManaGain);
+		bManaApplied = true;
 	}
 
 #if !UE_BUILD_SHIPPING

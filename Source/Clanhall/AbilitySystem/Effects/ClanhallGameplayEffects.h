@@ -71,7 +71,8 @@ namespace ClanhallGameplayEffects
 	 *  (FMarkSynergy::EffectOnTarget/EffectOnSelf), у которых магнитуда уже зашита в самом классе эффекта. */
 	CLANHALL_API void ApplyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass);
 
-	/** Навешивает Tag на ASC на DurationSeconds (источник == цель). Используется для меток и КД.
+	/** Навешивает Tag на ASC на DurationSeconds (источник == цель). Используется для меток и
+	 *  временных состояний (State.Stunned и т.п.) — не для КД, которого в проекте не осталось.
 	 *  Возвращает handle, чтобы вызывающий мог снять эффект досрочно. */
 	CLANHALL_API FActiveGameplayEffectHandle ApplyTimedTag(UAbilitySystemComponent* ASC, FGameplayTag Tag, float DurationSeconds);
 

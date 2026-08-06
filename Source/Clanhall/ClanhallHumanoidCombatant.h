@@ -48,7 +48,7 @@ protected:
 	TObjectPtr<UClanhallParryComponent> ParryComponent;
 
 	/** main_dev_plan.md §8, Блок A2: класс бойца одним ассетом — ComboData, ClassTag и
-	 *  карта активных навыков по слоту (Cooldown.Slot.*) вместо шести отдельных полей.
+	 *  карта активных навыков по слоту (Ability.Slot.*) вместо шести отдельных полей.
 	 *  Назначается в Blueprint-наследнике (и игрока, и AClanhallHumanoidBoss — один и тот
 	 *  же кит на класс). */
 	UPROPERTY(EditAnywhere, Category = "Combat|Class")
@@ -67,18 +67,20 @@ protected:
 	FGameplayAbilitySpecHandle AttackLeftSlashHandle;
 	FGameplayAbilitySpecHandle AttackLowSweepHandle;
 
-	/** main_dev_plan.md §8, Блок A2: хэндлы активок кита по слоту (Cooldown.Slot.*), гранятся
+	/** main_dev_plan.md §8, Блок A2: хэндлы активок кита по слоту (Ability.Slot.*), гранятся
 	 *  в BeginPlay из ClassKit->Skills — один цикл на любой класс, а не четыре именованных поля. */
 	TMap<FGameplayTag, FGameplayAbilitySpecHandle> ActiveSkillHandles;
 
 public:
 	AClanhallHumanoidCombatant();
 
-	/** Потолок длины серии WASD-комбо (0-4). Плейсхолдер до системы прокачки —
+	/** Потолок длины серии WASD-комбо (1-4). Плейсхолдер до системы прокачки —
 	 *  см. combo_system.md, ранг / потолок длины комбо. Свойство ЭКЗЕМПЛЯРА, не кита
 	 *  (main_dev_plan.md §8, Блок A2, DO NOT): один кит обслуживает и рядового бойца, и босса
-	 *  того же класса, у них разный ранг. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Class", meta = (ClampMin = "0", ClampMax = "4"))
+	 *  того же класса, у них разный ранг. Ранга 0 не существует (task_skill_economy_loops.md
+	 *  §3): на ранге 0 нет ни одного активного навыка, то есть нет ни одного потребителя
+	 *  зарядов — класс либо не взят вовсе, либо взят и сразу ранга 1. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Class", meta = (ClampMin = "1", ClampMax = "4"))
 	int32 ClassRank = 1;
 
 	/** Ability.Class.Knight и т.д. — читает ClassKit->ClassTag. BlueprintPure: старое поле
@@ -95,10 +97,10 @@ public:
 	 *  активировать (combo_system.md: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 
-	/** Хэндл активного навыка по слоту (Cooldown.Slot.Q/E/R/F/...) — не найден в
+	/** Хэндл активного навыка по слоту (Ability.Slot.Q/E/R/F/...) — не найден в
 	 *  ClassKit->Skills на момент BeginPlay = невалидный хэндл, TryActivateAbility просто
 	 *  откажет (main_dev_plan.md §8, Блок A2). */
-	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag CooldownSlotTag) const;
+	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const;
 
 	/** task_stagger_control_code.md §7: есть ли у ПРОТИВНИКА этого бойца (см. FindPrototypeOpponent)
 	 *  навык с синергией на RequiredMark в ClassKit->Skills. Читает UClanhallParryComponent в

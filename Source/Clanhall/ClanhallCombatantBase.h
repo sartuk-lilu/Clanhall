@@ -17,6 +17,13 @@ class UClanhallAttributeSet;
 class UClanhallMarkComponent;
 class UClanhallHitboxComponent;
 class UClanhallCounterComponent;
+class UGameplayAbility;
+
+/** Denied-фидбек: TryActivateAbility отказал именно по нехватке Charges (не по
+ *  State.SkillCommitted/State.Stunned — main_dev_plan.md). Точка подключения для HUD
+ *  (звук + вспышка WBP_ChargesPanel), сама реакция сюда не входит — тот же паттерн, что
+ *  UClanhallCounterComponent::OnCounterConsumed. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallChargesDenied);
 
 UCLASS(abstract)
 class AClanhallCombatantBase : public ACharacter, public IAbilitySystemInterface
@@ -65,8 +72,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxMP = 200.0f;
 
+	/** combat_system.md §1: базовый банк — 6 (было 4), не косметическая правка — при базе 4
+	 *  ранг 3 открывает Z/X ценой 6 при банке 4, навык физически недоступен. Потолок 12 —
+	 *  UClanhallAttributeSet::ClampAttribute. */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
-	float DefaultMaxCharges = 4.0f;
+	float DefaultMaxCharges = 6.0f;
 
 	/** task_parry_rework.md §1.3: потолок усталости парирования, плейсхолдер — подбирается
 	 *  плейтестом (Часовой/Страж получат свой в Блоке G). */
@@ -80,6 +90,16 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	// ~end IAbilitySystemInterface
 
+	/** Транслирует получателям (HUD), что этому бойцу отказали в активации именно из-за
+	 *  нехватки Charges. */
+	UPROPERTY(BlueprintAssignable, Category = "AbilitySystem")
+	FOnClanhallChargesDenied OnChargesDenied;
+
 protected:
 	virtual void BeginPlay() override;
+
+private:
+	/** Слушает UAbilitySystemComponent::AbilityFailedCallbacks и ретранслирует в OnChargesDenied,
+	 *  только когда причина отказа — Ability.Denied.Charges (main_dev_plan.md, Denied-фидбек). */
+	void HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason);
 };
