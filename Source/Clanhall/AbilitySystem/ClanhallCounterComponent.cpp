@@ -57,7 +57,7 @@ void UClanhallCounterComponent::ConsumeCounter()
 		}
 
 #if !UE_BUILD_SHIPPING
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, полный КД"));
+		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, полный КД, +1 Stagger"));
 #endif
 	}
 

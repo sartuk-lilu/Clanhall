@@ -122,7 +122,11 @@ void UClanhallParryComponent::AddStagger(float Amount)
 			ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), Amount);
 		}
 
-		if (Attributes->GetStagger() >= Attributes->GetMaxStagger())
+		// MaxStagger > 0 обязателен: невыставленный потолок (0) иначе даёт 0 >= 0 — истина на
+		// КАЖДОМ вызове, включая AddStagger(0) (первый отпарированный шаг серии), и метка
+		// Staggered вешалась бы мгновенно. Тот же случай, что уже разобран в
+		// OnStaggerDecayDelayElapsed — там своя копия проверки, здесь своя.
+		if (Attributes->GetMaxStagger() > 0.0f && Attributes->GetStagger() >= Attributes->GetMaxStagger())
 		{
 			// Потолок (task_stagger_control_code.md §4): сброс в 0 и метка Staggered владельцу —
 			// стан отсюда больше не выдаётся, State.Stunned выдаёт только обналичивающая синергия (§6).

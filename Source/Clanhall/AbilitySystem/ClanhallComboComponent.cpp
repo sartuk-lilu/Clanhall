@@ -94,9 +94,9 @@ void UClanhallComboComponent::TryStartSequence(EClanhallAttackDirection Directio
 	// не зависит от того, каким путём закончилась предыдущая серия (их несколько и станет больше):
 	// между сериями счётчик обязан быть нулём, а активация ниже может и провалиться — сброс от
 	// этого не должен зависеть, вреда простою нулём нет. Не дублировать в ResetCombo().
-	if (AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner()))
+	if (AActor* Owner = GetOwner())
 	{
-		if (UClanhallParryComponent* OwnParry = Character->FindComponentByClass<UClanhallParryComponent>())
+		if (UClanhallParryComponent* OwnParry = Owner->FindComponentByClass<UClanhallParryComponent>())
 		{
 			OwnParry->ResetStaggerSeries();
 		}

@@ -1,8 +1,16 @@
 // State.Stunned на фиксированную длительность — единственная выдача стана в проекте после
 // task_stagger_control_code.md: обналичивание Mark.Staggered синергией (FMarkSynergy::EffectOnTarget,
 // mark_system.md §6.1). Применяется ClanhallGameplayEffects::ApplyEffect БЕЗ SetByCaller (в отличие от
-// GE_ApplyTimedTag) — длительность целиком в данных (StunDuration), а не в вызывающем коде: сама точка
-// вызова (GA_PhysicalSkill::ResolveMarkLogic) навыко-нейтральна и не может решать за конкретную синергию.
+// GE_ApplyTimedTag) — длительность целиком в данных, а не в вызывающем коде: сама точка вызова
+// (GA_PhysicalSkill::ResolveMarkLogic) навыко-нейтральна и не может решать за конкретную синергию.
+//
+// Длительность НЕ вынесена в собственное поле (StunDuration): DurationMagnitude — уже штатный
+// EditDefaultsOnly UPROPERTY на UGameplayEffect, правится напрямую в ассете/Blueprint-потомке.
+// Если бы конструктор считал DurationMagnitude из отдельного поля, у Blueprint-потомка это поле
+// приехало бы из архетипа ПОСЛЕ конструктора нативного класса — конструктор успел бы посчитать
+// DurationMagnitude по ещё дефолтному значению поля, и правка в редакторе молча ничего не меняла
+// бы. Нужен второй стан другой длительности — второй ассет (Blueprint-потомок с другим
+// DurationMagnitude), а не параметр.
 
 #pragma once
 
@@ -16,14 +24,4 @@ class CLANHALL_API UGE_Stunned : public UGameplayEffect
 
 public:
 	UGE_Stunned();
-
-	/** Длительность стана, сек. EditDefaultsOnly — правится в данных без правки кода. */
-	UPROPERTY(EditDefaultsOnly, Category = "Duration")
-	float StunDuration = 2.0f;
-
-protected:
-	/** StunDuration -> DurationMagnitude и State.Stunned -> грант цели здесь, а не в конструкторе:
-	 *  конструктор native-класса отрабатывает ДО того, как в CDO/Blueprint-потомок попадут
-	 *  финальные значения EditDefaultsOnly-свойств, PostInitProperties — уже после. */
-	virtual void PostInitProperties() override;
 };

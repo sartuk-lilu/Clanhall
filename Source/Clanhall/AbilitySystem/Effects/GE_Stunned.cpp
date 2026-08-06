@@ -5,13 +5,8 @@
 UGE_Stunned::UGE_Stunned()
 {
 	DurationPolicy = EGameplayEffectDurationType::HasDuration;
-}
-
-void UGE_Stunned::PostInitProperties()
-{
-	Super::PostInitProperties();
-
-	DurationMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(StunDuration));
+	// Дефолт для native CDO; Blueprint-потомок правит через штатный Class Defaults (см. .h).
+	DurationMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(2.0f));
 
 	UTargetTagsGameplayEffectComponent& TagComponent = FindOrAddComponent<UTargetTagsGameplayEffectComponent>();
 	FInheritedTagContainer TagChanges;
