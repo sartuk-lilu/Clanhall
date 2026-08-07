@@ -29,7 +29,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_STR, "Weapon.Type.STR", "Текущее оружие относится к STR-ветке");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_DEX, "Weapon.Type.DEX", "Текущее оружие относится к DEX-ветке");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_STR, "Balance.Overload.STR", "Шкала DEX↔STR в зоне перегруза STR (+60..+100) — не читается кодом, перегруз резолвится по значению Balance напрямую (UGA_ClanhallAbilityBase::IsBalanceOverloaded), множитель — UAbilityData::OverloadCostMultiplier");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_STR, "Balance.Overload.STR", "Шкала DEX↔STR в зоне перегруза STR (+60..+100) — навешивается UClanhallAttributeSet::PostGameplayEffectExecute, состояние зоны шкалы само по себе, не «текущее оружие перегружено». Цену навыка перегруз двигает через UAbilityData::OverloadCostMultiplier (UGA_ClanhallAbilityBase::IsBalanceOverloaded), тот же порог, но не через этот тег");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Balance_Overload_DEX, "Balance.Overload.DEX", "Шкала DEX↔STR в зоне перегруза DEX (−60..−100) — та же оговорка, что у Balance.Overload.STR");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "Владелец сейчас бьёт Overhead (W) — висит на время замаха");

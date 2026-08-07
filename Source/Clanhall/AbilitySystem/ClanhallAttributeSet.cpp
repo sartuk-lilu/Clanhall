@@ -1,7 +1,19 @@
 #include "ClanhallAttributeSet.h"
+#include "AbilitySystem/ClanhallGameplayTags.h"
+#include "AbilitySystemComponent.h"
 #include "GameplayEffectExtension.h"
 #include "GameplayEffectTypes.h"
 #include "Net/UnrealNetwork.h"
+
+namespace
+{
+	constexpr float BalanceOverloadThreshold = 60.0f;
+}
+
+bool UClanhallAttributeSet::IsBalanceOverloaded(float Balance, bool bIsSTR)
+{
+	return bIsSTR ? (Balance >= BalanceOverloadThreshold) : (Balance <= -BalanceOverloadThreshold);
+}
 
 UClanhallAttributeSet::UClanhallAttributeSet()
 {
@@ -79,7 +91,44 @@ void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCa
 	}
 	else if (ChangedAttribute == GetBalanceAttribute())
 	{
-		SetBalance(FMath::Clamp(GetBalance(), -100.0f, 100.0f));
+		const float ClampedBalance = FMath::Clamp(GetBalance(), -100.0f, 100.0f);
+		SetBalance(ClampedBalance);
+
+		// Тег — состояние зоны шкалы САМОЙ ПО СЕБЕ (combat_system.md §2), не «текущее оружие
+		// перегружено»: тем же значением пользуется UGA_ClanhallAbilityBase::IsBalanceOverloaded
+		// для навыка конкретного оружия, здесь же навешивается видимый снаружи (HUD/Blueprint)
+		// сигнал «шкала в зоне перегруза X», живущий независимо от того, что сейчас в руке.
+		if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+		{
+			// AddLooseGameplayTag/RemoveLooseGameplayTag ref-считанные: вызов Add на уже
+			// добавленном теге просто копит рефкаунт, который потом не с чем свести к нулю
+			// одним Remove. PostGameplayEffectExecute может сработать много раз подряд, пока
+			// Balance стоит в той же зоне (каждый WASD-удар), поэтому переключаем тег ровно
+			// один раз на границе, а не на каждый вызов.
+			const FGameplayTag STRTag = ClanhallGameplayTags::Balance_Overload_STR.GetTag();
+			const bool bSTROverloaded = IsBalanceOverloaded(ClampedBalance, /*bIsSTR*/ true);
+			const bool bSTRTagPresent = ASC->HasMatchingGameplayTag(STRTag);
+			if (bSTROverloaded && !bSTRTagPresent)
+			{
+				ASC->AddLooseGameplayTag(STRTag);
+			}
+			else if (!bSTROverloaded && bSTRTagPresent)
+			{
+				ASC->RemoveLooseGameplayTag(STRTag);
+			}
+
+			const FGameplayTag DEXTag = ClanhallGameplayTags::Balance_Overload_DEX.GetTag();
+			const bool bDEXOverloaded = IsBalanceOverloaded(ClampedBalance, /*bIsSTR*/ false);
+			const bool bDEXTagPresent = ASC->HasMatchingGameplayTag(DEXTag);
+			if (bDEXOverloaded && !bDEXTagPresent)
+			{
+				ASC->AddLooseGameplayTag(DEXTag);
+			}
+			else if (!bDEXOverloaded && bDEXTagPresent)
+			{
+				ASC->RemoveLooseGameplayTag(DEXTag);
+			}
+		}
 	}
 	else if (ChangedAttribute == GetStaggerAttribute())
 	{

@@ -78,6 +78,12 @@ public:
 	FGameplayAttributeData MaxStagger;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxStagger);
 
+	/** Единственное место, где живёт порог перегруза (combat_system.md §2: |Balance| >= 60).
+	 *  Источник истины и для тега Balance.Overload.* (навешивается здесь же, в
+	 *  PostGameplayEffectExecute), и для UGA_ClanhallAbilityBase::IsBalanceOverloaded —
+	 *  раньше число было захардкожено в двух местах порознь. */
+	static bool IsBalanceOverloaded(float Balance, bool bIsSTR);
+
 protected:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;

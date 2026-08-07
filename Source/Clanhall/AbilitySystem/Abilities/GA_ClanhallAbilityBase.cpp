@@ -117,6 +117,5 @@ bool UGA_ClanhallAbilityBase::IsBalanceOverloaded(const UAbilitySystemComponent*
 	}
 
 	const bool bIsSTR = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
-	const float Balance = Attributes->GetBalance();
-	return bIsSTR ? (Balance >= 60.0f) : (Balance <= -60.0f);
+	return UClanhallAttributeSet::IsBalanceOverloaded(Attributes->GetBalance(), bIsSTR);
 }

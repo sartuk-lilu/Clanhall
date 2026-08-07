@@ -110,8 +110,13 @@ void UClanhallParryComponent::AddStagger(float Amount)
 	}
 
 	// §3: любой вызов, включая AddStagger(0), прерывает текущий слив и сохраняет остаток —
-	// тот же FTimerHandle, что ниже перезапускает ScheduleStaggerDecay().
-	GetWorld()->GetTimerManager().ClearTimer(StaggerDecayTimer);
+	// тот же FTimerHandle, что ниже перезапускает ScheduleStaggerDecay(). GetWorld() может
+	// вернуть null при разрушении мира (ConsumeCounter — один из вызывающих) — гард, не
+	// разыменование вслепую.
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(StaggerDecayTimer);
+	}
 
 	UAbilitySystemComponent* ASC = GetASC();
 	const UClanhallAttributeSet* Attributes = ASC ? ASC->GetSet<UClanhallAttributeSet>() : nullptr;
