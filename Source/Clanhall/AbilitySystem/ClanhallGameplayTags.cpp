@@ -47,16 +47,6 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_C, "Ability.Slot.C", "Слот C — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_V, "Ability.Slot.V", "Слот V — общий для всех оружий");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot, "Cooldown.Slot", "[DEPRECATED] Заменён Ability.Slot — удалить после проверки Reference Viewer");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Q, "Cooldown.Slot.Q", "[DEPRECATED] Заменён Ability.Slot.Q");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_E, "Cooldown.Slot.E", "[DEPRECATED] Заменён Ability.Slot.E");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_R, "Cooldown.Slot.R", "[DEPRECATED] Заменён Ability.Slot.R");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_F, "Cooldown.Slot.F", "[DEPRECATED] Заменён Ability.Slot.F");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_Z, "Cooldown.Slot.Z", "[DEPRECATED] Заменён Ability.Slot.Z");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_X, "Cooldown.Slot.X", "[DEPRECATED] Заменён Ability.Slot.X");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_C, "Cooldown.Slot.C", "[DEPRECATED] Заменён Ability.Slot.C");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Slot_V, "Cooldown.Slot.V", "[DEPRECATED] Заменён Ability.Slot.V");
-
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Denied_Charges, "Ability.Denied.Charges", "CanActivateAbility отказал из-за нехватки Charges — причина для Denied-фидбека на HUD");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP/Balance)");
