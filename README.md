@@ -3,8 +3,11 @@
 ---
 
 **Engine:** Unreal Engine 5
+
 **Плагин:** Gameplay Ability System (GAS)
+
 **Паттерн данных:** DataAsset + Fragments (композиция через данные)
+
 **Язык:** C++ для ядра, Blueprint для быстрого прототипирования навыков
 
 ---
