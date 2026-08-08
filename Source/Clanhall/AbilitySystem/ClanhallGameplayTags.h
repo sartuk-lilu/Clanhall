@@ -100,7 +100,7 @@ namespace ClanhallGameplayTags
 	// ---- Event.* ----
 	// GameplayEvent-сигналы от AnimNotify к активной способности.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_ApplyMark);
-	// combo_system.md: несёт BaseDamage (EventMagnitude) от UClanhallComboComponent
+	// main_dev_plan.md §7: несёт BaseDamage (EventMagnitude) от UClanhallComboComponent
 	// к GA_DirectionalAttackBase через TriggerAbilityFromGameplayEvent — Handle-активация сохраняется,
 	// тег тут служебный (не гейтит выбор способности, тот идёт по Handle).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_DirectionalAttack);
@@ -113,7 +113,7 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Hitbox_Closed);
 
 	// ---- Damage.Type.* ----
-	// Тег типа урона на FDirectionalDamage (combo_system.md). Заглушка —
+	// Тег типа урона на FDirectionalDamage (main_dev_plan.md §7). Заглушка —
 	// в расчёте урона пока НЕ используется. Ровно три листа для физического урона прототипа;
 	// магический (Damage.Type.Magic.*) — отдельной веткой, пока не заводить.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage_Type_Slash);
@@ -123,7 +123,7 @@ namespace ClanhallGameplayTags
 	// ---- Perk.* ----
 	// Корень будущей перк/условной-разблокировки системы — задел, перк-системы ещё нет. Раньше
 	// сюда указывал FComboChain.RequiredUnlock (удалён — условие было на каждой цепочке, не там,
-	// где реально нужно: см. combo_system.md §9). Планируется вернуться как fragment на уровне
+	// где реально нужно: см. combat_system.md §4, «Цена модели пар»). Планируется вернуться как fragment на уровне
 	// конкретного хода/навыка, когда несколько навыков делят один MoveId.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk);
 

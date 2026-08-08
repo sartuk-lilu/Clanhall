@@ -36,7 +36,7 @@ class AClanhallHumanoidCombatant : public AClanhallCombatantBase
 	GENERATED_BODY()
 
 protected:
-	/** Ворота ввода, не буфер (combo_system.md): сам владеет активацией WASD-ударов и решает,
+	/** Ворота ввода, не буфер (combat_system.md §4): сам владеет активацией WASD-ударов и решает,
 	 *  когда вызвать TryActivateAbility на GA_DirectionalAttack_*. И Enhanced Input (игрок),
 	 *  и AI (main_dev_plan.md §8, Блок B) зовут один и тот же HandleAttackInput. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
@@ -75,7 +75,7 @@ public:
 	AClanhallHumanoidCombatant();
 
 	/** Потолок длины серии WASD-комбо (1-4). Плейсхолдер до системы прокачки —
-	 *  см. combo_system.md, ранг / потолок длины комбо. Свойство ЭКЗЕМПЛЯРА, не кита
+	 *  см. main_dev_plan.md §7, ранг / потолок длины комбо. Свойство ЭКЗЕМПЛЯРА, не кита
 	 *  (main_dev_plan.md §8, Блок A2, DO NOT): один кит обслуживает и рядового бойца, и босса
 	 *  того же класса, у них разный ранг. Ранга 0 не существует (task_skill_economy_loops.md
 	 *  §3): на ранге 0 нет ни одного активного навыка, то есть нет ни одного потребителя
@@ -94,7 +94,7 @@ public:
 	const UComboData* GetComboData() const;
 
 	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
-	 *  активировать (combo_system.md: инверсия потока активации). */
+	 *  активировать (main_dev_plan.md §7: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 
 	/** Хэндл активного навыка по слоту (Ability.Slot.Q/E/R/F/...) — не найден в

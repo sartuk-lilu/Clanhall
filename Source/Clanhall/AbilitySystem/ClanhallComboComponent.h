@@ -1,11 +1,11 @@
-// Единственный источник истины для чейна WASD-ударов (combo_system.md). Ворота ввода, не буфер:
+// Единственный источник истины для чейна WASD-ударов (main_dev_plan.md §7). Ворота ввода, не буфер:
 // до открытия окна чтения ввод отбрасывается целиком, ничего не копится; в открытом окне действует
 // "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (инверсия
 // потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP/Balance) и
 // сам проигрывает монтаж конкретного шага — GA_DirectionalAttackBase собственного монтажа больше
 // не играет. Живёт на AClanhallHumanoidCombatant (игрок и AI-боец, main_dev_plan.md §8).
 //
-// Резолв данных (combo_system.md): модель пар, не путей. Ход определяется только
+// Резолв данных (main_dev_plan.md §7): модель пар, не путей. Ход определяется только
 // парой «предыдущее направление -> новое» (UComboData::FindOpenerMontage/FindTransitionMontage) —
 // история серии до предыдущего шага не участвует, LastDirection хранит только последний шаг.
 // Урон берётся из UComboData::FindDamageByDirection (4 именованных поля профиля) по направлению
@@ -47,7 +47,7 @@ class CLANHALL_API UClanhallComboComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. combo_system.md:
+	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. main_dev_plan.md §7:
 	 *  "порядка 0.15-0.2 с, чтобы верх плавно ушёл в локомоцию". */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float StanceExitBlendOutTime = 0.18f;
@@ -80,7 +80,7 @@ public:
 	void OnStanceExit();
 
 	/** Внешнее прерывание серии чужим монтажом (активка Q/E/R/F в общей slot-группе,
-	 *  combo_system.md). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
+	 *  main_dev_plan.md §7). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
 	 *  чужой монтаж уже занимает слот, Recovery дрался бы с ним за него; наказания за прерывание
 	 *  нет — тот же принцип, что у невалидного продолжения. Зовётся ДО Montage_Play активки. */
 	void CancelSequenceForExternalMontage();

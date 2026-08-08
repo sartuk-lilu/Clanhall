@@ -259,7 +259,7 @@ void AClanhallCharacter::OnStanceReleased()
 		AbilitySystemComponent->CancelAbilityHandle(StanceAbilityHandle);
 	}
 
-	// combo_system.md: выход из стойки — всегда, вне ворот. Останавливает активный
+	// main_dev_plan.md §7: выход из стойки — всегда, вне ворот. Останавливает активный
 	// монтаж комбо с blend-out и сбрасывает последовательность независимо от фазы.
 	if (ComboComponent)
 	{
@@ -267,7 +267,7 @@ void AClanhallCharacter::OnStanceReleased()
 	}
 }
 
-// combo_system.md: WASD больше не активирует направленный удар напрямую —
+// main_dev_plan.md §7: WASD больше не активирует направленный удар напрямую —
 // решение (опенер / продолжение по данным дерева / мусор вне окна) целиком у ComboComponent,
 // он же сам вызывает TryActivateAbility, когда ввод валиден. Парирование обрабатывает
 // UClanhallHitboxComponent при хите врага зоной с bParryable == true (State.Parrying на ASC

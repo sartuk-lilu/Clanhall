@@ -1,5 +1,5 @@
 // Базовый класс для 4 направленных WASD-ударов. Канон: combat_system.md §4.
-// Активация идёт только через UClanhallComboComponent (combo_system.md — валидатор
+// Активация идёт только через UClanhallComboComponent (main_dev_plan.md §7 — валидатор
 // комбо гейтит вызов активации, формулы урона/Charges/Balance ниже не тронуты).
 // Величина урона (BaseDamage профиля по направлению шага) приходит в
 // TriggerEventData->EventMagnitude — компонент резолвит её из UComboData::FindDamageByDirection

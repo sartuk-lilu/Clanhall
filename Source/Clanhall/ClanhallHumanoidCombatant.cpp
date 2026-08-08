@@ -15,7 +15,7 @@
 
 AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
 {
-	// combo_system.md: ворота ввода + владелец активации WASD-ударов.
+	// main_dev_plan.md §7: ворота ввода + владелец активации WASD-ударов.
 	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
 
