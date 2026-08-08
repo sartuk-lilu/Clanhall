@@ -48,7 +48,8 @@ class CLANHALL_API UClanhallComboComponent : public UActorComponent
 
 public:
 	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. main_dev_plan.md §7:
-	 *  "порядка 0.15-0.2 с, чтобы верх плавно ушёл в локомоцию". */
+	 *  обязано совпадать с Duration перехода Locomotion ↔ CombatStance в ABP, иначе на выходе
+	 *  из стойки заметна ступенька. */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float StanceExitBlendOutTime = 0.18f;
 
