@@ -3,7 +3,7 @@
 #include "GameFramework/SaveGame.h"
 #include "ClanhallHUDSaveGame.generated.h"
 
-/** Хранит позиции перетаскиваемых рамок HUD между сессиями (hud_dev_plan.md). */
+/** Хранит позиции перетаскиваемых рамок HUD между сессиями (`HUD.md`). */
 UCLASS()
 class CLANHALL_API UClanhallHUDSaveGame : public USaveGame
 {

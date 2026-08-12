@@ -14,7 +14,7 @@ class CLANHALL_API UVFXFragment : public UAbilityFragment
 	GENERATED_BODY()
 
 public:
-	// Niagara или Cascade — решится в Разделе 6.5, пока без конкретного типа.
+	// Niagara или Cascade — решится позже, пока без конкретного типа.
 	UPROPERTY(EditAnywhere, Category = "VFX")
 	TSoftObjectPtr<UObject> CastEffect;
 

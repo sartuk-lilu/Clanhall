@@ -1,11 +1,11 @@
-// Единственный источник истины для чейна WASD-ударов (main_dev_plan.md §7). Ворота ввода, не буфер:
+// Единственный источник истины для чейна WASD-ударов (`Combat Stance and WASD Attacks.md`). Ворота ввода, не буфер:
 // до открытия окна чтения ввод отбрасывается целиком, ничего не копится; в открытом окне действует
 // "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (инверсия
 // потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP) и
 // сам проигрывает монтаж конкретного шага — GA_DirectionalAttackBase собственного монтажа больше
-// не играет. Живёт на AClanhallHumanoidCombatant (игрок и AI-боец, main_dev_plan.md §8).
+// не играет. Живёт на AClanhallHumanoidCombatant (игрок и AI-боец).
 //
-// Резолв данных (main_dev_plan.md §7): модель пар, не путей. Ход определяется только
+// Резолв данных (`Combat Stance and WASD Attacks.md`): модель пар, не путей. Ход определяется только
 // парой «предыдущее направление -> новое» (UComboData::FindOpenerMontage/FindTransitionMontage) —
 // история серии до предыдущего шага не участвует, LastDirection хранит только последний шаг.
 // Урон берётся из UComboData::FindDamageByDirection (4 именованных поля профиля) по направлению
@@ -35,7 +35,7 @@ class UAnimMontage;
 class UAnimInstance;
 class AActor;
 
-/** main_dev_plan.md §8, Блок B: единственное расширение публичного API под AI-водителя.
+/** Единственное расширение публичного API под AI-водителя.
  *  Открытие/закрытие окна чтения — момент, когда AI обязан подать направление в
  *  HandleAttackInput; вне окна ввод отбрасывается так же, как и у игрока (ворота, не буфер). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FClanhallOnComboWindowOpened);
@@ -47,28 +47,28 @@ class CLANHALL_API UClanhallComboComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. main_dev_plan.md §7:
+	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. (`Combat Stance and WASD Attacks.md`):
 	 *  обязано совпадать с Duration перехода Locomotion ↔ CombatStance в ABP, иначе на выходе
 	 *  из стойки заметна ступенька. */
 	UPROPERTY(EditDefaultsOnly, Category = "Combo")
 	float StanceExitBlendOutTime = 0.18f;
 
-	/** main_dev_plan.md §8, Блок B: единственный публичный сигнал для AI/BT о том, что окно
+	/** Единственный публичный сигнал для AI/BT о том, что окно
 	 *  чтения ввода открылось/закрылось — по нему водитель узнаёт момент подать направление
 	 *  в HandleAttackInput. Решений компонент не принимает и не подсказывает — какое именно
-	 *  направление подать, решает вызывающий (BT/исполнитель, Раздел 8 Блок G). */
+	 *  направление подать, решает вызывающий (BT/исполнитель). */
 	UPROPERTY(BlueprintAssignable, Category = "Combo")
 	FClanhallOnComboWindowOpened OnComboWindowOpened;
 
 	UPROPERTY(BlueprintAssignable, Category = "Combo")
 	FClanhallOnComboWindowClosed OnComboWindowClosed;
 
-	/** Вызывается из WASD-обработчика ввода (OnAttackX в ClanhallCharacter) — и, с Блока B,
-	 *  из AI-водителя (main_dev_plan.md §8): точка входа одна и та же и стороне-нейтральна,
+	/** Вызывается из WASD-обработчика ввода (OnAttackX в ClanhallCharacter) — и из
+	 *  AI-водителя: точка входа одна и та же и стороне-нейтральна,
 	 *  второй не заводим. Решает: опенер, запись в окне чтения (продолжение) или мусор вне
 	 *  окна — сама активирует направленный удар, когда решение валидно. BlueprintCallable —
-	 *  единственный способ прогнать серию боссу до появления BT-исполнителя (Блок G):
-	 *  временный отладочный вызов кнопкой/консолью из Блока B. */
+	 *  единственный способ прогнать серию боссу до появления BT-исполнителя:
+	 *  временный отладочный вызов кнопкой/консолью. */
 	UFUNCTION(BlueprintCallable, Category = "Combo")
 	void HandleAttackInput(EClanhallAttackDirection Direction);
 
@@ -81,12 +81,12 @@ public:
 	void OnStanceExit();
 
 	/** Внешнее прерывание серии чужим монтажом (активка Q/E/R/F в общей slot-группе,
-	 *  main_dev_plan.md §7). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
+	 *  `Combat Stance and WASD Attacks.md`). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
 	 *  чужой монтаж уже занимает слот, Recovery дрался бы с ним за него; наказания за прерывание
 	 *  нет — тот же принцип, что у невалидного продолжения. Зовётся ДО Montage_Play активки. */
 	void CancelSequenceForExternalMontage();
 
-	/** main_dev_plan.md §8, Блок B: публичный запрос состояния серии для AI — активна,
+	/** Публичный запрос состояния серии для AI — активна,
 	 *  текущая длина и потолок по ClassRank. Ничего из этого не решает за вызывающего:
 	 *  сравнивать со StepCount/ClassRank и выбирать следующее направление — дело водителя. */
 	bool IsSequenceActive() const { return StepCount > 0; }
@@ -121,7 +121,7 @@ private:
 	void PlayMontage(UAnimMontage* Montage);
 	void ResetCombo();
 
-	/** Страховка от залипшей зоны поражения (main_dev_plan.md §7): комбо-компонент
+	/** Страховка от залипшей зоны поражения (`Combat Stance and WASD Attacks.md`): комбо-компонент
 	 *  владеет жизненным циклом удар-монтажа, поэтому страховка идёт сюда, а не в GA (тот
 	 *  InstancedPerExecution и заканчивается синхронно до начала монтажа). Закрывает ВСЕ зоны
 	 *  без разбора (UClanhallHitboxComponent::EndAllHitboxes) — двойной вызов безвреден. */
@@ -144,7 +144,7 @@ private:
 	 *  быть резолвлена ДО ResetCombo() — сброс очищает LastDirection. */
 	void EndSequenceWithRecovery();
 
-	/** task_parry_rework.md §1.2: симметричный телеграф направления. Вешает/снимает
+	/** (`Parrying.md`): симметричный телеграф направления. Вешает/снимает
 	 *  Attack.Direction.<Direction> на СЕБЯ — State.Parrying по-прежнему на разметке монтажа
 	 *  (AnimNotifyState_ParryWindow), но кому какое направление парировать, до сих пор решает
 	 *  только код, т.к. в анимации направление не читается. UClanhallParryComponent::TryParry

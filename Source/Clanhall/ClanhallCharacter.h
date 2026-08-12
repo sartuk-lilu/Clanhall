@@ -32,7 +32,7 @@ class AClanhallCharacter : public AClanhallHumanoidCombatant
 	TObjectPtr<UClanhallTargetingComponent> TargetingComponent;
 
 	/** HUD: держит Unit.Role.Boss.* юнитов в радиусе игрока, вещает OnFrameUnitEntered/Exited
-	 *  для мульти-контейнера Enemy Frame (hud_dev_plan.md). Рамку водит этот
+	 *  для мульти-контейнера Enemy Frame (`HUD.md`). Рамку водит этот
 	 *  компонент, а не TargetingComponent — тот остаётся мягкой целью под удар/метку. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallBossSensorComponent> BossSensorComponent;
@@ -63,7 +63,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
-	// --- Боевая стойка (combat_system.md §3): ЛКМ зажат = стойка, WASD = удары вместо движения ---
+	// --- Боевая стойка (`combat_system.md`, «Боевая стойка и переключение режимов»): ЛКМ зажат = стойка, WASD = удары вместо движения ---
 
 	/** ЛКМ — вход/выход из боевой стойки */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
@@ -87,7 +87,7 @@ protected:
 
 	FGameplayAbilitySpecHandle StanceAbilityHandle;
 
-	// --- Раздел 4: активные навыки Knight (Q/E/R/F) через GA_PhysicalSkill + DataAsset ---
+	// --- Активные навыки Knight (Q/E/R/F) через GA_PhysicalSkill + DataAsset ---
 
 	/** Q — Shield Slam */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
@@ -105,7 +105,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* ActiveSkillFAction;
 
-	/** Раздел 2 placeholder: настоящий выбор оружия появится в Разделе 10. Переключает тег Weapon.Type.STR/DEX на ASC. */
+	/** Placeholder: настоящий выбор оружия появится позже. Переключает тег Weapon.Type.STR/DEX на ASC. */
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	bool bStartWithSTRWeapon = true;
 
@@ -136,7 +136,7 @@ protected:
 	/** ЛКМ нажат — активировать GA_CombatStance */
 	void OnStancePressed();
 
-	/** ЛКМ отпущен — CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. combat_system.md §3) */
+	/** ЛКМ отпущен — CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `combat_system.md`, «Боевая стойка и переключение режимов») */
 	void OnStanceReleased();
 
 	void OnAttackOverhead();
@@ -179,8 +179,8 @@ public:
 	 *  а не член AClanhallCharacter: в Event Blueprint Update Animation обычно уже есть закэшированная
 	 *  и провалидированная (IsValid) переменная Character как ACharacter — так не нужен второй Cast
 	 *  To Clanhall Character поверх неё, каст на AClanhallHumanoidCombatant делается внутри. nullptr, если
-	 *  Character не этого класса или ComboData не назначен. Оставлена именно на этом классе (main_dev_plan.md
-	 *  §8, Блок A) — функция BlueprintPure читает ABP игрока по имени класса, перенос сломал бы ноду в графе. */
+	 *  Character не этого класса или ComboData не назначен. Оставлена именно на этом классе —
+	 *  функция BlueprintPure читает ABP игрока по имени класса, перенос сломал бы ноду в графе. */
 	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
 	static UAnimSequence* GetStanceAnim(const ACharacter* Character);
 };

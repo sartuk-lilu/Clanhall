@@ -1,5 +1,5 @@
 // Clanhall — единая точка объявления GameplayTags.
-// Канон: теги закладываются один раз и полностью (см. CLAUDE.md / main_dev_plan.md).
+// Канон: теги закладываются один раз и полностью (см. CLAUDE.md).
 // Дописывать новые теги можно. Переименовывать существующие — нельзя, это ломает весь GAS-граф
 // (ассеты хранят тег строкой FName, ссылка порвётся молча). Удалять неиспользуемый тег можно —
 // сначала проверить Reference Viewer (Project Settings → GameplayTags → поиск ссылок). Мёртвые
@@ -19,9 +19,9 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Class_Lancer);
 
 	// ---- Ability.Skill.* ----
-	// Корневые теги веток навыков + листовые теги Knight Ранг 1-2 (Раздел 4).
-	// Листья других классов добавляются в Разделах 7-10 вместе с самими навыками.
-	// Листья нужны в Разделе 6 для контрнавыка: детектор сравнивает активный тег врага с известными.
+	// Корневые теги веток навыков + листовые теги Knight Ранг 1-2.
+	// Листья других классов добавляются вместе с самими навыками.
+	// Листья нужны для контрнавыка: детектор сравнивает активный тег врага с известными.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight_ShieldSlam);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight_PowerStrike);
@@ -41,7 +41,7 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Knockdown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_ComboRecovery);
 	// Активка в фазе коммита: живёт от активации до закрытия окна контакта. Пока висит —
-	// нельзя начать WASD-серию и нельзя запустить вторую активку (combat_system.md §3,
+	// нельзя начать WASD-серию и нельзя запустить вторую активку (`combat_system.md`, «Боевая стойка и переключение режимов»,
 	// «начатую активку нельзя оборвать»). Выход из стойки при этом свободен всегда.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_SkillCommitted);
 
@@ -53,20 +53,20 @@ namespace ClanhallGameplayTags
 	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
 	// замаха (UClanhallComboComponent::ActivateStep), стороне-нейтрален (и игрок, и AI).
 	// Раньше назывался Parry.Incoming.* — имя лгало (описывало «летит откуда-то», а не
-	// «я бью туда-то»); переименован в task_parry_rework.md. Обратная пара для клэша:
-	// W↔S, A↔D (combat_system.md §5).
+	// «я бью туда-то»); переименован (`Parrying.md`). Обратная пара для клэша:
+	// W↔S, A↔D (`combat_system.md`, «Механика клэша — резолв на контакте атакующего, не на реакции защищающегося»).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_W);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_S);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_A);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_D);
 
 	// ---- Ability.Slot.* ----
-	// Слот принадлежит клавише, а не конкретному навыку (ability_system.md §3) — общий для всех
+	// Слот принадлежит клавише, а не конкретному навыку (`ability_system.md`, «Контрнавык») — общий для всех
 	// оружий, ключует UClassKitData::Skills и живёт как динамический тег спека
-	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит
-	// (main_dev_plan.md §8, Блок A2). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
+	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит.
+	// Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
 	// отфильтровать слот среди прочих динамических тегов спека.
-	// Мигрировано из Cooldown.Slot.* (task_economy_no_cooldowns_code.md §1): слот пережил смерть
+	// Мигрировано из Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов»): слот пережил смерть
 	// кулдаунов, но неймспейс Cooldown.* стал бы врать. Старые теги удалены из кода; ключи
 	// существующих UClassKitData-ассетов, если ещё не перенесены вручную в редакторе, ссылаются
 	// на несуществующий тег — гранты активок для них молчаливо сломаны, чинится только правкой
@@ -84,7 +84,7 @@ namespace ClanhallGameplayTags
 	// ---- Ability.Denied.* ----
 	// Причина отказа TryActivateAbility, пробрасывается в OptionalRelevantTags у
 	// CanActivateAbility и долетает до UAbilitySystemComponent::AbilityFailedCallbacks
-	// (main_dev_plan.md, Denied-фидбек). Charges — единственная причина, которую HUD обязан
+	// (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»). Charges — единственная причина, которую HUD обязан
 	// показать игроку отдельно от прочих отказов (State.SkillCommitted/State.Stunned).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Denied_Charges);
 
@@ -96,7 +96,7 @@ namespace ClanhallGameplayTags
 	// ---- Event.* ----
 	// GameplayEvent-сигналы от AnimNotify к активной способности.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_ApplyMark);
-	// main_dev_plan.md §7: несёт BaseDamage (EventMagnitude) от UClanhallComboComponent
+	// (`Combat Stance and WASD Attacks.md`): несёт BaseDamage (EventMagnitude) от UClanhallComboComponent
 	// к GA_DirectionalAttackBase через TriggerAbilityFromGameplayEvent — Handle-активация сохраняется,
 	// тег тут служебный (не гейтит выбор способности, тот идёт по Handle).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_DirectionalAttack);
@@ -109,7 +109,7 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Hitbox_Closed);
 
 	// ---- Damage.Type.* ----
-	// Тег типа урона на FDirectionalDamage (main_dev_plan.md §7). Заглушка —
+	// Тег типа урона на FDirectionalDamage (`Combat Stance and WASD Attacks.md`). Заглушка —
 	// в расчёте урона пока НЕ используется. Ровно три листа для физического урона прототипа;
 	// магический (Damage.Type.Magic.*) — отдельной веткой, пока не заводить.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage_Type_Slash);
@@ -119,12 +119,12 @@ namespace ClanhallGameplayTags
 	// ---- Perk.* ----
 	// Корень будущей перк/условной-разблокировки системы — задел, перк-системы ещё нет. Раньше
 	// сюда указывал FComboChain.RequiredUnlock (удалён — условие было на каждой цепочке, не там,
-	// где реально нужно: см. combat_system.md §4, «Цена модели пар»). Планируется вернуться как fragment на уровне
+	// где реально нужно: см. `combat_system.md`, «Цена модели пар»). Планируется вернуться как fragment на уровне
 	// конкретного хода/навыка, когда несколько навыков делят один MoveId.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk);
 
 	// ---- Magic.School.* ----
-	// Только корни школ. Структура рангов (Rank.*) откладывается до Раздела 9 —
+	// Только корни школ. Структура рангов (Rank.*) откладывается —
 	// преждевременно фиксировать форму, которая ещё не используется кодом.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Materia);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Elemental);
@@ -132,7 +132,7 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Magic_School_Stars);
 
 	// ---- Unit.Role.* ----
-	// Роль юнита, навешивается loose-тегом на его ASC в BeginPlay (hud_dev_plan.md).
+	// Роль юнита, навешивается loose-тегом на его ASC в BeginPlay (`HUD.md`).
 	// Unit.Role.Boss — родитель для Humanoid/Monster: сенсор рамки (UClanhallBossSensorComponent)
 	// запрашивает именно родителя, чтобы матчить оба подтипа боссов разом.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Mob);
@@ -141,8 +141,8 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Boss_Monster);
 
 	// ---- Mark.* ----
-	// Полный канонический список из mark_system.md §6 (33 метки + Compressed,
-	// используемая в magic_spells.md/Juggernaut-примере, но пропущенная в таблице §6).
+	// Полный канонический список из `mark_system.md`, «Типы меток» (33 метки + Compressed,
+	// используемая в magic_spells.md/Juggernaut-примере, но пропущенная в исходной таблице).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mark_Bleeding);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mark_OpenWound);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mark_Disrupted);

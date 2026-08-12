@@ -1,6 +1,6 @@
 // Описание активной зоны поражения. Задаётся на нотифае монтажа, передаётся в
 // UClanhallHitboxComponent::BeginHitbox. Компонент собственной геометрии не имеет —
-// вся форма приходит из данных анимации (main_dev_plan.md §7).
+// вся форма приходит из данных анимации (`Animation Setup.md`).
 
 #pragma once
 
@@ -51,7 +51,7 @@ struct FClanhallHitboxDesc
 	UPROPERTY(EditAnywhere, Category = "Hitbox", meta = (EditCondition = "Shape == EClanhallHitboxShape::Box", EditConditionHides))
 	FVector BoxExtent = FVector(20.0f, 20.0f, 20.0f);
 
-	/** Участвует ли этот взмах в клэше парирования (ability_system.md §2: WASD парируют WASD,
+	/** Участвует ли этот взмах в клэше парирования (`ability_system.md`, «Контрнавык»: WASD парируют WASD,
 	 *  активки контрят активки — активка в клэше не участвует вообще).
 	 *  true  — WASD-удары: попадание по актору со State.Parrying идёт в UClanhallParryComponent.
 	 *  false — активки Q/E/R/F: зона бьёт, но парирование не проверяет. Так протухшее

@@ -69,7 +69,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Humanoid, "Unit.Role.Boss.Humanoid", "«Псевдоигрок»: навыки из пула игрока, есть AP/MP/Charges, игрок учится у него навыкам");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Monster, "Unit.Role.Boss.Monster", "Босс-монстр: уникальные атаки, без MP и без AP, ничему не учит; рамка HP-центричная");
 
-	// Стрелки в mark_system.md §6 — тематические семейства (группировка по стихии/типу),
+	// Стрелки в `mark_system.md`, «Типы меток» — тематические семейства (группировка по стихии/типу),
 	// НЕ механические цепочки прогрессии. Механика всегда парная: метка → активация (правка 1.6).
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Bleeding, "Mark.Bleeding", "Семейство 1 (кровь): Bleeding / Open Wound / Disrupted");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_OpenWound, "Mark.OpenWound", "Семейство 1 (кровь)");

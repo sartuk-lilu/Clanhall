@@ -51,7 +51,7 @@ void UClanhallCounterComponent::ConsumeCounter()
 #endif
 	}
 
-	// task_stagger_control_code.md §5.2: +1 усталости сбитому и хитстоп — переиспользуем
+	// (`combat_system.md`, «Stagger — усталость»): +1 усталости сбитому и хитстоп — переиспользуем
 	// UClanhallHitboxComponent::ApplyHitstop, ту же реализацию, что резолв клэша в TryParry.
 	// Синхронно, не через OnCounterConsumed — тот делегат для будущей реакции получателя (флинч/VFX),
 	// хитстоп должен ударить в тот же кадр, что и сам контр.

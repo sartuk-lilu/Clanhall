@@ -9,7 +9,7 @@
 #include "AbilitySystem/ClanhallMarkTypes.h"
 #include "GameplayFragments.generated.h"
 
-/** У навыков, наносящих урон. AP/HP-обмен по стандартной формуле (combat_system.md §AP) —
+/** У навыков, наносящих урон. AP/HP-обмен по стандартной формуле (`combat_system.md`, «AP — Armor Points») —
  *  считает GA_ClanhallAbilityBase::ResolveStandardDamage, этот фрагмент только хранит число. */
 UCLASS()
 class CLANHALL_API UDamageFragment : public UAbilityFragment
@@ -21,7 +21,7 @@ public:
 	float BaseDamage = 0.0f;
 };
 
-/** У навыков, накладывающих метку на цель после попадания (mark_system.md §2, Правила 1 и 3). */
+/** У навыков, накладывающих метку на цель после попадания (`mark_system.md`, «Наложение»). */
 UCLASS()
 class CLANHALL_API UMarkApplyFragment : public UAbilityFragment
 {
@@ -32,14 +32,14 @@ public:
 	FGameplayTag MarkTag;
 };
 
-/** У навыков, потребляющих метки на цели (mark_system.md §2, Правило 2). */
+/** У навыков, потребляющих метки на цели (`mark_system.md`, «Активация синергии»). */
 UCLASS()
 class CLANHALL_API UMarkTriggerFragment : public UAbilityFragment
 {
 	GENERATED_BODY()
 
 public:
-	/** У навыков, потребляющих метки на цели (mark_system.md §2, Правило 2).
+	/** У навыков, потребляющих метки на цели (`mark_system.md`, «Активация синергии»).
 	 *  Первое совпадение выигрывает. Матч по MatchesTag, поэтому конкретные метки
 	 *  ставить ВЫШЕ широких: запись с корневым тегом Mark («любая метка») перекроет
 	 *  всё, что стоит после неё. */
@@ -50,7 +50,7 @@ public:
 /** У навыков, перемещающих владельца рывком вперёд (Shield Charge и подобные). Перемещение —
  *  данные навыка, а не свойство клипа: запекать дистанцию в анимацию нельзя (правка потребовала
  *  бы реэкспорта), и это сломало бы инвариант «механика работает без единой анимации» —
- *  при CastMontage == nullptr рывка не было бы вовсе (task_dash_and_counter_window.md, Задача 1).
+ *  при CastMontage == nullptr рывка не было бы вовсе (`Animation Setup.md`).
  *  Фрагмент, а не поле заголовка: его отсутствие несёт смысл «навык не двигает персонажа»,
  *  невыразимый через Distance = 0 (CLAUDE.md, критерий «заголовок или фрагмент»). */
 UCLASS(meta = (DisplayName = "Dash"))

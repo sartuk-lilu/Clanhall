@@ -107,7 +107,7 @@ void UClanhallHitboxComponent::SuppressHitboxes()
 		// этого явного вызова EndAllHitboxes() выше не эмитит Closed (не было перехода
 		// «были->нет»), а UGA_DirectionalAttackBase на контактном пути ждёт именно этот ивент
 		// как единственный терминатор — без него способность не заканчивается вовсе, а не только
-		// подвисает (task_section8_blocks_fgh.md §0.1, «Ловушка»).
+		// подвисает (`DataAsset and Fragments.md`, «Терминатор способности»).
 		NotifyAllHitboxesClosed();
 	}
 }
@@ -322,7 +322,7 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 			continue;   // парирование обработано, обычный хит не нужен
 		}
 
-		// task_section8_blocks_fgh.md §0.3: подавление зоны цели и хитстоп бьющему живут ЗДЕСЬ,
+		// (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»): подавление зоны цели и хитстоп бьющему живут ЗДЕСЬ,
 		// на самом контакте — а не в расчёте урона (ResolveStandardDamage), куда не доходят удар,
 		// полностью поглощённый DT (0 урона -> bConfirmedHit=false), и утилитарные навыки без
 		// UDamageFragment (War Shout и подобные). Контакт — факт, произошедший независимо от того,

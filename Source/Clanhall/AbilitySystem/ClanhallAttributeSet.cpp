@@ -34,10 +34,10 @@ void UClanhallAttributeSet::ClampAttribute(const FGameplayAttribute& Attribute, 
 	}
 	else if (Attribute == GetMaxChargesAttribute())
 	{
-		// Предел отрисовки WBP_ChargesPanel (четыре ряда ромбов), не дизайнерское решение
-		// (combat_system.md §1). Открытый вопрос «что делать с прибавками сверх трёх физических
-		// веток ранга 4» — main_dev_plan.md, «Открытые вопросы», п.16.
-		NewValue = FMath::Clamp(NewValue, 0.0f, 12.0f);
+		// Потолок = число ячеек сетки 4×4 в WBP_ChargesPanel: техническая граница отрисовки,
+		// не баланс. Дизайнерское значение банка живёт в данных бойца (DefaultMaxCharges) и в
+		// `combat_system.md`, «Charges — Очки Активных Навыков».
+		NewValue = FMath::Clamp(NewValue, 0.0f, 16.0f);
 	}
 	else if (Attribute == GetStaggerAttribute())
 	{
@@ -72,7 +72,7 @@ void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCa
 	}
 	else if (ChangedAttribute == GetMaxChargesAttribute())
 	{
-		SetMaxCharges(FMath::Clamp(GetMaxCharges(), 0.0f, 12.0f));
+		SetMaxCharges(FMath::Clamp(GetMaxCharges(), 0.0f, 16.0f));
 	}
 	else if (ChangedAttribute == GetStaggerAttribute())
 	{

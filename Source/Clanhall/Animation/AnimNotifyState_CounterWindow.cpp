@@ -12,7 +12,7 @@ namespace
 	/** Общий поиск для NotifyBegin/NotifyEnd: активный спек владельца, чей UAbilityData::CastMontage
 	 *  совпадает с Montage и у которого непустой CounteredBy — тот же критерий в обоих местах,
 	 *  иначе Begin откроет окно одного навыка, а End закроет по критерию, не совпадающему с ним
-	 *  (task_counterwindow_symmetry.md, Задача 1). nullptr, если такого спека нет. */
+	 *  (`Animation Setup.md`). nullptr, если такого спека нет. */
 	const UAbilityData* FindOwningAbilityData(UAbilitySystemComponent* ASC, const UAnimMontage* Montage, FGameplayAbilitySpecHandle& OutHandle)
 	{
 		if (!ASC || !Montage)

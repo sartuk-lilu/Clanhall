@@ -14,15 +14,15 @@ AClanhallCombatantBase::AClanhallCombatantBase()
 
 	AttributeSet = CreateDefaultSubobject<UClanhallAttributeSet>(TEXT("AttributeSet"));
 
-	// Метка бойца — независимый трек (mark_system.md §3/§5), двусторонняя по построению.
+	// Метка бойца — независимый трек (`mark_system.md`, «Получение метки от врага»), двусторонняя по построению.
 	MarkComponent = CreateDefaultSubobject<UClanhallMarkComponent>(TEXT("MarkComponent"));
 
-	// main_dev_plan.md §7: диспетчер зон поражения вместо жёстко зашитого weapon trace.
-	// Имя сабобъекта сохранено символ в символ при переносе из AClanhallCharacter (Блок A) —
+	// Диспетчер зон поражения вместо жёстко зашитого weapon trace (`Animation Setup.md`).
+	// Имя сабобъекта сохранено символ в символ при переносе из AClanhallCharacter —
 	// смена строки рвёт переопределения в BP-наследнике игрока. Класс переименован, имя — нет.
 	HitboxComponent = CreateDefaultSubobject<UClanhallHitboxComponent>(TEXT("WeaponTraceComponent"));
 
-	// Раздел 6 (переработан): симметричный компонент окна контрнавыка, тот же класс на враге.
+	// Симметричный компонент окна контрнавыка, тот же класс на враге.
 	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
 }
 
@@ -37,10 +37,10 @@ void AClanhallCombatantBase::BeginPlay()
 
 	if (AttributeSet)
 	{
-		// Хардкод стартовых значений — плейсхолдеры прототипа (combat_system.md §1); DataAsset/
-		// GameplayEffect для инициализации атрибутов появится позже вместе с остальной системой
-		// данных. Здесь, а не в AClanhallCharacter — нужно ЛЮБОМУ бойцу, включая AI без
-		// собственного BeginPlay-пути (task_section8_blocks_fgh.md, блокер ревью §0.3).
+		// Хардкод стартовых значений — плейсхолдеры прототипа (`combat_system.md`, «Ресурсы персонажа»);
+		// DataAsset/GameplayEffect для инициализации атрибутов появится позже вместе с остальной
+		// системой данных. Здесь, а не в AClanhallCharacter — нужно ЛЮБОМУ бойцу, включая AI без
+		// собственного BeginPlay-пути.
 		AttributeSet->InitMaxAP(DefaultMaxAP);
 		AttributeSet->InitAP(DefaultMaxAP);
 		AttributeSet->InitMaxHP(DefaultMaxHP);
@@ -63,7 +63,7 @@ void AClanhallCombatantBase::BeginPlay()
 			AbilitySystemComponent->AddLooseGameplayTag(RoleTag);
 		}
 
-		// Denied-фидбек (main_dev_plan.md): AbilityFailedCallbacks — обычный C++ мультикаст, не
+		// Denied-фидбек (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»): AbilityFailedCallbacks — обычный C++ мультикаст, не
 		// BlueprintAssignable, поэтому ретранслируем в OnChargesDenied для Blueprint HUD.
 		AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &AClanhallCombatantBase::HandleAbilityFailed);
 	}

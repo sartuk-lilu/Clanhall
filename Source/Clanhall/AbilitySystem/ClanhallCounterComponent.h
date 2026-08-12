@@ -4,9 +4,9 @@
 // иерархии тегов) идентичности входящего навыка с этим набором = контр: активка сбивается,
 // сбитому +1 Stagger и хитстоп, окно закрывается. Полного КД у сбитого больше нет — заряды
 // уже списаны на активации безусловно, кулдауна в проекте не осталось нигде
-// (task_skill_economy_loops.md).
+// (`economy_system.md`, «Почему кулдаунов нет»).
 //
-// ability_system.md §2.
+// (`ability_system.md`, «Контрнавык»).
 
 #pragma once
 
@@ -18,8 +18,7 @@
 class UAbilitySystemComponent;
 
 /** Владельца окна сбили контрнавыком. Точка подключения для получателя (флинч/VFX/звук) —
- *  сама реакция сюда не входит, строится отдельной системой (main_dev_plan.md §7,
- *  «Открытые вопросы»). */
+ *  сама реакция сюда не входит, строится отдельной системой (открытый вопрос). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallCounterConsumed);
 
 UCLASS(ClassGroup="Clanhall", meta=(BlueprintSpawnableComponent))
@@ -31,8 +30,8 @@ public:
 	/** Открывает окно: запоминает набор навыков, которыми контримую активку можно прервать
 	 *  (CounteredByTags) и её хендл, вешает State.CounterWindow на ASC владельца. Ни стан, ни
 	 *  КД больше не параметры: успешный контр сбитого не оглушает и не откатывает — начисляет
-	 *  Stagger (task_stagger_control_code.md §5) и хитстоп, кулдауна в проекте нет
-	 *  (task_skill_economy_loops.md). */
+	 *  Stagger (`combat_system.md`, «Stagger — усталость») и хитстоп, кулдауна в проекте нет
+	 *  (`economy_system.md`, «Почему кулдаунов нет»). */
 	void OpenWindow(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InCounteredHandle);
 
 	/** Транслирует получателям, что владельца этого окна сбили контром (флинч/VFX/звук). */
@@ -46,13 +45,13 @@ public:
 	bool IsCounterableBy(FGameplayTag IncomingTag) const;
 
 	/** Отменяет контримую активку (CancelAbilityHandle), начисляет сбитому +1 Stagger и хитстоп
-	 *  (task_stagger_control_code.md §5.2), закрывает окно. */
+	 *  (`combat_system.md`, «Stagger — усталость»), закрывает окно. */
 	void ConsumeCounter();
 
 	/** Общий резолвер для навыков: если у Target открыто окно с тем же CounterTag — сбивает его
 	 *  активку и возвращает true. Резолвится ПО КОНТАКТУ (GA_PhysicalSkill::ResolveHitOn), не на
 	 *  активации — возвращаемое значение сейчас не влияет на коммит вызывающего навыка, тот
-	 *  списывает Charges безусловно (combat_system.md §3). Иначе false — штатный путь. */
+	 *  списывает Charges безусловно (`combat_system.md`, «Боевая стойка и переключение режимов»). Иначе false — штатный путь. */
 	static bool TryResolveCounter(AActor* Target, FGameplayTag IncomingCounterTag);
 
 private:

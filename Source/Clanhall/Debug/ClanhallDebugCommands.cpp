@@ -21,7 +21,7 @@
 DEFINE_LOG_CATEGORY_STATIC(LogClanhallDebug, Log, All);
 
 // Стабильный ключ экранного сообщения на команду — повторный вызов заменяет
-// строку, а не копит новую (см. §2.6 задания).
+// строку, а не копит новую.
 enum class EDebugMsgKey : int32
 {
 	PlayerSetStat = 9001,

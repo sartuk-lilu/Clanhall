@@ -18,7 +18,7 @@ void UClanhallParryComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// task_stagger_control_code.md §7: гейт подсистемы, посчитан один раз на входе в бой.
+	// (`combat_system.md`, «Stagger — усталость»): гейт подсистемы, посчитан один раз на входе в бой.
 	// Прототип 1v1 — "противник" ищет AClanhallHumanoidCombatant::HasOpponentWithMarkSynergy,
 	// у которой пока нет полноценного таргетинга (см. её комментарий); пересчёт при смене
 	// оружия сознательно не делается.
@@ -71,7 +71,7 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 	GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, TEXT("✓ КЛЭШ (парирование)!"));
 #endif
 
-	// Хитстоп — на владельце зоны (атакующем, task_parry_rework.md §1.5): его клинок и есть
+	// Хитстоп — на владельце зоны (атакующем, `Parrying.md`): его клинок и есть
 	// та зона, что нанесла контакт.
 	if (UClanhallHitboxComponent* OwnHitbox = GetOwner() ? GetOwner()->FindComponentByClass<UClanhallHitboxComponent>() : nullptr)
 	{
@@ -80,13 +80,13 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 
 	// Подавление — на цели (парировавшем): контакт пришёлся по ней, её собственная зона (если
 	// вот-вот откроется — окно парирования всегда закрывается раньше её Hitbox-нотифая) гасится
-	// так же, как при обычном пропущенном ударе (task_parry_rework.md §1.4).
+	// так же, как при обычном пропущенном ударе (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»).
 	if (UClanhallHitboxComponent* TargetHitbox = HitTarget->FindComponentByClass<UClanhallHitboxComponent>())
 	{
 		TargetHitbox->SuppressHitboxes();
 	}
 
-	// task_stagger_control_code.md §2: со второго отпарированного шага серии — первый идёт
+	// (`combat_system.md`, «Stagger — усталость»): со второго отпарированного шага серии — первый идёт
 	// бесплатно (рвёт слив, перезапускает паузу, но шкалу не растит).
 	++ParriedStepsThisSeries;
 	AddStagger(ParriedStepsThisSeries > 1 ? 1.0f : 0.0f);
@@ -102,14 +102,14 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 
 void UClanhallParryComponent::AddStagger(float Amount)
 {
-	// §7: без обналичивающего навыка у противника шкала не существует — no-op целиком,
-	// включая перезапуск таймеров распада.
+	// Без обналичивающего навыка у противника шкала не существует — no-op целиком,
+	// включая перезапуск таймеров распада (`combat_system.md`, «Stagger — усталость»).
 	if (!bStaggerGateOpen)
 	{
 		return;
 	}
 
-	// §3: любой вызов, включая AddStagger(0), прерывает текущий слив и сохраняет остаток —
+	// Любой вызов, включая AddStagger(0), прерывает текущий слив и сохраняет остаток —
 	// тот же FTimerHandle, что ниже перезапускает ScheduleStaggerDecay(). GetWorld() может
 	// вернуть null при разрушении мира (ConsumeCounter — один из вызывающих) — гард, не
 	// разыменование вслепую.
@@ -133,8 +133,9 @@ void UClanhallParryComponent::AddStagger(float Amount)
 		// OnStaggerDecayDelayElapsed — там своя копия проверки, здесь своя.
 		if (Attributes->GetMaxStagger() > 0.0f && Attributes->GetStagger() >= Attributes->GetMaxStagger())
 		{
-			// Потолок (task_stagger_control_code.md §4): сброс в 0 и метка Staggered владельцу —
-			// стан отсюда больше не выдаётся, State.Stunned выдаёт только обналичивающая синергия (§6).
+			// Потолок (`combat_system.md`, «Stagger — усталость»): сброс в 0 и метка Staggered владельцу —
+			// стан отсюда больше не выдаётся, State.Stunned выдаёт только обналичивающая синергия
+			// (`mark_system.md`, «Staggered — метка без навыка-источника»).
 			ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), -Attributes->GetStagger());
 
 			if (UClanhallMarkComponent* MarkComp = GetOwner() ? GetOwner()->FindComponentByClass<UClanhallMarkComponent>() : nullptr)
@@ -165,7 +166,7 @@ void UClanhallParryComponent::ScheduleStaggerDecay()
 
 void UClanhallParryComponent::OnStaggerDecayDelayElapsed()
 {
-	// task_stagger_control_code.md §3: скорость слива фиксирована, не длительность — интервал
+	// (`combat_system.md`, «Stagger — усталость»): скорость слива фиксирована, не длительность — интервал
 	// между тиками пересчитывается от ТЕКУЩЕГО потолка владельца (свой у каждого бойца и тира).
 	const UAbilitySystemComponent* ASC = GetASC();
 	const UClanhallAttributeSet* Attributes = ASC ? ASC->GetSet<UClanhallAttributeSet>() : nullptr;

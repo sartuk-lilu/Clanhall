@@ -18,7 +18,7 @@
 
 namespace
 {
-	/** task_parry_rework.md §1.2: направление своего шага -> тег, который на себя вешает
+	/** (`Parrying.md`): направление своего шага -> тег, который на себя вешает
 	 *  владелец на время удара (симметричный телеграф). Не путать со свитчем в
 	 *  UClanhallParryComponent::TryParry — там маппинг ОБРАТНЫЙ (своё направление -> тег,
 	 *  который парируется), это разные вопросы. Было DirectionToOwnIncomingTag
@@ -49,7 +49,7 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 
 	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
-		// E2.4: активка в фазе коммита — начатую активку нельзя оборвать (combat_system.md §3).
+		// Активка в фазе коммита — начатую активку нельзя оборвать (`combat_system.md`, «Боевая стойка и переключение режимов»).
 		// Отбрасываем ввод здесь же, до ActivateStep и его ForceEndHitboxes(), иначе WASD сразу
 		// после Q обрывал бы активке окно контакта, хоть заряды уже потрачены.
 		return;
@@ -57,7 +57,7 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 
 	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_Stunned.GetTag()))
 	{
-		// main_dev_plan.md §8, Блок D: оглушённый (в т.ч. полным парированием своей серии) не
+		// Оглушённый (в т.ч. полным парированием своей серии) не
 		// бьёт — дублирует ActivationBlockedTags на GA_ClanhallAbilityBase для WASD-пути
 		// конкретно, тем же паттерном, что и два тега выше.
 		return;
@@ -89,7 +89,7 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 
 void UClanhallComboComponent::TryStartSequence(EClanhallAttackDirection Direction)
 {
-	// task_stagger_control_code.md §2.2: единственная точка, где реально СТАРТУЕТ новая серия —
+	// (`combat_system.md`, «Stagger — усталость»): единственная точка, где реально СТАРТУЕТ новая серия —
 	// сброс счётчика отпарированных шагов здесь, безусловно и до попытки активации. Корректность
 	// не зависит от того, каким путём закончилась предыдущая серия (их несколько и станет больше):
 	// между сериями счётчик обязан быть нулём, а активация ниже может и провалиться — сброс от
@@ -122,7 +122,7 @@ void UClanhallComboComponent::OnComboWindowOpen()
 	bReadWindowOpen = true;
 	LatestInWindow.Reset();
 
-	// main_dev_plan.md §8, Блок B: единственный сигнал для AI о том, что можно подавать
+	// Единственный сигнал для AI о том, что можно подавать
 	// направление в HandleAttackInput — сама очерёдность решает AI/BT, компонент не подсказывает.
 	OnComboWindowOpened.Broadcast();
 }
@@ -194,7 +194,7 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	// прилетит уже НОВОЙ способности и оборвёт её до открытия собственной зоны.
 	ForceEndHitboxes();
 
-	// task_parry_rework.md §1.4: новый шаг — снимаем подавление зон прошлого шага (если
+	// (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»): новый шаг — снимаем подавление зон прошлого шага (если
 	// прошлый шаг был отпарирован/пропустил удар). "До конца текущего шага" истекает ровно тут.
 	if (UClanhallHitboxComponent* HitboxComp = Character->FindComponentByClass<UClanhallHitboxComponent>())
 	{
@@ -222,7 +222,7 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 		return false;
 	}
 
-	// main_dev_plan.md §8, Блок D (хвост, ревью): снять тег ПРЕДЫДУЩЕГО шага и повесить тег
+	// Снять тег ПРЕДЫДУЩЕГО шага и повесить тег
 	// НОВОГО — только здесь, по одну сторону от раннего выхода выше. Раньше Clear стоял ДО
 	// попытки активации: на провале тег предыдущего шага снимался, LastDirection не
 	// перезаписывался (это делает вызывающий только на успехе), и ResetCombo() снимал тот же
@@ -394,7 +394,7 @@ void UClanhallComboComponent::CancelSequenceForExternalMontage()
 
 void UClanhallComboComponent::ResetCombo()
 {
-	// task_parry_rework.md §1.2: снять Attack.Direction.* последнего шага ДО LastDirection.Reset()
+	// (`Parrying.md`): снять Attack.Direction.* последнего шага ДО LastDirection.Reset()
 	// ниже — ClearSwingDirectionTag читает LastDirection, чтобы знать, какой тег снимать.
 	ClearSwingDirectionTag();
 
@@ -427,7 +427,7 @@ void UClanhallComboComponent::OnStanceExit()
 		// значит нет и своей зоны — всё открытое принадлежит активке в фазе коммита (State.
 		// SkillCommitted). Закрывать чужую зону нельзя: Event.Hitbox.Closed оборвал бы её до
 		// контакта, хотя выход из стойки по канону блокирует новые действия, а не отменяет
-		// начатое (combat_system.md §3) — тот же принцип, что уже защищает каст-монтаж строкой выше.
+		// начатое (`combat_system.md`, «Боевая стойка и переключение режимов») — тот же принцип, что уже защищает каст-монтаж строкой выше.
 		ForceEndHitboxes();
 	}
 

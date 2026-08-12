@@ -1,7 +1,7 @@
-// Общий предок для всего, что дерётся — игрока и врагов (main_dev_plan.md §8, Блок A).
+// Общий предок для всего, что дерётся — игрока и врагов.
 // ASC, атрибуты, метки, зоны поражения и окно контра нужны любому бойцу одинаково: метка
-// и контр двусторонние по построению (Разделы 3, 6), а без диспетчера зон у врага не было бы
-// урона вовсе (main_dev_plan.md §8, «Открытый вопрос» 5). Комбо-дерево и парирование —
+// и контр двусторонние по построению, а без диспетчера зон у врага не было бы
+// урона вовсе (открытый вопрос). Комбо-дерево и парирование —
 // только гуманоидам, см. AClanhallHumanoidCombatant.
 
 #pragma once
@@ -20,7 +20,7 @@ class UClanhallCounterComponent;
 class UGameplayAbility;
 
 /** Denied-фидбек: TryActivateAbility отказал именно по нехватке Charges (не по
- *  State.SkillCommitted/State.Stunned — main_dev_plan.md). Точка подключения для HUD
+ *  State.SkillCommitted/State.Stunned — `DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»). Точка подключения для HUD
  *  (звук + вспышка WBP_ChargesPanel), сама реакция сюда не входит — тот же паттерн, что
  *  UClanhallCounterComponent::OnCounterConsumed. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallChargesDenied);
@@ -40,14 +40,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallMarkComponent> MarkComponent;
 
-	/** Диспетчер активных зон поражения (main_dev_plan.md §7). Собственной геометрии не имеет —
+	/** Диспетчер активных зон поражения (`Animation Setup.md`). Собственной геометрии не имеет —
 	 *  форма и роль каждой зоны приходят из AnimNotifyState_Hitbox на монтаже. Имя сабобъекта
 	 *  намеренно осталось прежним ("WeaponTraceComponent") — перенесено символ в символ из
 	 *  AClanhallCharacter, переименование рвёт BP-данные игрока. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallHitboxComponent> HitboxComponent;
 
-	/** Раздел 6: окно контрнавыка — симметричный компонент, нужен и монстру: его каст тоже сбивают. */
+	/** Окно контрнавыка — симметричный компонент, нужен и монстру: его каст тоже сбивают. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCounterComponent> CounterComponent;
 
@@ -56,13 +56,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitySystem", meta = (Categories = "Unit.Role"))
 	FGameplayTag RoleTag;
 
-	/** Стартовые значения ресурсов (combat_system.md §1) — хардкод-плейсхолдеры прототипа,
-	 *  переопределяются per-class в defaults Blueprint-наследника (main_dev_plan.md §8, Блок G:
-	 *  у Часового свои AP/HP/MP/Charges). Раньше жили только в AClanhallCharacter::BeginPlay —
+	/** Стартовые значения ресурсов (`combat_system.md`, «Ресурсы персонажа») — хардкод-плейсхолдеры прототипа,
+	 *  переопределяются per-class в defaults Blueprint-наследника (у Часового свои AP/HP/MP/Charges).
+	 *  Раньше жили только в AClanhallCharacter::BeginPlay —
 	 *  экземпляр без этого пути (AClanhallHumanoidBoss, пустой конструктор) оставался с нулевыми
 	 *  атрибутами: MaxStagger=0 клампил Stagger в [0,0], и GetStagger()>=GetMaxStagger() было
 	 *  истиной уже на первом клэше — босс станился с одного парирования вместо положенных четырёх
-	 *  (task_section8_blocks_fgh.md, блокер ревью §0.3). */
+	 *  (`combat_system.md`, «Stagger — усталость»). */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxAP = 300.0f;
 
@@ -72,14 +72,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxMP = 200.0f;
 
-	/** combat_system.md §1: базовый банк — 6 (было 4), не косметическая правка — при базе 4
-	 *  ранг 3 открывает Z/X ценой 6 при банке 4, навык физически недоступен. Потолок 12 —
-	 *  UClanhallAttributeSet::ClampAttribute. */
+	/** (`combat_system.md`, «Ресурсы персонажа»): базовый банк — 6 (было 4), не косметическая
+	 *  правка — при базе 4 ранг 3 открывает Z/X ценой 6 при банке 4, навык физически
+	 *  недоступен. Потолок 16 — UClanhallAttributeSet::ClampAttribute. */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxCharges = 6.0f;
 
-	/** task_parry_rework.md §1.3: потолок усталости парирования, плейсхолдер — подбирается
-	 *  плейтестом (Часовой/Страж получат свой в Блоке G). */
+	/** (`combat_system.md`, «Stagger — усталость»): потолок усталости парирования, плейсхолдер — подбирается
+	 *  плейтестом (Часовой/Страж получат свой). */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxStagger = 4.0f;
 
@@ -100,6 +100,6 @@ protected:
 
 private:
 	/** Слушает UAbilitySystemComponent::AbilityFailedCallbacks и ретранслирует в OnChargesDenied,
-	 *  только когда причина отказа — Ability.Denied.Charges (main_dev_plan.md, Denied-фидбек). */
+	 *  только когда причина отказа — Ability.Denied.Charges (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»). */
 	void HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason);
 };

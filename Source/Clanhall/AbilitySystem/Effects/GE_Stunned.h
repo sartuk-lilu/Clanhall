@@ -1,6 +1,6 @@
-// State.Stunned на фиксированную длительность — единственная выдача стана в проекте после
-// task_stagger_control_code.md: обналичивание Mark.Staggered синергией (FMarkSynergy::EffectOnTarget,
-// mark_system.md §6.1). Применяется ClanhallGameplayEffects::ApplyEffect БЕЗ SetByCaller (в отличие от
+// State.Stunned на фиксированную длительность — единственная выдача стана в проекте
+// (`combat_system.md`, «Stagger — усталость»): обналичивание Mark.Staggered синергией (FMarkSynergy::EffectOnTarget,
+// `mark_system.md`, «Staggered — метка без навыка-источника»). Применяется ClanhallGameplayEffects::ApplyEffect БЕЗ SetByCaller (в отличие от
 // GE_ApplyTimedTag) — длительность целиком в данных, а не в вызывающем коде: сама точка вызова
 // (GA_PhysicalSkill::ResolveMarkLogic) навыко-нейтральна и не может решать за конкретную синергию.
 //

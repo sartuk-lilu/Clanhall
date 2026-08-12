@@ -15,12 +15,12 @@
 
 AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
 {
-	// main_dev_plan.md §7: ворота ввода + владелец активации WASD-ударов.
+	// (`Combat Stance and WASD Attacks.md`): ворота ввода + владелец активации WASD-ударов.
 	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
 
 	// WASD-классы дефолтно равны C++ классам — общий конструктор для игрока и
-	// AClanhallHumanoidBoss (main_dev_plan.md §8, Блок A2): раньше жили в конструкторе
+	// AClanhallHumanoidBoss: раньше жили в конструкторе
 	// AClanhallCharacter, из-за чего у пустого конструктора Boss они оставались nullptr, и
 	// GiveAbility грантовал WASD-удары с null-классом — серии у босса не было вообще. Не
 	// UPROPERTY намеренно — значение одинаково у всех китов, это плумбинг GAS, не контент класса.
@@ -39,7 +39,7 @@ void AClanhallHumanoidCombatant::BeginPlay()
 		return;
 	}
 
-	// task_skill_economy_loops.md §3: ранга 0 не существует — на нём нет ни одного активного
+	// (`economy_system.md`, «Ранги и длина серии»): ранга 0 не существует — на нём нет ни одного активного
 	// навыка, то есть нет потребителя зарядов. UPROPERTY ClampMin=1 гейтит только ввод в
 	// редакторе, не старые сериализованные данные и не программную установку — варн, не тихий
 	// проход, если 0 всё же просочился.
@@ -49,17 +49,17 @@ void AClanhallHumanoidCombatant::BeginPlay()
 		ClassRank = 1;
 	}
 
-	// Грант способностей 4 направлений WASD-удара (combat_system.md §3-4). Классы дефолтно
+	// Грант способностей 4 направлений WASD-удара (`combat_system.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»). Классы дефолтно
 	// заполнены соответствующим C++ GA (см. конструктор), BP-наследник может переопределить.
 	AttackOverheadHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackOverheadClass,   1, INDEX_NONE, this));
 	AttackRightSlashHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackRightSlashClass, 1, INDEX_NONE, this));
 	AttackLeftSlashHandle  = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLeftSlashClass,  1, INDEX_NONE, this));
 	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
-	// main_dev_plan.md §8, Блок A2: один класс GA_PhysicalSkill гранится по числу записей в
+	// Один класс GA_PhysicalSkill гранится по числу записей в
 	// ClassKit->Skills, каждый раз с UAbilityData как SourceObject — ключ карты (Ability.Slot.*)
 	// сохраняется как адрес хэндла для GetActiveSkillHandle(). Тот же цикл обслуживает и игрока,
-	// и AClanhallHumanoidBoss (§8, Блок C) — DataAsset'ы назначаются в Blueprint-наследнике.
+	// и AClanhallHumanoidBoss — DataAsset'ы назначаются в Blueprint-наследнике.
 	if (ClassKit)
 	{
 		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : ClassKit->Skills)
@@ -83,7 +83,7 @@ void AClanhallHumanoidCombatant::BeginPlay()
 			}
 
 			// Слот доносится до способности штатным путём GAS — динамическим тегом спека
-			// (не полем в UAbilityData, main_dev_plan.md §8, Блок A2): один и тот же
+			// (не полем в UAbilityData): один и тот же
 			// UAbilityData может лежать сразу в двух китах, слот же принадлежит гранту.
 			FGameplayAbilitySpec Spec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value);
 			Spec.GetDynamicSpecSourceTags().AddTag(Skill.Key);

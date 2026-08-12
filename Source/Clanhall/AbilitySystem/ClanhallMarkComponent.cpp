@@ -5,7 +5,7 @@
 
 namespace
 {
-	// mark_system.md §4: метка живёт 5 секунд с момента наложения.
+	// (`mark_system.md`, «Время жизни метки»): метка живёт 5 секунд с момента наложения.
 	constexpr float MarkDurationSeconds = 5.0f;
 }
 
@@ -31,7 +31,7 @@ void UClanhallMarkComponent::ApplyMark(FGameplayTag NewMark, UAbilitySystemCompo
 		return;
 	}
 
-	// Правило максимума: старая метка снимается перед накладыванием новой, без стека (mark_system.md §2).
+	// Правило максимума: старая метка снимается перед накладыванием новой, без стека (`mark_system.md`, «Перезапись»).
 	ClearMark();
 
 	ActiveMarkEffectHandle = ClanhallGameplayEffects::ApplyTimedTag(ASC, NewMark, MarkDurationSeconds);

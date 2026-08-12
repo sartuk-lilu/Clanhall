@@ -13,7 +13,7 @@ struct FAnimNotifyEvent;
  *  NotifyEnd   → UClanhallHitboxComponent::EndHitbox(this)
  *
  *  Ставится на удар-монтажах игрока и врага вокруг фазы контакта. Montage Tick Type =
- *  Branching Point (main_dev_plan.md §7, «Разметка нотифай-стейтов»).
+ *  Branching Point (`Animation Setup.md`).
  *
  *  Хендл зоны здесь НЕ хранится: UAnimNotifyState — разделяемый const-объект, состояние
  *  конкретного проигрывания на нём жить не может. Пара Begin/End связывается по `this`. */

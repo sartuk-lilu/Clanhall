@@ -61,11 +61,11 @@ AClanhallCharacter::AClanhallCharacter()
 
 	// HUD: camera line trace, мягкая цель под удар/метку (Enemy Frame больше не водит).
 	TargetingComponent = CreateDefaultSubobject<UClanhallTargetingComponent>(TEXT("TargetingComponent"));
-	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (hud_dev_plan.md).
+	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (`HUD.md`).
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
 	// WASD-классы дефолтятся в AClanhallHumanoidCombatant — общий конструктор для игрока
-	// и AClanhallHumanoidBoss (main_dev_plan.md §8, Блок A2). Здесь их больше нет намеренно:
+	// и AClanhallHumanoidBoss. Здесь их больше нет намеренно:
 	// у пустого конструктора AClanhallHumanoidBoss эти поля оставались бы nullptr.
 }
 
@@ -74,7 +74,7 @@ void AClanhallCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	// Стартовые значения ресурсов инициализирует AClanhallCombatantBase::BeginPlay (Default*
-	// поля) — общий путь для игрока и AI, см. task_section8_blocks_fgh.md, блокер ревью §0.3.
+	// поля) — общий путь для игрока и AI (`combat_system.md`, «Ресурсы персонажа»).
 
 	if (AbilitySystemComponent)
 	{
@@ -85,7 +85,7 @@ void AClanhallCharacter::BeginPlay()
 			? ClanhallGameplayTags::Weapon_Type_STR.GetTag()
 			: ClanhallGameplayTags::Weapon_Type_DEX.GetTag());
 
-		// Грант способности боевой стойки (combat_system.md §3). WASD-удары и активки Q/E/R/F
+		// Грант способности боевой стойки (`combat_system.md`, «Боевая стойка и переключение режимов»). WASD-удары и активки Q/E/R/F
 		// гранятся выше по иерархии — см. AClanhallHumanoidCombatant::BeginPlay.
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
 	}
@@ -98,9 +98,8 @@ bool AClanhallCharacter::CanJumpInternal_Implementation() const
 		return false;
 	}
 
-	// Fullbody-активка занимает всё тело, включая ноги — та же причина, что в DoMove
-	// (task_movement_lock_during_skill.md): иначе стойка отпущена, прыжок разрешён, персонаж
-	// подпрыгивает посреди рывка.
+	// Fullbody-активка занимает всё тело, включая ноги — та же причина, что в DoMove:
+	// иначе стойка отпущена, прыжок разрешён, персонаж подпрыгивает посреди рывка.
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
 		return false;
@@ -125,7 +124,7 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Look);
 
-		// Combat stance (combat_system.md §3): ЛКМ зажат/отпущен
+		// Combat stance (`combat_system.md`, «Боевая стойка и переключение режимов»): ЛКМ зажат/отпущен
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnStancePressed);
 		// Ретрай: Started может прийти во время State.ComboRecovery и быть отклонён. Triggered
 		// повторяет попытку каждый кадр удержания, поэтому по истечении лока персонаж войдёт в
@@ -135,7 +134,7 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnStanceReleased);
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnStanceReleased);
 
-		// Directional WASD-attacks (combat_system.md §4) — те же клавиши, что и Move,
+		// Directional WASD-attacks (`combat_system.md`, «Направления атаки (WASD)») — те же клавиши, что и Move,
 		// но отдельные дискретные действия: срабатывают один раз на нажатие, а не каждый кадр.
 		// GA_DirectionalAttackBase сам отказывает, если игрок не в стойке (ActivationRequiredTags).
 		EnhancedInputComponent->BindAction(AttackOverheadAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnAttackOverhead);
@@ -143,7 +142,7 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(AttackLeftSlashAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnAttackLeftSlash);
 		EnhancedInputComponent->BindAction(AttackLowSweepAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnAttackLowSweep);
 
-		// Раздел 4: активные навыки Knight (GA_PhysicalSkill) — Q/E/R/F.
+		// Активные навыки Knight (GA_PhysicalSkill) — Q/E/R/F.
 		EnhancedInputComponent->BindAction(ActiveSkillQAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillQ);
 		EnhancedInputComponent->BindAction(ActiveSkillEAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillE);
 		EnhancedInputComponent->BindAction(ActiveSkillRAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillR);
@@ -175,7 +174,7 @@ void AClanhallCharacter::Look(const FInputActionValue& Value)
 
 void AClanhallCharacter::DoMove(float Right, float Forward)
 {
-	// В боевой стойке WASD = направление удара, а не движение (combat_system.md §3-4).
+	// В боевой стойке WASD = направление удара, а не движение (`combat_system.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»).
 	// Стойка наземная: тег State.InStance может висеть и в воздухе (держим ЛКМ при прыжке/падении),
 	// поэтому здесь дополнительно спрашиваем IsFalling() — тем же предикатом, что гейтит позу
 	// стойки в ABP. В воздухе air control не режем; тег сам "включит" стойку в кадре приземления.
@@ -189,7 +188,7 @@ void AClanhallCharacter::DoMove(float Right, float Forward)
 	// Активка занимает слот fullbody целиком — свободных ног нет, в отличие от upperbody
 	// (WASD-удары, Recovery-хвосты), откуда убежать посреди доигрывания законно. State.SkillCommitted
 	// висит весь каст-монтаж (и рывок) и снимается только в EndAbility — не гейтить по
-	// State.ComboRecovery, тот про upperbody-хвост и сюда не относится (task_movement_lock_during_skill.md).
+	// State.ComboRecovery, тот про upperbody-хвост и сюда не относится.
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
 		return;
@@ -247,11 +246,11 @@ void AClanhallCharacter::OnStanceReleased()
 {
 	if (AbilitySystemComponent)
 	{
-		// combat_system.md §3: "Отпустить LMB в любой момент = мгновенный выход из стойки".
+		// (`combat_system.md`, «Боевая стойка и переключение режимов»): "Отпустить LMB в любой момент = мгновенный выход из стойки".
 		AbilitySystemComponent->CancelAbilityHandle(StanceAbilityHandle);
 	}
 
-	// main_dev_plan.md §7: выход из стойки — всегда, вне ворот. Останавливает активный
+	// Выход из стойки — всегда, вне ворот. Останавливает активный
 	// монтаж комбо с blend-out и сбрасывает последовательность независимо от фазы.
 	if (ComboComponent)
 	{
@@ -259,7 +258,7 @@ void AClanhallCharacter::OnStanceReleased()
 	}
 }
 
-// main_dev_plan.md §7: WASD больше не активирует направленный удар напрямую —
+// (`Combat Stance and WASD Attacks.md`): WASD больше не активирует направленный удар напрямую —
 // решение (опенер / продолжение по данным дерева / мусор вне окна) целиком у ComboComponent,
 // он же сам вызывает TryActivateAbility, когда ввод валиден. Парирование обрабатывает
 // UClanhallHitboxComponent при хите врага зоной с bParryable == true (State.Parrying на ASC
@@ -305,7 +304,7 @@ UAnimSequence* AClanhallCharacter::GetStanceAnim(const ACharacter* Character)
 }
 
 // ---------------------------------------------------------------------------
-// Активные навыки (Q/E/R/F). Контрнавык (Раздел 6, переработан) больше не требует
+// Активные навыки (Q/E/R/F). Контрнавык (`ability_system.md`, «Контрнавык») больше не требует
 // модификатора — распознаётся резолвером внутри GA_PhysicalSkill::ActivateAbility
 // по совпадению CounterTag с открытым окном цели.
 // ---------------------------------------------------------------------------

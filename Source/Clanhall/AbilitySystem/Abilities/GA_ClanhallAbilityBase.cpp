@@ -22,11 +22,11 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 
 	// E2.4: активка в фазе коммита (State.SkillCommitted, висит на UGA_PhysicalSkill от активации
 	// до Event.Hitbox.Closed) блокирует и вторую активку, и WASD-способности — «начатую активку
-	// нельзя оборвать» (combat_system.md §3). Выход из стойки тег не трогает: тот идёт через
+	// нельзя оборвать» (`combat_system.md`, «Боевая стойка и переключение режимов»). Выход из стойки тег не трогает: тот идёт через
 	// CancelAbilityHandle на способности стойки, не через TryActivateAbility.
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 
-	// main_dev_plan.md §8, Блок D: оглушение (полное парирование серии — ClanhallComboComponent,
+	// Оглушение (полное парирование серии — ClanhallComboComponent,
 	// либо успешный контрнавык — ClanhallCounterComponent) блокирует новые физдействия. Раньше
 	// это гейтила только умирающая GA_EnemyWASDSeries, то есть только у врага; тег теперь
 	// симметричен (вешается и на игрока), и блокировка обязана быть тоже.
@@ -90,8 +90,9 @@ bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* Sou
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, TargetASC, UGE_ModifyHP::StaticClass(), -Overflow);
 	}
 
-	// task_section8_blocks_fgh.md §0.3: подавление зоны цели и хитстоп бьющему переехали на сам
-	// контакт (UClanhallHitboxComponent::TickHitbox, цикл по PendingHits) — эта функция их больше
+	// Подавление зоны цели (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»)
+	// и хитстоп бьющему переехали на сам контакт (UClanhallHitboxComponent::TickHitbox, цикл по
+	// PendingHits) — эта функция их больше
 	// не делает. Здесь урон мог обнулиться (DT поглотил всё), а контакт при этом уже случился;
 	// дублировать вызов тут значило бы делать его дважды на обычном хите и ни разу на поглощённом.
 	return true;

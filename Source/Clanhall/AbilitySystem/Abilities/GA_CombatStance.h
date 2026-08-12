@@ -1,4 +1,4 @@
-// Боевая стойка (ЛКМ зажат). Канон: combat_system.md §3.
+// Боевая стойка (ЛКМ зажат). Канон: (`combat_system.md`, «Боевая стойка и переключение режимов»).
 // Сама способность не делает ничего активно — её единственная роль — держать тег
 // State.InStance, пока она активна (через ActivationOwnedTags, движок добавляет/снимает
 // тег автоматически в PreActivate/EndAbility). WASD-удары и активные навыки читают
@@ -20,6 +20,7 @@ class CLANHALL_API UGA_CombatStance : public UGameplayAbility
 public:
 	UGA_CombatStance();
 
-	/** Обнуляет скорость персонажа при входе в стойку — резкий стоп вместо доката (combat_system.md §3). */
+	/** Обнуляет скорость персонажа при входе в стойку — резкий стоп вместо доката
+	 *  (`combat_system.md`, «Боевая стойка и переключение режимов»). */
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 };
