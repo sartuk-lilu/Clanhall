@@ -204,7 +204,7 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	const FDirectionalDamage& Damage = Data->FindDamageByDirection(Direction);
 
 	// Точка вызова инвертирована — GA_DirectionalAttackBase::ActivateAbility
-	// (формулы урона/MP/Balance не тронуты) срабатывает, только если валидатор дошёл до этого
+	// (формулы урона/MP не тронуты) срабатывает, только если валидатор дошёл до этого
 	// вызова. BaseDamage профиля идёт в EventMagnitude — GA больше не хранит RawDamage сам.
 	FGameplayEventData EventData;
 	EventData.EventMagnitude = Damage.BaseDamage;

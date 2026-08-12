@@ -110,17 +110,8 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 
 	if (ResolveStandardDamage(SourceASC, TargetASC, PendingBaseDamage))
 	{
-		// combat_system.md §4: Balance +5..+15 (STR) / -5..-15 (DEX). Мана с WASD-ударов больше
-		// не капает (ability_system.md §1) — переехала на подтверждённое попадание физактивки.
-
-		// Balance — состояние: сдвигается ОДИН раз за взмах, сколько бы целей ни задело. Иначе
-		// удар по троим давал бы до 45 ед. при пороге перегруза ±60 (mark_system.md §2 Правило 5).
-		if (!bBalanceApplied)
-		{
-			const float BalanceShift = GetBalanceSign(SourceASC) * FMath::FRandRange(5.0f, 15.0f);
-			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), BalanceShift);
-			bBalanceApplied = true;
-		}
+		// Мана с WASD-ударов не капает — она переехала на подтверждённое попадание
+		// физической активки (`ability_system.md`, «Физические активные навыки»).
 
 		// Charges — доход начиная со ВТОРОГО удара серии (bChargeEligible, снятый в
 		// ActivateAbility), раз за взмах, сколько бы целей ни задело (combat_system.md §1).
@@ -135,9 +126,9 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 		if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, FString::Printf(
-				TEXT("WASD hit | self AP %.0f/%.0f  Charges %.0f/%.0f  Balance %.1f"),
+				TEXT("WASD hit | self AP %.0f/%.0f  Charges %.0f/%.0f"),
 				SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
-				SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
+				SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges()));
 		}
 #endif
 	}

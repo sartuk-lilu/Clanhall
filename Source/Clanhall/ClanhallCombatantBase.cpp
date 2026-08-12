@@ -49,7 +49,6 @@ void AClanhallCombatantBase::BeginPlay()
 		AttributeSet->InitMP(DefaultMaxMP);
 		AttributeSet->InitMaxCharges(DefaultMaxCharges);
 		AttributeSet->InitCharges(DefaultMaxCharges);
-		AttributeSet->InitBalance(0.0f);
 		AttributeSet->InitMaxStagger(DefaultMaxStagger);
 		AttributeSet->InitStagger(0.0f);
 	}

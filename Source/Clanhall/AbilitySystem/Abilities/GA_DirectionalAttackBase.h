@@ -1,6 +1,6 @@
 // Базовый класс для 4 направленных WASD-ударов. Канон: combat_system.md §4.
 // Активация идёт только через UClanhallComboComponent (main_dev_plan.md §7 — валидатор
-// комбо гейтит вызов активации, формулы урона/Charges/Balance ниже не тронуты).
+// комбо гейтит вызов активации, формулы урона/Charges ниже не тронуты).
 // Величина урона (BaseDamage профиля по направлению шага) приходит в
 // TriggerEventData->EventMagnitude — компонент резолвит её из UComboData::FindDamageByDirection
 // ДО активации, эта абилка своего числа урона больше не хранит. Монтаж играет сам
@@ -50,16 +50,12 @@ private:
 	float PendingBaseDamage = 0.0f;
 
 	/** Общая часть контактного и фолбэк-путей: урон + Charges (ресурс, раз за взмах, со второго
-	 *  удара серии) + Balance (состояние, один раз за взмах) + debug. Мана сюда больше не входит —
-	 *  переехала на физактивки (ability_system.md §1, GA_PhysicalSkill::ResolveHitOn). */
+	 *  удара серии) + debug. Мана сюда больше не входит — переехала на физактивки
+	 *  (ability_system.md §1, GA_PhysicalSkill::ResolveHitOn). */
 	void ResolveHitOn(AActor* Target);
 
-	/** Сдвиг Balance уже применён за этот взмах. InstancingPolicy == InstancedPerExecution —
-	 *  инстанс свежий на каждую активацию, сбрасывать вручную не нужно (тот же паттерн, что
-	 *  UGA_PhysicalSkill::bBalanceApplied). */
-	bool bBalanceApplied = false;
-
-	/** +1 Charge уже начислен за этот взмах — тем же приёмом, что bBalanceApplied. */
+	/** +1 Charge уже начислен за этот взмах. InstancingPolicy == InstancedPerExecution —
+	 *  флаг живёт ровно один взмах и сбрасывается созданием нового экземпляра способности. */
 	bool bChargeApplied = false;
 
 	/** Снимок «это как минимум второй удар серии», сделанный в ActivateAbility ДО того, как

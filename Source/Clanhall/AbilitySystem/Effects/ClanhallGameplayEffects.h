@@ -37,14 +37,6 @@ public:
 };
 
 UCLASS()
-class CLANHALL_API UGE_ModifyBalance : public UGameplayEffect
-{
-	GENERATED_BODY()
-public:
-	UGE_ModifyBalance();
-};
-
-UCLASS()
 class CLANHALL_API UGE_ModifyCharges : public UGameplayEffect
 {
 	GENERATED_BODY()

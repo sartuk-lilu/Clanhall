@@ -40,12 +40,6 @@ UGE_ModifyMP::UGE_ModifyMP()
 	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetMPAttribute()));
 }
 
-UGE_ModifyBalance::UGE_ModifyBalance()
-{
-	DurationPolicy = EGameplayEffectDurationType::Instant;
-	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetBalanceAttribute()));
-}
-
 UGE_ModifyCharges::UGE_ModifyCharges()
 {
 	DurationPolicy = EGameplayEffectDurationType::Instant;

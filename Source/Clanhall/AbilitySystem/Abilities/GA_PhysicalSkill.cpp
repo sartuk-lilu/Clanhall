@@ -116,17 +116,6 @@ FGameplayTag UGA_PhysicalSkill::GetAbilitySlotTag(const FGameplayAbilitySpecHand
 	return FGameplayTag();
 }
 
-float UGA_PhysicalSkill::GetEffectiveChargeCost(const UAbilityData* Data, const UAbilitySystemComponent* SourceASC) const
-{
-	if (!Data)
-	{
-		return 0.0f;
-	}
-
-	const float Multiplier = IsBalanceOverloaded(SourceASC) ? Data->OverloadCostMultiplier : 1.0f;
-	return static_cast<float>(Data->ChargeCost) * Multiplier;
-}
-
 bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
 {
 	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
@@ -143,7 +132,7 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 
 	// Единственный гейт применения активки — Charges. Кулдауна в проекте не осталось нигде
 	// (combat_system.md §1, task_skill_economy_loops.md).
-	const float EffectiveCost = GetEffectiveChargeCost(Data, ASC);
+	const float EffectiveCost = static_cast<float>(Data->ChargeCost);
 	if (EffectiveCost > 0.0f)
 	{
 		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
@@ -244,10 +233,9 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	AActor* Target = FindMeleeTarget(Avatar);
 
 	// Активка коммитится в момент нажатия: заряды уходят всегда, включая промах и контр —
-	// цена решения «придержать навык на контратаку» и есть эти заряды (ability_system.md §2).
-	// Эффективная цена (с учётом перегруза Balance) та же, что проверялась в CanActivateAbility —
-	// GetEffectiveChargeCost общая точка для обоих, иначе проверка и списание могли бы разойтись.
-	const float EffectiveCost = GetEffectiveChargeCost(Data, SourceASC);
+	// цена решения «придержать навык на контратаку» и есть эти заряды.
+	// Цена одна и та же в проверке и в списании: `UAbilityData::ChargeCost`, без модификаторов.
+	const float EffectiveCost = static_cast<float>(Data->ChargeCost);
 	if (EffectiveCost > 0.0f)
 	{
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -EffectiveCost);
@@ -507,18 +495,8 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 		}
 	}
 
-	// Balance — СОСТОЯНИЕ, а не ресурс: сдвигается один раз за применение навыка, сколько бы
-	// целей ни задело (mark_system.md §2, правило «ресурс/состояние»). Тройной сдвиг сломал бы шкалу.
-	if (!bBalanceApplied && !FMath::IsNearlyZero(Data->BalanceShift))
-	{
-		const float Shift = GetBalanceSign(SourceASC) * Data->BalanceShift;
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyBalance::StaticClass(), Shift);
-		bBalanceApplied = true;
-	}
-
-	// Мана — тем же приёмом, что Balance: раз за применение, сколько бы целей ни задело
-	// (ability_system.md §1). Мана больше не капает с обычных WASD-ударов — единственный
-	// источник теперь подтверждённое попадание физической активки.
+	// Мана — раз за применение, сколько бы целей ни задело. Мана больше не капает с обычных
+	// WASD-ударов — единственный источник теперь подтверждённое попадание физической активки.
 	if (!bManaApplied && Data->ManaGain > 0.0f)
 	{
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyMP::StaticClass(), Data->ManaGain);
@@ -530,9 +508,9 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, FString::Printf(
-			TEXT("%s hit | AP %.0f/%.0f  Charges %.0f/%.0f  Balance %.1f"),
+			TEXT("%s hit | AP %.0f/%.0f  Charges %.0f/%.0f"),
 			*Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
-			SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), SelfAttributes->GetBalance()));
+			SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges()));
 	}
 #endif
 }

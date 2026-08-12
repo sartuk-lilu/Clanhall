@@ -98,26 +98,16 @@ private:
 	 *  считает — только ключует ActiveSkillHandles и привязку ввода. */
 	FGameplayTag GetAbilitySlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
-	/** Цена навыка с учётом перегруза Balance: Data->ChargeCost, умноженный на
-	 *  Data->OverloadCostMultiplier, когда шкала перегружена в СТОРОНУ ТЕКУЩЕГО оружия
-	 *  (UGA_ClanhallAbilityBase::IsBalanceOverloaded). Общая точка для CanActivateAbility
-	 *  (проверка) и ActivateAbility (списание) — иначе проверка и списание могли бы разойтись. */
-	float GetEffectiveChargeCost(const UAbilityData* Data, const UAbilitySystemComponent* SourceASC) const;
-
 	void ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent);
 
-	/** Общая часть контактного и фолбэк-путей: урон + метки/синергия + Balance + debug.
+	/** Общая часть контактного и фолбэк-путей: урон + метки/синергия + мана + debug.
 	 *  Вызывается ОДИН раз на каждую задетую цель. */
 	void ResolveHitOn(AActor* Target);
 
 	/** Баф на себя из синергии (EffectOnSelf) уже применён за это применение навыка. */
 	bool bSelfSynergySpent = false;
 
-	/** Сдвиг Balance уже применён за это применение навыка. */
-	bool bBalanceApplied = false;
-
-	/** Мана (Data->ManaGain) уже начислена за это применение навыка — тем же приёмом, что
-	 *  и Balance: раз за применение, сколько бы целей ни задело (ability_system.md §1). */
+	/** Мана уже начислена за это применение: раз за применение, сколько бы целей ни задело. */
 	bool bManaApplied = false;
 
 	/** Первичный терминатор отработал: конец каст-монтажа (контактный путь) либо завершённый

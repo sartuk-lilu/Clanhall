@@ -34,20 +34,8 @@ protected:
 
 	/** combat_system.md §AP: снимает AP цели, 50% снятого возвращается атакующему в AP,
 	 *  переполнение (урон больше остатка AP) идёт прямиком в HP. Возвращает true, если урон
-	 *  был нанесён — это и есть "confirmed hit", который гейтит метки/синергии/Balance/ManaGain
+	 *  был нанесён — это и есть "confirmed hit", который гейтит метки/синергии/ManaGain
 	 *  у активок (GA_PhysicalSkill). Charges списываются безусловно на активации, независимо
 	 *  от confirmed hit. */
 	bool ResolveStandardDamage(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, float RawDamage) const;
-
-	/** combat_system.md §2: STR-оружие двигает шкалу вправо, DEX — влево.
-	 *  Знак определяется ТОЛЬКО типом оружия, в данных навыка не хранится. */
-	float GetBalanceSign(const UAbilitySystemComponent* SourceASC) const;
-
-	/** combat_system.md §2: перегруз — не белый список слот-тегов, а состояние шкалы Balance
-	 *  относительно ТЕКУЩЕГО оружия. true, когда Balance в зоне перегруза (|Balance| >= 60) СО
-	 *  СТОРОНЫ, совпадающей с типом текущего оружия — STR-оружие перегружено в +60..100,
-	 *  DEX-оружие в −100..−60. Активка навыка другого типа под текущим оружием не бывает (набор
-	 *  навыков полностью определяется оружием, ability_system.md §1), поэтому проверять тип
-	 *  самого навыка отдельно не нужно. */
-	bool IsBalanceOverloaded(const UAbilitySystemComponent* SourceASC) const;
 };

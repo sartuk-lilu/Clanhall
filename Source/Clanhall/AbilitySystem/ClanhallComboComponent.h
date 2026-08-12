@@ -1,7 +1,7 @@
 // Единственный источник истины для чейна WASD-ударов (main_dev_plan.md §7). Ворота ввода, не буфер:
 // до открытия окна чтения ввод отбрасывается целиком, ничего не копится; в открытом окне действует
 // "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (инверсия
-// потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP/Balance) и
+// потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP) и
 // сам проигрывает монтаж конкретного шага — GA_DirectionalAttackBase собственного монтажа больше
 // не играет. Живёт на AClanhallHumanoidCombatant (игрок и AI-боец, main_dev_plan.md §8).
 //
@@ -113,7 +113,7 @@ private:
 	 *  для Direction через ASC, передавая BaseDamage профиля (по Direction,
 	 *  UComboData::FindDamageByDirection) в FGameplayEventData::EventMagnitude и сам Montage в
 	 *  EventData.OptionalObject (способность спрашивает по нему режим резолва — контакт или
-	 *  мгновенный фолбэк, см. UAnimNotifyState_Hitbox::MontageHasHitbox). Формулы урона/MP/Balance
+	 *  мгновенный фолбэк, см. UAnimNotifyState_Hitbox::MontageHasHitbox). Формулы урона/MP
 	 *  в GA не тронуты. На успехе играет Montage.
 	 *  Возвращает успех активации — вызывающий код фиксирует состояние только если true. */
 	bool ActivateStep(EClanhallAttackDirection Direction, UAnimMontage* Montage);

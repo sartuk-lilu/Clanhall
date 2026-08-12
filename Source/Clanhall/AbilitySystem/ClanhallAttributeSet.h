@@ -1,4 +1,4 @@
-// Базовые ресурсы персонажа: AP, HP, MP, Charges, Balance.
+// Базовые ресурсы персонажа: AP, HP, MP, Charges, Stagger.
 // Канон: combat_system.md §1-2.
 
 #pragma once
@@ -62,11 +62,6 @@ public:
 	FGameplayAttributeData MaxCharges;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxCharges);
 
-	// --- Balance: шкала DEX ↔ STR, диапазон жёстко -100..+100 (нет MaxBalance) ---
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Balance, Category = "Clanhall|Balance")
-	FGameplayAttributeData Balance;
-	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, Balance);
-
 	// --- Stagger: усталость от парирования (task_parry_rework.md §1.3). Копится владельцу
 	// зоны на каждом отпарированном шаге, распадается таймером на UClanhallParryComponent
 	// после паузы без парирований; на потолке — сброс в 0 + State.Stunned владельцу. ---
@@ -77,12 +72,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxStagger, Category = "Clanhall|Stagger")
 	FGameplayAttributeData MaxStagger;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxStagger);
-
-	/** Единственное место, где живёт порог перегруза (combat_system.md §2: |Balance| >= 60).
-	 *  Источник истины и для тега Balance.Overload.* (навешивается здесь же, в
-	 *  PostGameplayEffectExecute), и для UGA_ClanhallAbilityBase::IsBalanceOverloaded —
-	 *  раньше число было захардкожено в двух местах порознь. */
-	static bool IsBalanceOverloaded(float Balance, bool bIsSTR);
 
 protected:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
@@ -106,13 +95,11 @@ protected:
 	UFUNCTION()
 	void OnRep_MaxCharges(const FGameplayAttributeData& OldValue);
 	UFUNCTION()
-	void OnRep_Balance(const FGameplayAttributeData& OldValue);
-	UFUNCTION()
 	void OnRep_Stagger(const FGameplayAttributeData& OldValue);
 	UFUNCTION()
 	void OnRep_MaxStagger(const FGameplayAttributeData& OldValue);
 
 private:
-	/** Держит AP/HP/MP/Charges в [0, Max] и Balance в [-100, 100] при любом источнике изменения. */
+	/** Держит AP/HP/MP/Charges в [0, Max] и Stagger в [0, MaxStagger] при любом источнике изменения. */
 	void ClampAttribute(const FGameplayAttribute& Attribute, float& NewValue) const;
 };

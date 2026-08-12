@@ -49,10 +49,6 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon_Type_STR);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon_Type_DEX);
 
-	// ---- Balance.Overload.* ----
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Balance_Overload_STR);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Balance_Overload_DEX);
-
 	// ---- Attack.Direction.* ----
 	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
 	// замаха (UClanhallComboComponent::ActivateStep), стороне-нейтрален (и игрок, и AI).

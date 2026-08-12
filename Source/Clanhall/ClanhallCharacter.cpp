@@ -17,7 +17,6 @@
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/Abilities/GA_CombatStance.h"
 #include "AbilitySystem/Fragments/ComboData.h"
-#include "AbilitySystem/Effects/GE_BalanceDrift.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
@@ -79,19 +78,12 @@ void AClanhallCharacter::BeginPlay()
 
 	if (AbilitySystemComponent)
 	{
-		// Раздел 2 placeholder: реального инвентаря оружия ещё нет (Раздел 10) — тег задаёт
-		// STR/DEX-формулу WASD-удара (combat_system.md §4) и шкалу баланса.
+		// Плейсхолдер: реального инвентаря оружия ещё нет — тег задаёт тип текущего
+		// оружия. Собственные поля оружия (доход зарядов, пробитие DT, профиль защиты)
+		// появятся вместе с переработкой (`combat_system.md`, «Классы и оружие (сводка)»).
 		AbilitySystemComponent->AddLooseGameplayTag(bStartWithSTRWeapon
 			? ClanhallGameplayTags::Weapon_Type_STR.GetTag()
 			: ClanhallGameplayTags::Weapon_Type_DEX.GetTag());
-
-		// Пассивный дрейф Balance к нулю — постоянно активен (combat_system.md §2).
-		const FGameplayEffectContextHandle DriftContext = AbilitySystemComponent->MakeEffectContext();
-		const FGameplayEffectSpecHandle DriftSpec = AbilitySystemComponent->MakeOutgoingSpec(UGE_BalanceDrift::StaticClass(), 1.0f, DriftContext);
-		if (DriftSpec.IsValid())
-		{
-			AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*DriftSpec.Data.Get(), AbilitySystemComponent);
-		}
 
 		// Грант способности боевой стойки (combat_system.md §3). WASD-удары и активки Q/E/R/F
 		// гранятся выше по иерархии — см. AClanhallHumanoidCombatant::BeginPlay.

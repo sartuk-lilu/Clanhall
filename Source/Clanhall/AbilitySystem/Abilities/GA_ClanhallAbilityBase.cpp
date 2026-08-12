@@ -96,26 +96,3 @@ bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* Sou
 	// дублировать вызов тут значило бы делать его дважды на обычном хите и ни разу на поглощённом.
 	return true;
 }
-
-float UGA_ClanhallAbilityBase::GetBalanceSign(const UAbilitySystemComponent* SourceASC) const
-{
-	const bool bIsSTR = SourceASC && SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
-	return bIsSTR ? 1.0f : -1.0f;
-}
-
-bool UGA_ClanhallAbilityBase::IsBalanceOverloaded(const UAbilitySystemComponent* SourceASC) const
-{
-	if (!SourceASC)
-	{
-		return false;
-	}
-
-	const UClanhallAttributeSet* Attributes = SourceASC->GetSet<UClanhallAttributeSet>();
-	if (!Attributes)
-	{
-		return false;
-	}
-
-	const bool bIsSTR = SourceASC->HasMatchingGameplayTag(ClanhallGameplayTags::Weapon_Type_STR.GetTag());
-	return UClanhallAttributeSet::IsBalanceOverloaded(Attributes->GetBalance(), bIsSTR);
-}
