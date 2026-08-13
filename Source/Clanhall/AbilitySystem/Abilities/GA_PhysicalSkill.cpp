@@ -138,7 +138,7 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
 		if (!Attributes || Attributes->GetCharges() < EffectiveCost)
 		{
-			// Причина отказа — специально для Denied-фидбека на HUD (`DataAsset and Fragments.md`):
+			// Причина отказа — специально для Denied-фидбека на HUD (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»):
 			// отдельный тег, не спутать с отказом по State.SkillCommitted/State.Stunned,
 			// которые отсеиваются Super::CanActivateAbility ещё до этой точки.
 			if (OptionalRelevantTags)
@@ -191,8 +191,8 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 					bSelfSynergySpent = true;
 				}
 
-				// Синергия зарядов не платит (FMarkSynergy::ChargeGain удалён вместе с этим правилом,
-				// `mark_system.md`, «Перезапись»). Заряды — валюта темпа: единственные источники
+				// Синергия зарядов не платит (FMarkSynergy::ChargeGain удалён вместе с правилом
+				// о генерации зарядов синергией, `mark_system.md`, «Активация синергии»). Заряды — валюта темпа: единственные источники
 				// дохода — подтверждённый WASD-удар и парирование (`combat_system.md`, «Ресурсы персонажа»), оба
 				// дают ровно +1 и не масштабируются размером толпы. Награда за мультицель
 				// живёт в уроне и метках (левая колонка, `mark_system.md`, «Мультицель: ресурс vs состояние»), не в зарядах.
@@ -263,7 +263,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		}
 	}
 
-	// Рывок — данные навыка, не свойство клипа (`Animation Setup.md`).
+	// Рывок — данные навыка, не свойство клипа (`Animation Setup.md`, «Перемещение навыка — данные, не свойство клипа»).
 	// Запускается ПОСЛЕ списания ресурсов и ПОСЛЕ Montage_Play, ДО ветвления на контактный/
 	// фолбэк путь — обязан работать на обоих путях.
 	StartDashIfNeeded(Data, Avatar, MontagePlayLength);
@@ -274,7 +274,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// режима резолва урона: длительность отыгрыша анимации не зависит от того, размечены ли на
 	// монтаже зоны контакта. Обе строки стоят до ветвления по bResolveOnContact ниже, иначе навык
 	// с назначенным, но ещё не размеченным монтажом заканчивался бы мгновенно, и WASD-удар
-	// обрывал бы его анимацию на любом кадре (`Animation Setup.md`).
+	// обрывал бы его анимацию на любом кадре (`Animation Setup.md`, «Способность ждёт позднейший из двух терминаторов»).
 	if (bMontageStarted)
 	{
 		SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
@@ -367,7 +367,7 @@ void UGA_PhysicalSkill::StartDashIfNeeded(const UAbilityData* Data, AActor* Avat
 	// Грубая проверка, не точная: код не знает, где именно в монтаже кончается фаза движения
 	// (у Shield Charge — кадр 13 из 33), точную границу держит разметчик. Но самый заметный
 	// случай — рывок длиннее самого монтажа целиком — она ловит: без варна причина
-	// «проскальзывания по земле» после конца анимации неочевидна (`Animation Setup.md`).
+	// «проскальзывания по земле» после конца анимации неочевидна (`Animation Setup.md`, «Перемещение навыка — данные, не свойство клипа»).
 	if (MontagePlayLength > 0.0f && Dash->Duration > MontagePlayLength)
 	{
 		UE_LOG(LogClanhall, Warning, TEXT("StartDashIfNeeded: %s dash Duration %.2f exceeds cast montage length %.2f — character will keep sliding after the animation ends"),

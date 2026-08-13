@@ -35,7 +35,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_D, "Attack.Direction.D", "Владелец сейчас бьёт Right Slash (D) — висит на время замаха");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot, "Ability.Slot", "Корень слотов активок — фильтр динамических тегов спека в GA_PhysicalSkill::GetAbilitySlotTag");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_Q, "Ability.Slot.Q", "Слот Q — общий для всех оружий (ability_system.md §3)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_Q, "Ability.Slot.Q", "Слот Q — общий для всех оружий (ability_system.md, «Слоты активных навыков»)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_E, "Ability.Slot.E", "Слот E — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_R, "Ability.Slot.R", "Слот R — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_F, "Ability.Slot.F", "Слот F — общий для всех оружий");
@@ -64,7 +64,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Aether, "Magic.School.Aether", "Школа Эфира (E/D)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Stars, "Magic.School.Stars", "Школа Звёзд (R/F)");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Mob, "Unit.Role.Mob", "Пушечное мясо: без уникальных атак, рамки нет (hud_dev_plan.md)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Mob, "Unit.Role.Mob", "Пушечное мясо: без уникальных атак, рамки нет (HUD.md)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss, "Unit.Role.Boss", "Родитель Humanoid/Monster — сенсор рамки матчит этот тег, чтобы захватить оба подтипа");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Humanoid, "Unit.Role.Boss.Humanoid", "«Псевдоигрок»: навыки из пула игрока, есть AP/MP/Charges, игрок учится у него навыкам");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Monster, "Unit.Role.Boss.Monster", "Босс-монстр: уникальные атаки, без MP и без AP, ничему не учит; рамка HP-центричная");

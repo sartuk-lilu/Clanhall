@@ -3,7 +3,7 @@
 // "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (инверсия
 // потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP) и
 // сам проигрывает монтаж конкретного шага — GA_DirectionalAttackBase собственного монтажа больше
-// не играет. Живёт на AClanhallHumanoidCombatant (игрок и AI-боец).
+// не играет. Живёт на AClanhallHumanoidCombatant (игрок и AI-боец, `Combatant Hierarchy.md`, «Граница слоёв»).
 //
 // Резолв данных (`Combat Stance and WASD Attacks.md`): модель пар, не путей. Ход определяется только
 // парой «предыдущее направление -> новое» (UComboData::FindOpenerMontage/FindTransitionMontage) —
@@ -12,7 +12,7 @@
 // шага и передаётся в GA_DirectionalAttackBase через FGameplayEventData
 // (TriggerAbilityFromGameplayEvent) — Handle-активация сохраняется, тег события служебный.
 // Потолок длины серии = AClanhallHumanoidCombatant::ClassRank + 1 (ранг 0 -> 1 удар, ранг 4 -> 5),
-// а не поле ассета.
+// а не поле ассета (`Combatant Hierarchy.md`, «ClassRank — свойство экземпляра»).
 //
 // State.ComboRecovery (уточнение намерения): блокирует НОВЫЕ атаки (WASD и физактивки Q/E/R/F —
 // см. UGA_ClanhallAbilityBase) и вход в стойку (UGA_CombatStance) ровно на время проигрывания
@@ -35,7 +35,7 @@ class UAnimMontage;
 class UAnimInstance;
 class AActor;
 
-/** Единственное расширение публичного API под AI-водителя.
+/** Единственное расширение публичного API под AI-водителя (`Combatant Hierarchy.md`, «AClanhallHumanoidBoss»).
  *  Открытие/закрытие окна чтения — момент, когда AI обязан подать направление в
  *  HandleAttackInput; вне окна ввод отбрасывается так же, как и у игрока (ворота, не буфер). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FClanhallOnComboWindowOpened);
@@ -56,7 +56,7 @@ public:
 	/** Единственный публичный сигнал для AI/BT о том, что окно
 	 *  чтения ввода открылось/закрылось — по нему водитель узнаёт момент подать направление
 	 *  в HandleAttackInput. Решений компонент не принимает и не подсказывает — какое именно
-	 *  направление подать, решает вызывающий (BT/исполнитель). */
+	 *  направление подать, решает вызывающий (BT/исполнитель, `Combatant Hierarchy.md`, «AClanhallHumanoidBoss»). */
 	UPROPERTY(BlueprintAssignable, Category = "Combo")
 	FClanhallOnComboWindowOpened OnComboWindowOpened;
 
@@ -67,8 +67,8 @@ public:
 	 *  AI-водителя: точка входа одна и та же и стороне-нейтральна,
 	 *  второй не заводим. Решает: опенер, запись в окне чтения (продолжение) или мусор вне
 	 *  окна — сама активирует направленный удар, когда решение валидно. BlueprintCallable —
-	 *  единственный способ прогнать серию боссу до появления BT-исполнителя:
-	 *  временный отладочный вызов кнопкой/консолью. */
+	 *  единственный способ прогнать серию боссу до появления BT-исполнителя
+	 *  (`Combatant Hierarchy.md`, «AClanhallHumanoidBoss»): временный отладочный вызов кнопкой/консолью. */
 	UFUNCTION(BlueprintCallable, Category = "Combo")
 	void HandleAttackInput(EClanhallAttackDirection Direction);
 
@@ -86,7 +86,7 @@ public:
 	 *  нет — тот же принцип, что у невалидного продолжения. Зовётся ДО Montage_Play активки. */
 	void CancelSequenceForExternalMontage();
 
-	/** Публичный запрос состояния серии для AI — активна,
+	/** Публичный запрос состояния серии для AI (`Combatant Hierarchy.md`, «AClanhallHumanoidBoss») — активна,
 	 *  текущая длина и потолок по ClassRank. Ничего из этого не решает за вызывающего:
 	 *  сравнивать со StepCount/ClassRank и выбирать следующее направление — дело водителя. */
 	bool IsSequenceActive() const { return StepCount > 0; }
@@ -144,7 +144,7 @@ private:
 	 *  быть резолвлена ДО ResetCombo() — сброс очищает LastDirection. */
 	void EndSequenceWithRecovery();
 
-	/** (`Parrying.md`): симметричный телеграф направления. Вешает/снимает
+	/** (`Parrying.md`, «`UClanhallParryComponent`»): симметричный телеграф направления. Вешает/снимает
 	 *  Attack.Direction.<Direction> на СЕБЯ — State.Parrying по-прежнему на разметке монтажа
 	 *  (AnimNotifyState_ParryWindow), но кому какое направление парировать, до сих пор решает
 	 *  только код, т.к. в анимации направление не читается. UClanhallParryComponent::TryParry

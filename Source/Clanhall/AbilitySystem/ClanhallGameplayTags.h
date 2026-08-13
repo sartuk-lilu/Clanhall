@@ -53,7 +53,7 @@ namespace ClanhallGameplayTags
 	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
 	// замаха (UClanhallComboComponent::ActivateStep), стороне-нейтрален (и игрок, и AI).
 	// Раньше назывался Parry.Incoming.* — имя лгало (описывало «летит откуда-то», а не
-	// «я бью туда-то»); переименован (`Parrying.md`). Обратная пара для клэша:
+	// «я бью туда-то»); переименован (`Parrying.md`, «`UClanhallParryComponent`»). Обратная пара для клэша:
 	// W↔S, A↔D (`combat_system.md`, «Механика клэша — резолв на контакте атакующего, не на реакции защищающегося»).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_W);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_S);
@@ -61,10 +61,10 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_D);
 
 	// ---- Ability.Slot.* ----
-	// Слот принадлежит клавише, а не конкретному навыку (`ability_system.md`, «Контрнавык») — общий для всех
+	// Слот принадлежит клавише, а не конкретному навыку (`ability_system.md`, «Слоты активных навыков») — общий для всех
 	// оружий, ключует UClassKitData::Skills и живёт как динамический тег спека
-	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит.
-	// Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
+	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит
+	// (`Combatant Hierarchy.md`, «Ключ по слоту, а не по имени навыка»). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
 	// отфильтровать слот среди прочих динамических тегов спека.
 	// Мигрировано из Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов»): слот пережил смерть
 	// кулдаунов, но неймспейс Cooldown.* стал бы врать. Старые теги удалены из кода; ключи

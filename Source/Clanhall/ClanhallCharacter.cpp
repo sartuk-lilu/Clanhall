@@ -65,7 +65,7 @@ AClanhallCharacter::AClanhallCharacter()
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
 	// WASD-классы дефолтятся в AClanhallHumanoidCombatant — общий конструктор для игрока
-	// и AClanhallHumanoidBoss. Здесь их больше нет намеренно:
+	// и AClanhallHumanoidBoss (`Combatant Hierarchy.md`, «Три слоя»). Здесь их больше нет намеренно:
 	// у пустого конструктора AClanhallHumanoidBoss эти поля оставались бы nullptr.
 }
 

@@ -17,7 +17,7 @@ AClanhallCombatantBase::AClanhallCombatantBase()
 	// Метка бойца — независимый трек (`mark_system.md`, «Получение метки от врага»), двусторонняя по построению.
 	MarkComponent = CreateDefaultSubobject<UClanhallMarkComponent>(TEXT("MarkComponent"));
 
-	// Диспетчер зон поражения вместо жёстко зашитого weapon trace (`Animation Setup.md`).
+	// Диспетчер зон поражения вместо жёстко зашитого weapon trace (`Animation Setup.md`, «Диспетчер зон поражения»).
 	// Имя сабобъекта сохранено символ в символ при переносе из AClanhallCharacter —
 	// смена строки рвёт переопределения в BP-наследнике игрока. Класс переименован, имя — нет.
 	HitboxComponent = CreateDefaultSubobject<UClanhallHitboxComponent>(TEXT("WeaponTraceComponent"));
@@ -63,7 +63,7 @@ void AClanhallCombatantBase::BeginPlay()
 			AbilitySystemComponent->AddLooseGameplayTag(RoleTag);
 		}
 
-		// Denied-фидбек (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»): AbilityFailedCallbacks — обычный C++ мультикаст, не
+		// Denied-фидбек (`Combatant Hierarchy.md`, «Denied-фидбек»): AbilityFailedCallbacks — обычный C++ мультикаст, не
 		// BlueprintAssignable, поэтому ретранслируем в OnChargesDenied для Blueprint HUD.
 		AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &AClanhallCombatantBase::HandleAbilityFailed);
 	}

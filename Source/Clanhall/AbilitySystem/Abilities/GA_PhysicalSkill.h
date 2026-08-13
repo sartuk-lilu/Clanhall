@@ -1,4 +1,4 @@
-// Один навык-класс для всех физических активных способностей (Q/E/R/F/..., `DataAsset and Fragments.md`).
+// Один навык-класс для всех физических активных способностей (Q/E/R/F/..., `DataAsset and Fragments.md`, «Один класс на все активки»).
 // Канон CLAUDE.md: "Логика абилки не меняется при правке данных — меняется только DataAsset".
 // Конкретное содержание (урон/метка/синергия/баланс/мана/стоимость) приходит из UAbilityData,
 // который привязывается к каждому гранту через FGameplayAbilitySpec::SourceObject —
@@ -12,13 +12,13 @@
 //   - Контактный (монтаж есть и на нём расставлен AnimNotifyState_Hitbox): способность ждёт
 //     Event.Hitbox.Hit от UClanhallHitboxComponent и резолвит цель(и) в момент реального
 //     касания зоны. Одна зона может задеть несколько целей за применение (Shield Charge —
-//     капсула на пелвисе на весь рывок, `DataAsset and Fragments.md`) — см. правило мультицели ниже.
+//     капсула на пелвисе на весь рывок, `DataAsset and Fragments.md`, «Мультизонные удары») — см. правило мультицели ниже.
 //   - Мгновенный фолбэк (CastMontage == nullptr ИЛИ на нём не расставлена зона): резолв по
 //     FindMeleeTarget на активации, как до перехода на контактный резолв.
 //
 // Перемещение навыка (Shield Charge и подобные) приходит из UDashFragment через Root Motion
 // Source (StartDashIfNeeded), а не из root motion клипа — дистанция и длительность живут в
-// данных, не в анимации (`Animation Setup.md`). Способность живёт до
+// данных, не в анимации (`Animation Setup.md`, «Перемещение навыка — данные, не свойство клипа»). Способность живёт до
 // позднейшего из двух терминаторов — конца каст-монтажа/фолбэка И конца рывка, см.
 // TryFinishAbility.
 //
@@ -79,12 +79,12 @@ private:
 	/** Запускает Root Motion Source рывка, если у навыка есть UDashFragment; иначе no-op.
 	 *  Аватар не ACharacter (нет CharacterMovementComponent) → рывок пропускается с варном.
 	 *  MontagePlayLength — длина каст-монтажа (0, если монтажа нет/не стартовал) для грубой
-	 *  проверки Dash->Duration против неё (`Animation Setup.md`). */
+	 *  проверки Dash->Duration против неё (`Animation Setup.md`, «Перемещение навыка — данные, не свойство клипа»). */
 	void StartDashIfNeeded(const UAbilityData* Data, AActor* Avatar, float MontagePlayLength);
 
 	/** EndAbility вызывается только когда отработали ОБА терминатора — иначе фолбэк-путь без
 	 *  рывка убил бы задачу рывка в тот же кадр, а контактный путь оборвал бы рывок на середине
-	 *  (`Animation Setup.md`). */
+	 *  (`Animation Setup.md`, «Способность ждёт позднейший из двух терминаторов»). */
 	void TryFinishAbility();
 	/** SourceObject ищется через Handle, а не GetCurrentSourceObject() — у InstancedPerExecution
 	 *  абилки на момент CanActivateAbility ещё нет персистентного инстанса (см. движок,

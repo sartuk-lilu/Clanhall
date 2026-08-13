@@ -18,7 +18,7 @@
 
 namespace
 {
-	/** (`Parrying.md`): направление своего шага -> тег, который на себя вешает
+	/** (`Parrying.md`, «`UClanhallParryComponent`»): направление своего шага -> тег, который на себя вешает
 	 *  владелец на время удара (симметричный телеграф). Не путать со свитчем в
 	 *  UClanhallParryComponent::TryParry — там маппинг ОБРАТНЫЙ (своё направление -> тег,
 	 *  который парируется), это разные вопросы. Было DirectionToOwnIncomingTag
@@ -123,7 +123,7 @@ void UClanhallComboComponent::OnComboWindowOpen()
 	LatestInWindow.Reset();
 
 	// Единственный сигнал для AI о том, что можно подавать
-	// направление в HandleAttackInput — сама очерёдность решает AI/BT, компонент не подсказывает.
+	// направление в HandleAttackInput (`Combatant Hierarchy.md`, «AClanhallHumanoidBoss») — сама очерёдность решает AI/BT, компонент не подсказывает.
 	OnComboWindowOpened.Broadcast();
 }
 
@@ -394,7 +394,7 @@ void UClanhallComboComponent::CancelSequenceForExternalMontage()
 
 void UClanhallComboComponent::ResetCombo()
 {
-	// (`Parrying.md`): снять Attack.Direction.* последнего шага ДО LastDirection.Reset()
+	// (`Parrying.md`, «`UClanhallParryComponent`»): снять Attack.Direction.* последнего шага ДО LastDirection.Reset()
 	// ниже — ClearSwingDirectionTag читает LastDirection, чтобы знать, какой тег снимать.
 	ClearSwingDirectionTag();
 

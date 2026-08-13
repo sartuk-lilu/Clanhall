@@ -1,8 +1,8 @@
-// Общий предок для всего, что дерётся — игрока и врагов.
+// Общий предок для всего, что дерётся — игрока и врагов (`Combatant Hierarchy.md`, «Три слоя»).
 // ASC, атрибуты, метки, зоны поражения и окно контра нужны любому бойцу одинаково: метка
 // и контр двусторонние по построению, а без диспетчера зон у врага не было бы
-// урона вовсе (открытый вопрос). Комбо-дерево и парирование —
-// только гуманоидам, см. AClanhallHumanoidCombatant.
+// урона вовсе (`Combatant Hierarchy.md`, «AClanhallCombatantBase»). Комбо-дерево и парирование —
+// только гуманоидам, см. AClanhallHumanoidCombatant (`Combatant Hierarchy.md`, «Граница слоёв»).
 
 #pragma once
 
@@ -20,7 +20,7 @@ class UClanhallCounterComponent;
 class UGameplayAbility;
 
 /** Denied-фидбек: TryActivateAbility отказал именно по нехватке Charges (не по
- *  State.SkillCommitted/State.Stunned — `DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»). Точка подключения для HUD
+ *  State.SkillCommitted/State.Stunned — `Combatant Hierarchy.md`, «Denied-фидбек»). Точка подключения для HUD
  *  (звук + вспышка WBP_ChargesPanel), сама реакция сюда не входит — тот же паттерн, что
  *  UClanhallCounterComponent::OnCounterConsumed. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallChargesDenied);
@@ -40,7 +40,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallMarkComponent> MarkComponent;
 
-	/** Диспетчер активных зон поражения (`Animation Setup.md`). Собственной геометрии не имеет —
+	/** Диспетчер активных зон поражения (`Animation Setup.md`, «Диспетчер зон поражения»). Собственной геометрии не имеет —
 	 *  форма и роль каждой зоны приходят из AnimNotifyState_Hitbox на монтаже. Имя сабобъекта
 	 *  намеренно осталось прежним ("WeaponTraceComponent") — перенесено символ в символ из
 	 *  AClanhallCharacter, переименование рвёт BP-данные игрока. */
@@ -51,12 +51,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCounterComponent> CounterComponent;
 
-	/** Unit.Role.* — вешается на ASC в BeginPlay. Незаполненный тег — легальное состояние
+	/** Unit.Role.* — вешается на ASC в BeginPlay (`Combatant Hierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
 	 *  (актор не участвует в ролевой логике HUD/AI), так у игрока по умолчанию. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitySystem", meta = (Categories = "Unit.Role"))
 	FGameplayTag RoleTag;
 
-	/** Стартовые значения ресурсов (`combat_system.md`, «Ресурсы персонажа») — хардкод-плейсхолдеры прототипа,
+	/** Стартовые значения ресурсов (`combat_system.md`, «Ресурсы персонажа»; `Combatant Hierarchy.md`,
+	 *  «Стартовые значения атрибутов на базе») — хардкод-плейсхолдеры прототипа,
 	 *  переопределяются per-class в defaults Blueprint-наследника (у Часового свои AP/HP/MP/Charges).
 	 *  Раньше жили только в AClanhallCharacter::BeginPlay —
 	 *  экземпляр без этого пути (AClanhallHumanoidBoss, пустой конструктор) оставался с нулевыми
@@ -100,6 +101,6 @@ protected:
 
 private:
 	/** Слушает UAbilitySystemComponent::AbilityFailedCallbacks и ретранслирует в OnChargesDenied,
-	 *  только когда причина отказа — Ability.Denied.Charges (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»). */
+	 *  только когда причина отказа — Ability.Denied.Charges (`Combatant Hierarchy.md`, «Denied-фидбек»). */
 	void HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason);
 };

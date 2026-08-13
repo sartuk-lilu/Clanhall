@@ -23,7 +23,8 @@ AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
 	// AClanhallHumanoidBoss: раньше жили в конструкторе
 	// AClanhallCharacter, из-за чего у пустого конструктора Boss они оставались nullptr, и
 	// GiveAbility грантовал WASD-удары с null-классом — серии у босса не было вообще. Не
-	// UPROPERTY намеренно — значение одинаково у всех китов, это плумбинг GAS, не контент класса.
+	// UPROPERTY намеренно — значение одинаково у всех китов, это плумбинг GAS, не контент класса
+	// (`Combatant Hierarchy.md`, «Грант в BeginPlay»).
 	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
 	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
 	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
@@ -57,7 +58,7 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 	// Один класс GA_PhysicalSkill гранится по числу записей в
-	// ClassKit->Skills, каждый раз с UAbilityData как SourceObject — ключ карты (Ability.Slot.*)
+	// ClassKit->Skills (`Combatant Hierarchy.md`, «Грант в BeginPlay»), каждый раз с UAbilityData как SourceObject — ключ карты (Ability.Slot.*)
 	// сохраняется как адрес хэндла для GetActiveSkillHandle(). Тот же цикл обслуживает и игрока,
 	// и AClanhallHumanoidBoss — DataAsset'ы назначаются в Blueprint-наследнике.
 	if (ClassKit)
@@ -83,7 +84,7 @@ void AClanhallHumanoidCombatant::BeginPlay()
 			}
 
 			// Слот доносится до способности штатным путём GAS — динамическим тегом спека
-			// (не полем в UAbilityData): один и тот же
+			// (не полем в UAbilityData, `Combatant Hierarchy.md`, «Ключ по слоту, а не по имени навыка»): один и тот же
 			// UAbilityData может лежать сразу в двух китах, слот же принадлежит гранту.
 			FGameplayAbilitySpec Spec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value);
 			Spec.GetDynamicSpecSourceTags().AddTag(Skill.Key);

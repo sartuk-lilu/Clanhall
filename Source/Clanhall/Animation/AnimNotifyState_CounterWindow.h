@@ -7,7 +7,7 @@
  *  Своих данных не несёт — источник истины UAbilityData, тот же ассет, что описывает навык и для
  *  игрока, и для врага, которому этот навык выдан. Ключ поиска активной активки — сам монтаж, на
  *  котором стоит нотифай: NotifyBegin ищет активный спек владельца, чей UAbilityData::CastMontage
- *  совпадает с этим монтажом, и берёт CounteredBy из него (`Animation Setup.md`).
+ *  совпадает с этим монтажом, и берёт CounteredBy из него (`Animation Setup.md`, «Окно контра — разметка без данных»).
  *  Слот навыка окну контра больше не нужен — кулдауна в проекте не осталось нигде
  *  (`economy_system.md`, «Почему кулдаунов нет»). */
 UCLASS(const, hidecategories=Object, collapsecategories, meta=(DisplayName="Counter Window"))
