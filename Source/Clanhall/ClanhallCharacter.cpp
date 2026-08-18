@@ -78,12 +78,10 @@ void AClanhallCharacter::BeginPlay()
 
 	if (AbilitySystemComponent)
 	{
-		// Плейсхолдер: реального инвентаря оружия ещё нет — тег задаёт тип текущего
-		// оружия. Собственные поля оружия (доход зарядов, пробитие DT, профиль защиты)
-		// появятся вместе с переработкой (`combat_system.md`, «Классы и оружие (сводка)»).
-		AbilitySystemComponent->AddLooseGameplayTag(bStartWithSTRWeapon
-			? ClanhallGameplayTags::Weapon_Type_STR.GetTag()
-			: ClanhallGameplayTags::Weapon_Type_DEX.GetTag());
+		// Плейсхолдер категорий STR/DEX (тег Weapon.Type.*) снесён вместе с остатком шкалы
+		// Balance (CLAUDE.md, «Идёт переработка боевой системы») — доход зарядов и потолок
+		// серии теперь читаются с UWeaponTypeData через CharacterSheet -> Weapon -> Type
+		// (`weapon_system.md`).
 
 		// Грант способности боевой стойки (`combat_system.md`, «Боевая стойка и переключение режимов»). WASD-удары и активки Q/E/R/F
 		// гранятся выше по иерархии — см. AClanhallHumanoidCombatant::BeginPlay.

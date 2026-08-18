@@ -105,10 +105,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* ActiveSkillFAction;
 
-	/** Placeholder: настоящий выбор оружия появится позже. Переключает тег Weapon.Type.STR/DEX на ASC. */
-	UPROPERTY(EditAnywhere, Category = "Combat")
-	bool bStartWithSTRWeapon = true;
-
 public:
 
 	/** Constructor */

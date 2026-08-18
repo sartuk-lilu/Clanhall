@@ -2,11 +2,6 @@
 
 namespace ClanhallGameplayTags
 {
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Class_Knight, "Ability.Class.Knight", "Требуемый класс: Knight (Меч и Щит)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Class_Warrior, "Ability.Class.Warrior", "Требуемый класс: Warrior (Двуручный меч)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Class_Assassin, "Ability.Class.Assassin", "Требуемый класс: Assassin (Кинжал)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Class_Lancer, "Ability.Class.Lancer", "Требуемый класс: Lancer (Копьё)");
-
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight, "Ability.Skill.Knight", "Корень навыков Knight");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_ShieldSlam, "Ability.Skill.Knight.ShieldSlam", "Knight Q — Shield Slam (Ранг 1, тир Q/E — 2 Charges)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_PowerStrike, "Ability.Skill.Knight.PowerStrike", "Knight E — Power Strike (Ранг 1, тир Q/E — 2 Charges)");
@@ -25,9 +20,6 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
-
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_STR, "Weapon.Type.STR", "Текущее оружие относится к STR-ветке");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Weapon_Type_DEX, "Weapon.Type.DEX", "Текущее оружие относится к DEX-ветке");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "Владелец сейчас бьёт Overhead (W) — висит на время замаха");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_S, "Attack.Direction.S", "Владелец сейчас бьёт Low Sweep (S) — висит на время замаха");

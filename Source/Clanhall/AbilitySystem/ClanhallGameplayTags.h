@@ -11,13 +11,6 @@
 
 namespace ClanhallGameplayTags
 {
-	// ---- Ability.Class.* ----
-	// Тег требуемого класса для активной способности (физ. ветка прототипа).
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Class_Knight);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Class_Warrior);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Class_Assassin);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Class_Lancer);
-
 	// ---- Ability.Skill.* ----
 	// Корневые теги веток навыков + листовые теги Knight Ранг 1-2.
 	// Листья других классов добавляются вместе с самими навыками.
@@ -45,10 +38,6 @@ namespace ClanhallGameplayTags
 	// «начатую активку нельзя оборвать»). Выход из стойки при этом свободен всегда.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_SkillCommitted);
 
-	// ---- Weapon.Type.* ----
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon_Type_STR);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Weapon_Type_DEX);
-
 	// ---- Attack.Direction.* ----
 	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
 	// замаха (UClanhallComboComponent::ActivateStep), стороне-нейтрален (и игрок, и AI).
@@ -62,13 +51,13 @@ namespace ClanhallGameplayTags
 
 	// ---- Ability.Slot.* ----
 	// Слот принадлежит клавише, а не конкретному навыку (`ability_system.md`, «Слоты активных навыков») — общий для всех
-	// оружий, ключует UClassKitData::Skills и живёт как динамический тег спека
+	// оружий, ключует UCharacterSheetData::Skills и живёт как динамический тег спека
 	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит
 	// (`Combatant Hierarchy.md`, «Ключ по слоту, а не по имени навыка»). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
 	// отфильтровать слот среди прочих динамических тегов спека.
 	// Мигрировано из Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов»): слот пережил смерть
 	// кулдаунов, но неймспейс Cooldown.* стал бы врать. Старые теги удалены из кода; ключи
-	// существующих UClassKitData-ассетов, если ещё не перенесены вручную в редакторе, ссылаются
+	// существующих UCharacterSheetData-ассетов, если ещё не перенесены вручную в редакторе, ссылаются
 	// на несуществующий тег — гранты активок для них молчаливо сломаны, чинится только правкой
 	// ассета, не кодом.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot);
