@@ -11,8 +11,8 @@
 // Урон берётся из UComboData::FindDamageByDirection (4 именованных поля профиля) по направлению
 // шага и передаётся в GA_DirectionalAttackBase через FGameplayEventData
 // (TriggerAbilityFromGameplayEvent) — Handle-активация сохраняется, тег события служебный.
-// Потолок длины серии = AClanhallHumanoidCombatant::ClassRank + 1 (ранг 0 -> 1 удар, ранг 4 -> 5),
-// а не поле ассета (`Combatant Hierarchy.md`, «ClassRank — свойство экземпляра»).
+// Потолок длины серии — поле ассета, UWeaponTypeData::SeriesLength, и принадлежит оружию, а не
+// бойцу (`economy_system.md`, «Длина серии»).
 //
 // State.ComboRecovery (уточнение намерения): блокирует НОВЫЕ атаки (WASD и физактивки Q/E/R/F —
 // см. UGA_ClanhallAbilityBase) и вход в стойку (UGA_CombatStance) ровно на время проигрывания
@@ -87,18 +87,21 @@ public:
 	void CancelSequenceForExternalMontage();
 
 	/** Публичный запрос состояния серии для AI (`Combatant Hierarchy.md`, «AClanhallHumanoidBoss») — активна,
-	 *  текущая длина и потолок по ClassRank. Ничего из этого не решает за вызывающего:
-	 *  сравнивать со StepCount/ClassRank и выбирать следующее направление — дело водителя. */
+	 *  текущая длина и потолок по GetMaxSeriesLength(). Ничего из этого не решает за вызывающего:
+	 *  сравнивать со StepCount/потолком и выбирать следующее направление — дело водителя. */
 	bool IsSequenceActive() const { return StepCount > 0; }
 	int32 GetStepCount() const { return StepCount; }
-	int32 GetClassRank() const;
+
+	/** Потолок длины серии — сколько ударов всего. Читает UWeaponTypeData::SeriesLength владельца.
+	 *  Данных нет -> ClanhallWeaponDefaults::SeriesLength. */
+	int32 GetMaxSeriesLength() const;
 
 private:
 	/** Последнее сыгранное направление серии. Не задано = нейтраль. Определяет и следующий переход,
 	 *  и Recovery на завершении — история до него не хранится (модель пар). */
 	TOptional<EClanhallAttackDirection> LastDirection;
 
-	/** Длина текущей серии. 0 = нейтраль. Сверяется с ClassRank как потолок. */
+	/** Длина текущей серии. 0 = нейтраль. Сверяется с GetMaxSeriesLength() как потолок. */
 	int32 StepCount = 0;
 
 	bool bReadWindowOpen = false;

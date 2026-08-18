@@ -1,6 +1,7 @@
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "Clanhall.h"
 #include "AbilitySystem/Fragments/ComboData.h"
+#include "AbilitySystem/WeaponTypeData.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
@@ -142,9 +143,9 @@ void UClanhallComboComponent::OnComboWindowClose()
 	const EClanhallAttackDirection Direction = LatestInWindow.GetValue();
 	LatestInWindow.Reset();
 
-	// Потолок ранга: длина серии = ClassRank + 1 (ранг 0 → 1 удар, ранг 4 → 5 ударов).
+	// Потолок серии — UWeaponTypeData::SeriesLength (`economy_system.md`, «Длина серии»).
 	// Запрещено, даже если слот перехода занят.
-	if (StepCount > GetClassRank())
+	if (StepCount >= GetMaxSeriesLength())
 	{
 		EndSequenceWithRecovery();
 		return;
@@ -440,10 +441,13 @@ const UComboData* UClanhallComboComponent::GetComboData() const
 	return Character ? Character->GetComboData() : nullptr;
 }
 
-int32 UClanhallComboComponent::GetClassRank() const
+int32 UClanhallComboComponent::GetMaxSeriesLength() const
 {
 	const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner());
-	return Character ? Character->ClassRank : 0;
+	const UWeaponTypeData* WeaponType = Character ? Character->GetWeaponType() : nullptr;
+	// Старый GetClassRank() возвращал 0 при отсутствии владельца — новый так не может: 0
+	// означало бы «серия из нуля ударов», то есть боец не бьёт вообще.
+	return WeaponType ? WeaponType->SeriesLength : ClanhallWeaponDefaults::SeriesLength;
 }
 
 UAbilitySystemComponent* UClanhallComboComponent::GetASC() const

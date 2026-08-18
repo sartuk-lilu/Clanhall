@@ -3,7 +3,9 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
-#include "AbilitySystem/ClassKitData.h"
+#include "AbilitySystem/CharacterSheetData.h"
+#include "AbilitySystem/WeaponData.h"
+#include "AbilitySystem/WeaponTypeData.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/Fragments/GameplayFragments.h"
@@ -40,14 +42,14 @@ void AClanhallHumanoidCombatant::BeginPlay()
 		return;
 	}
 
-	// (`economy_system.md`, «Ранги и длина серии»): ранга 0 не существует — на нём нет ни одного активного
-	// навыка, то есть нет потребителя зарядов. UPROPERTY ClampMin=1 гейтит только ввод в
-	// редакторе, не старые сериализованные данные и не программную установку — варн, не тихий
-	// проход, если 0 всё же просочился.
-	if (ClassRank < 1)
+	// Отсутствие данных не должно ломать бой (`weapon_system.md`, «Шаблон и живой лист») — боец
+	// без листа дерётся на фолбэках, а не встаёт с нулевым доходом. Один варнинг на бойца,
+	// здесь и только здесь: варнить в местах чтения означало бы залить лог на каждом ударе.
+	if (!CharacterSheet || !CharacterSheet->Weapon || !CharacterSheet->Weapon->Type)
 	{
-		UE_LOG(LogClanhall, Warning, TEXT("%s: ClassRank = %d — ранга 0 не существует, клампится до 1."), *GetName(), ClassRank);
-		ClassRank = 1;
+		UE_LOG(LogClanhall, Warning, TEXT("%s: цепочка CharacterSheet -> Weapon -> Type неполна — "
+			"бой идёт на фолбэках (ChargeIncome %d, SeriesLength %d), комбо-дерева нет."),
+			*GetName(), ClanhallWeaponDefaults::ChargeIncome, ClanhallWeaponDefaults::SeriesLength);
 	}
 
 	// Грант способностей 4 направлений WASD-удара (`combat_system.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»). Классы дефолтно
@@ -58,12 +60,12 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 	// Один класс GA_PhysicalSkill гранится по числу записей в
-	// ClassKit->Skills (`Combatant Hierarchy.md`, «Грант в BeginPlay»), каждый раз с UAbilityData как SourceObject — ключ карты (Ability.Slot.*)
+	// CharacterSheet->Skills (`Combatant Hierarchy.md`, «Грант в BeginPlay»), каждый раз с UAbilityData как SourceObject — ключ карты (Ability.Slot.*)
 	// сохраняется как адрес хэндла для GetActiveSkillHandle(). Тот же цикл обслуживает и игрока,
 	// и AClanhallHumanoidBoss — DataAsset'ы назначаются в Blueprint-наследнике.
-	if (ClassKit)
+	if (CharacterSheet)
 	{
-		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : ClassKit->Skills)
+		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : CharacterSheet->Skills)
 		{
 			// Невалидный ключ ИЛИ сам корень Ability.Slot (а не лист Q/E/R/F/...) грантится, но
 			// GetActiveSkillHandle(Ability_Slot_Q) его никогда не найдёт — ключ карты другой.
@@ -73,13 +75,13 @@ void AClanhallHumanoidCombatant::BeginPlay()
 			// не ищется.
 			if (!Skill.Key.IsValid() || Skill.Key == ClanhallGameplayTags::Ability_Slot.GetTag())
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в ClassKit->Skills с невалидным ключом или корнем Ability.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
+				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в CharacterSheet->Skills с невалидным ключом или корнем Ability.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
 				continue;
 			}
 
 			if (!Skill.Value)
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: слот %s в ClassKit->Skills не заполнен — навык не грантится."), *GetName(), *Skill.Key.ToString());
+				UE_LOG(LogClanhall, Warning, TEXT("%s: слот %s в CharacterSheet->Skills не заполнен — навык не грантится."), *GetName(), *Skill.Key.ToString());
 				continue;
 			}
 
@@ -93,14 +95,15 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	}
 }
 
-FGameplayTag AClanhallHumanoidCombatant::GetClassTag() const
+const UWeaponTypeData* AClanhallHumanoidCombatant::GetWeaponType() const
 {
-	return ClassKit ? ClassKit->ClassTag : FGameplayTag();
+	return CharacterSheet && CharacterSheet->Weapon ? CharacterSheet->Weapon->Type : nullptr;
 }
 
 const UComboData* AClanhallHumanoidCombatant::GetComboData() const
 {
-	return ClassKit ? ClassKit->ComboData : nullptr;
+	const UWeaponTypeData* WeaponType = GetWeaponType();
+	return WeaponType ? WeaponType->ComboData : nullptr;
 }
 
 FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetAttackHandle(EClanhallAttackDirection Direction) const
@@ -140,12 +143,12 @@ AClanhallHumanoidCombatant* AClanhallHumanoidCombatant::FindPrototypeOpponent() 
 
 bool AClanhallHumanoidCombatant::HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const
 {
-	if (!ClassKit || !RequiredMark.IsValid())
+	if (!CharacterSheet || !RequiredMark.IsValid())
 	{
 		return false;
 	}
 
-	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : ClassKit->Skills)
+	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : CharacterSheet->Skills)
 	{
 		const UAbilityData* Data = Skill.Value;
 		const UMarkTriggerFragment* Trigger = Data ? Data->FindFragment<UMarkTriggerFragment>() : nullptr;

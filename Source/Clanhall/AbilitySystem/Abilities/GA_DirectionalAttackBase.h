@@ -20,6 +20,7 @@
 
 #include "GA_ClanhallAbilityBase.h"
 #include "ClanhallCombatTypes.h"
+#include "AbilitySystem/WeaponTypeData.h"
 #include "GA_DirectionalAttackBase.generated.h"
 
 class UAbilitySystemComponent;
@@ -65,4 +66,10 @@ private:
 	 *  ещё нет — прямое чтение дало бы разные пороги в зависимости от режима резолва одного и
 	 *  того же удара (`combat_system.md`, «Ресурсы персонажа»: доход начиная со второго удара серии). */
 	bool bChargeEligible = false;
+
+	/** ChargeIncome типа оружия, снятый в ActivateAbility. Снимок, а не чтение на контакте:
+	 *  свап оружия мгновенный, и взмах, начатый мечом, обязан разрешиться доходом меча,
+	 *  а не двуруча, который успели достать за время замаха. Тот же довод, что у bChargeEligible
+	 *  (`economy_system.md`, «Заряды: доход»). */
+	int32 PendingChargeIncome = ClanhallWeaponDefaults::ChargeIncome;
 };

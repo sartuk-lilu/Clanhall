@@ -4,6 +4,7 @@
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
+#include "ClanhallHumanoidCombatant.h"
 #include "Animation/AnimNotifyState_Hitbox.h"
 #include "Animation/AnimMontage.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
@@ -50,6 +51,12 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 	{
 		bChargeEligible = Combo->GetStepCount() >= 1;
 	}
+
+	// Снимок ChargeIncome типа оружия — тот же довод, что у bChargeEligible выше: свап оружия
+	// мгновенный, взмах обязан разрешиться доходом оружия, с которым он начат.
+	const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(Avatar);
+	const UWeaponTypeData* WeaponType = Character ? Character->GetWeaponType() : nullptr;
+	PendingChargeIncome = WeaponType ? WeaponType->ChargeIncome : ClanhallWeaponDefaults::ChargeIncome;
 
 	const UAnimMontage* StepMontage = TriggerEventData ? Cast<UAnimMontage>(TriggerEventData->OptionalObject.Get()) : nullptr;
 	const bool bResolveOnContact = UAnimNotifyState_Hitbox::MontageHasHitbox(StepMontage);
@@ -115,10 +122,12 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 
 		// Charges — доход начиная со ВТОРОГО удара серии (bChargeEligible, снятый в
 		// ActivateAbility), раз за взмах, сколько бы целей ни задело (`combat_system.md`, «Ресурсы персонажа»).
+		// Доход теперь не +1, а ChargeIncome типа оружия (PendingChargeIncome, снятый в ActivateAbility).
 		// Симметрично для игрока и врага — ResolveHitOn общий, проверок на роль нет.
 		if (!bChargeApplied && bChargeEligible)
 		{
-			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), 1.0f);
+			ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC,
+				UGE_ModifyCharges::StaticClass(), static_cast<float>(PendingChargeIncome));
 			bChargeApplied = true;
 		}
 
@@ -126,9 +135,9 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 		if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Cyan, FString::Printf(
-				TEXT("WASD hit | self AP %.0f/%.0f  Charges %.0f/%.0f"),
+				TEXT("WASD hit | self AP %.0f/%.0f  Charges %.0f/%.0f  ChargeIncome %d"),
 				SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
-				SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges()));
+				SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges(), PendingChargeIncome));
 		}
 #endif
 	}

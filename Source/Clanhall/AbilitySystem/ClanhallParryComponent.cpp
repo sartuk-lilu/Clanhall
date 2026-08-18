@@ -94,6 +94,10 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 	if (UAbilitySystemComponent* OwnASC = GetASC())
 	{
 		// Парировавшему (цели) — заряд. Заряд платится за само действие, не зависит от AddStagger/гейта.
+		// Парирование даёт плоский +1 и оружием НЕ масштабируется (`economy_system.md`,
+		// «Заряды: доход»). Масштабировать доход защищающегося его оружием значит «кинжалом
+		// парировать невыгодно» — то есть штраф на защиту, а защита это пол дохода. Нормируется
+		// только атакующий канал. Не заменять на ChargeIncome.
 		ClanhallGameplayEffects::ApplyModifyEffect(OwnASC, TargetASC, UGE_ModifyCharges::StaticClass(), 1.0f);
 	}
 
