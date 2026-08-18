@@ -106,11 +106,24 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage_Type_Blunt);
 
 	// ---- Perk.* ----
-	// Корень будущей перк/условной-разблокировки системы — задел, перк-системы ещё нет. Раньше
-	// сюда указывал FComboChain.RequiredUnlock (удалён — условие было на каждой цепочке, не там,
-	// где реально нужно: см. `combat_system.md`, «Цена модели пар»). Планируется вернуться как fragment на уровне
-	// конкретного хода/навыка, когда несколько навыков делят один MoveId.
+	// Корень перк-системы. Раньше сюда указывал FComboChain.RequiredUnlock (удалён — условие
+	// было на каждой цепочке, не там, где реально нужно: см. `combat_system.md`, «Цена модели
+	// пар»). Планируется вернуться как fragment на уровне конкретного хода/навыка, когда
+	// несколько навыков делят один MoveId.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk);
+
+	// ---- Perk.Proficiency.* ----
+	// Владение типом оружия (`weapon_system.md`, «Владение оружием»). Ранги НАКАПЛИВАЮТСЯ,
+	// а не перезаписываются — у бойца с рангом 3 в UCharacterSheetData::Perks висят
+	// одновременно Rank1, Rank2 и Rank3. Проверка «открыт ли тир» — обычный HasTag, без
+	// разбора номера из имени тега. Четыре листа на Knight — единственный тип оружия в
+	// проекте; новый тип оружия заводит свои четыре, как Ability.Skill.* заводит листья
+	// вместе с самими навыками.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank1);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank2);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank3);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank4);
 
 	// ---- Magic.School.* ----
 	// Только корни школ. Структура рангов (Rank.*) откладывается —

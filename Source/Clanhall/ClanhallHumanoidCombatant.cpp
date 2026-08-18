@@ -60,12 +60,19 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 	// Один класс GA_PhysicalSkill гранится по числу записей в
-	// CharacterSheet->Skills (`Combatant Hierarchy.md`, «Грант в BeginPlay»), каждый раз с UAbilityData как SourceObject — ключ карты (Ability.Slot.*)
-	// сохраняется как адрес хэндла для GetActiveSkillHandle(). Тот же цикл обслуживает и игрока,
+	// GetWeaponType()->Skills (`Combatant Hierarchy.md`, «Грант в BeginPlay»; `weapon_system.md`,
+	// «Владение оружием») — набор активок принадлежит оружию, не листу. Каждая запись проходит
+	// два гейта владения: открыт ли тир слота рангом (CharacterSheet->Perks) и выучен ли сам
+	// навык (CharacterSheet->LearnedSkills). Тот же цикл обслуживает и игрока,
 	// и AClanhallHumanoidBoss — DataAsset'ы назначаются в Blueprint-наследнике.
-	if (CharacterSheet)
+	const UWeaponTypeData* WeaponType = GetWeaponType();
+	if (WeaponType)
 	{
-		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : CharacterSheet->Skills)
+		int32 NumGranted = 0;
+		int32 NumRejectedByRank = 0;
+		int32 NumRejectedByLearned = 0;
+
+		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : WeaponType->Skills)
 		{
 			// Невалидный ключ ИЛИ сам корень Ability.Slot (а не лист Q/E/R/F/...) грантится, но
 			// GetActiveSkillHandle(Ability_Slot_Q) его никогда не найдёт — ключ карты другой.
@@ -75,13 +82,45 @@ void AClanhallHumanoidCombatant::BeginPlay()
 			// не ищется.
 			if (!Skill.Key.IsValid() || Skill.Key == ClanhallGameplayTags::Ability_Slot.GetTag())
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в CharacterSheet->Skills с невалидным ключом или корнем Ability.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
+				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в WeaponType->Skills с невалидным ключом или корнем Ability.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
 				continue;
 			}
 
 			if (!Skill.Value)
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: слот %s в CharacterSheet->Skills не заполнен — навык не грантится."), *GetName(), *Skill.Key.ToString());
+				UE_LOG(LogClanhall, Warning, TEXT("%s: слот %s в WeaponType->Skills не заполнен — навык не грантится."), *GetName(), *Skill.Key.ToString());
+				continue;
+			}
+
+			if (UWeaponTypeData::GetRequiredProficiencyRank(Skill.Key) == 0)
+			{
+				UE_LOG(LogClanhall, Warning, TEXT("%s: слот %s не опознан GetRequiredProficiencyRank — навык не грантится."), *GetName(), *Skill.Key.ToString());
+				continue;
+			}
+
+			// Тир закрыт — штатное состояние владения, не ошибка данных
+			// (`weapon_system.md`, «Владение оружием»): боец без ранга новым оружием бьёт
+			// и паррирует, но тратить заряды не на что. Verbose, не Warning — иначе лог
+			// заливается на каждом бойце без прокачки.
+			if (!WeaponType->IsSlotUnlocked(Skill.Key, CharacterSheet ? CharacterSheet->Perks : FGameplayTagContainer::EmptyContainer))
+			{
+				UE_LOG(LogClanhall, Verbose, TEXT("%s: слот %s закрыт рангом владения — навык не грантится."), *GetName(), *Skill.Key.ToString());
+				++NumRejectedByRank;
+				continue;
+			}
+
+			if (!Skill.Value->CounterTag.IsValid())
+			{
+				UE_LOG(LogClanhall, Warning, TEXT("%s: навык в слоте %s без CounterTag — выучить его нечем, LearnedSkills не может на него сослаться."), *GetName(), *Skill.Key.ToString());
+				continue;
+			}
+
+			// Не выучен — тоже штатное состояние владения, Verbose по той же причине, что и
+			// закрытый тир выше.
+			if (!CharacterSheet || !CharacterSheet->LearnedSkills.HasTag(Skill.Value->CounterTag))
+			{
+				UE_LOG(LogClanhall, Verbose, TEXT("%s: навык в слоте %s не выучен (LearnedSkills) — не грантится."), *GetName(), *Skill.Key.ToString());
+				++NumRejectedByLearned;
 				continue;
 			}
 
@@ -91,7 +130,13 @@ void AClanhallHumanoidCombatant::BeginPlay()
 			FGameplayAbilitySpec Spec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value);
 			Spec.GetDynamicSpecSourceTags().AddTag(Skill.Key);
 			ActiveSkillHandles.Add(Skill.Key, AbilitySystemComponent->GiveAbility(Spec));
+			++NumGranted;
 		}
+
+		// Итоговая строка, чтобы гейт не отлаживался вслепую: игрок жмёт Q, ничего не
+		// происходит, и без этой строки причина (ранг или изученность) не ищется.
+		UE_LOG(LogClanhall, Log, TEXT("%s: активок гранто %d, отсеяно рангом %d, отсеяно изученностью %d."),
+			*GetName(), NumGranted, NumRejectedByRank, NumRejectedByLearned);
 	}
 }
 
@@ -143,12 +188,17 @@ AClanhallHumanoidCombatant* AClanhallHumanoidCombatant::FindPrototypeOpponent() 
 
 bool AClanhallHumanoidCombatant::HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const
 {
-	if (!CharacterSheet || !RequiredMark.IsValid())
+	// Гейтами владения намеренно не фильтруется (`weapon_system.md`, «Владение оружием»):
+	// вопрос «есть ли чем обналичить Staggered» решает, копится ли шкала усталости у
+	// ПРОТИВНИКА этого бойца вообще (см. HasOpponentWithMarkSynergy) — фильтровать её рангом
+	// значило бы завязать чужую шкалу на прогрессию, что нигде не решено.
+	const UWeaponTypeData* WeaponType = GetWeaponType();
+	if (!WeaponType || !RequiredMark.IsValid())
 	{
 		return false;
 	}
 
-	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : CharacterSheet->Skills)
+	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : WeaponType->Skills)
 	{
 		const UAbilityData* Data = Skill.Value;
 		const UMarkTriggerFragment* Trigger = Data ? Data->FindFragment<UMarkTriggerFragment>() : nullptr;

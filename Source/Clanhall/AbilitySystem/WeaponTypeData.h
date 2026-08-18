@@ -9,10 +9,12 @@
 #pragma once
 
 #include "Engine/DataAsset.h"
+#include "GameplayTagContainer.h"
 #include "Fragments/WeaponFragment.h"
 #include "WeaponTypeData.generated.h"
 
 class UComboData;
+class UAbilityData;
 
 /** Именованные фолбэки на отсутствие данных в цепочке CharacterSheet -> Weapon -> Type — не
  *  баланс, страховка от нуля. SeriesLength = 0 означает «драться нельзя», ChargeIncome = 0 —
@@ -57,6 +59,26 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, Category = "WeaponType")
 	TArray<TObjectPtr<UWeaponFragment>> Fragments;
 
+	/** Активные навыки. Ключ — Ability.Slot.* (Q/E/R/F и далее по канону восьми
+	 *  слотов, `ability_system.md`, «Слоты активных навыков»; `Combatant Hierarchy.md`,
+	 *  «Ключ по слоту, а не по имени навыка»), а не имя скилла: слот один и тот же для всех оружий,
+	 *  а именованные поля-на-скилл зашивали бы имя класса в поле, которое обязано
+	 *  обслужить все классы, и их пришлось бы переписывать на восемь.
+	 *  Миграция с Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов») завершена в коде —
+	 *  старых тегов больше не существует. Существующие ассеты, если ключи ещё не перенесены
+	 *  вручную в редакторе, ссылаются на несуществующий тег — грант молча не срабатывает.
+	 *  Переехало с UCharacterSheetData: набор активок принадлежит оружию, а не персонажу
+	 *  (`ability_system.md`, «Физические активные навыки»). */
+	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Ability.Slot"))
+	TMap<FGameplayTag, TObjectPtr<UAbilityData>> Skills;
+
+	/** Теги владения этим типом оружия по рангам: индекс 0 — ранг 1, индекс 3 — ранг 4.
+	 *  Массив, а не сборка тега из имени в рантайме: строковая сборка ломается молча при первом
+	 *  переименовании, а теги в проекте залочены именно от этого (`weapon_system.md`,
+	 *  «Владение оружием»). */
+	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Perk.Proficiency"))
+	TArray<FGameplayTag> ProficiencyTagsByRank;
+
 	/** Возвращает первый фрагмент типа T, или nullptr если у этого типа оружия такого нет. */
 	template <typename T>
 	T* FindFragment() const
@@ -70,4 +92,14 @@ public:
 		}
 		return nullptr;
 	}
+
+	/** Ранг владения, открывающий этот слот: Q/E -> 1, R/F -> 2, Z/X -> 3, C/V -> 4.
+	 *  0 — слот не опознан (`weapon_system.md`, «Владение оружием»). Правило едино для всех
+	 *  оружий, поэтому живёт в коде, а не дублируется на каждом ассете. */
+	static int32 GetRequiredProficiencyRank(FGameplayTag SlotTag);
+
+	/** Открыт ли тир этого слота при данном наборе перков листа. Ранг вне границ
+	 *  ProficiencyTagsByRank (недозаполненный ассет — законное состояние, не повод для краша)
+	 *  считается закрытым. */
+	bool IsSlotUnlocked(FGameplayTag SlotTag, const FGameplayTagContainer& Perks) const;
 };

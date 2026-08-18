@@ -49,7 +49,13 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Pierce, "Damage.Type.Pierce", "Тип урона — колющий (заглушка, в расчёте не используется)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Blunt, "Damage.Type.Blunt", "Тип урона — дробящий (заглушка, в расчёте не используется)");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk, "Perk", "Корень будущей перк/условной-разблокировки системы — задел, перк-системы ещё нет");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk, "Perk", "Корень перк-системы");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency, "Perk.Proficiency", "Владение типом оружия — накопительные ранги, HasTag на конкретный лист проверяет открытый тир");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank1, "Perk.Proficiency.Knight.Rank1", "Владение мечом+щитом: ранг 1, открывает тир Q/E");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank2, "Perk.Proficiency.Knight.Rank2", "Владение мечом+щитом: ранг 2, открывает тир R/F");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank3, "Perk.Proficiency.Knight.Rank3", "Владение мечом+щитом: ранг 3, открывает тир Z/X");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank4, "Perk.Proficiency.Knight.Rank4", "Владение мечом+щитом: ранг 4, открывает тир C/V");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Materia, "Magic.School.Materia", "Школа Материи (Q/A) — класс Artisan");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Elemental, "Magic.School.Elemental", "Школа Стихий (W/S)");

@@ -68,9 +68,10 @@ protected:
 	FGameplayAbilitySpecHandle AttackLeftSlashHandle;
 	FGameplayAbilitySpecHandle AttackLowSweepHandle;
 
-	/** Хэндлы активок листа по слоту (Ability.Slot.*), гранятся
-	 *  в BeginPlay из CharacterSheet->Skills — один цикл на любой класс, а не четыре именованных поля
-	 *  (`Combatant Hierarchy.md`, «Грант в BeginPlay»). */
+	/** Хэндлы активок по слоту (Ability.Slot.*), гранятся
+	 *  в BeginPlay из GetWeaponType()->Skills через два гейта владения — один цикл на любой
+	 *  класс, а не четыре именованных поля (`Combatant Hierarchy.md`, «Грант в BeginPlay»;
+	 *  `weapon_system.md`, «Владение оружием»). */
 	TMap<FGameplayTag, FGameplayAbilitySpecHandle> ActiveSkillHandles;
 
 public:
@@ -93,19 +94,21 @@ public:
 	 *  активировать (`Combat Stance and WASD Attacks.md`: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 
-	/** Хэндл активного навыка по слоту (Ability.Slot.Q/E/R/F/...) — не найден в
-	 *  CharacterSheet->Skills на момент BeginPlay = невалидный хэндл, TryActivateAbility просто
-	 *  откажет. */
+	/** Хэндл активного навыка по слоту (Ability.Slot.Q/E/R/F/...) — не найден на момент
+	 *  BeginPlay (слот закрыт рангом, навык не выучен, или в GetWeaponType()->Skills вовсе
+	 *  нет записи) = невалидный хэндл, TryActivateAbility просто откажет. */
 	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const;
 
 	/** (`combat_system.md`, «Stagger — усталость»; `Combatant Hierarchy.md`, «Прототипный поиск противника»): есть ли у ПРОТИВНИКА этого бойца (см. FindPrototypeOpponent)
-	 *  навык с синергией на RequiredMark в CharacterSheet->Skills. Читает UClanhallParryComponent в
-	 *  BeginPlay, чтобы решить, копится ли Stagger владельца вообще. */
+	 *  навык с синергией на RequiredMark в GetWeaponType()->Skills. Читает UClanhallParryComponent в
+	 *  BeginPlay, чтобы решить, копится ли Stagger владельца вообще. Гейтами владения не
+	 *  фильтруется — см. комментарий у HasAbilityWithMarkSynergy. */
 	bool HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const;
 
 protected:
-	/** Грант WASD-ударов и активок из CharacterSheet — общий для игрока и AClanhallHumanoidBoss
-	 *  (`Combatant Hierarchy.md`, «Грант в BeginPlay»). */
+	/** Грант WASD-ударов из CharacterSheet и активок из GetWeaponType()->Skills, через два
+	 *  гейта владения — общий для игрока и AClanhallHumanoidBoss (`Combatant Hierarchy.md`,
+	 *  «Грант в BeginPlay»; `weapon_system.md`, «Владение оружием»). */
 	virtual void BeginPlay() override;
 
 private:
@@ -115,6 +118,8 @@ private:
 	 *  Заменить, когда одновременно появится больше одного противника. */
 	AClanhallHumanoidCombatant* FindPrototypeOpponent() const;
 
-	/** Есть ли у ЭТОГО бойца (не противника) в CharacterSheet->Skills навык с синергией RequiredMark. */
+	/** Есть ли у ЭТОГО бойца (не противника) в GetWeaponType()->Skills навык с синергией
+	 *  RequiredMark. Гейтами владения намеренно не фильтруется (`weapon_system.md`, «Владение
+	 *  оружием») — вопрос не «может ли применить», а «числится ли в наборе оружия вообще». */
 	bool HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const;
 };

@@ -13,7 +13,6 @@
 #include "CharacterSheetData.generated.h"
 
 class UWeaponData;
-class UAbilityData;
 
 UCLASS()
 class CLANHALL_API UCharacterSheetData : public UPrimaryDataAsset
@@ -25,14 +24,29 @@ public:
 	UPROPERTY(EditAnywhere, Category = "CharacterSheet")
 	TObjectPtr<UWeaponData> Weapon;
 
-	/** Активные навыки. Ключ — Ability.Slot.* (Q/E/R/F и далее по канону восьми
-	 *  слотов, `ability_system.md`, «Слоты активных навыков»; `Combatant Hierarchy.md`,
-	 *  «Ключ по слоту, а не по имени навыка»), а не имя скилла: слот один и тот же для всех оружий,
-	 *  а именованные поля-на-скилл зашивали бы имя класса в поле, которое обязано
-	 *  обслужить все классы, и их пришлось бы переписывать на восемь.
-	 *  Миграция с Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов») завершена в коде —
-	 *  старых тегов больше не существует. Существующие ассеты, если ключи ещё не перенесены
-	 *  вручную в редакторе, ссылаются на несуществующий тег — грант молча не срабатывает. */
-	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability.Slot"))
-	TMap<FGameplayTag, TObjectPtr<UAbilityData>> Skills;
+	/** Стартовые значения статов. Атрибутов STR/DEX в UClanhallAttributeSet нет, скейла урона
+	 *  от них тоже — числа лежат здесь, потребитель появится вместе со скейлом
+	 *  (`weapon_system.md`, «Что отменено и почему»). */
+	UPROPERTY(EditAnywhere, Category = "CharacterSheet|Stats", meta = (ClampMin = "0"))
+	int32 STR = 0;
+
+	UPROPERTY(EditAnywhere, Category = "CharacterSheet|Stats", meta = (ClampMin = "0"))
+	int32 DEX = 0;
+
+	/** Перки, включая ранги владения оружием (Perk.Proficiency.*.RankN). Один контейнер
+	 *  на всё: ранги накапливаются, повторная выдача низкого ранга ничего не меняет —
+	 *  тег уже на месте, клэмп не нужен (`weapon_system.md`, «Владение оружием»). */
+	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Perk"))
+	FGameplayTagContainer Perks;
+
+	/** Навыки, которые боец видел в бою. Симметрично SeenSyllables/SeenSpells магии
+	 *  (`ability_system.md`, «Боевой журнал как источник «узнанного»»). Писателя пока нет —
+	 *  заполняется вручную в редакторе; потребитель (условия выдачи ранга) не спроектирован. */
+	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability.Skill"))
+	FGameplayTagContainer SeenSkills;
+
+	/** Навыки, которые боец выучил. Второй из двух гейтов гранта активки — первый ранг владения
+	 *  (`weapon_system.md`, «Владение оружием»). Ключ — идентичность навыка, UAbilityData::CounterTag. */
+	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability.Skill"))
+	FGameplayTagContainer LearnedSkills;
 };
