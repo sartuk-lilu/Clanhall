@@ -375,6 +375,16 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 		return;
 	}
 
+	// ClampMin="1" на UWeaponTypeData::SeriesLength гейтит только ввод в редакторе, не
+	// программную установку (тот же случай, что раньше был у ClassRank). SeriesLength <= 0 ниже
+	// обнулил бы Requested через SetNum, и Requested[0] сразу за пределами массива — считать
+	// нечего, выходим раньше него.
+	if (WeaponType->SeriesLength <= 0)
+	{
+		PrintError(Key, FString::Printf(TEXT("WeaponType->SeriesLength is %d (<=0) — nothing to compute."), WeaponType->SeriesLength));
+		return;
+	}
+
 	// Разбор направлений: неизвестный символ -> ошибка с перечнем допустимых, выход.
 	TArray<EClanhallAttackDirection> Requested;
 	for (int32 CharIndex = 0; CharIndex < Args[0].Len(); ++CharIndex)
