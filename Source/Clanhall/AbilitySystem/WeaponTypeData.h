@@ -63,7 +63,7 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, Category = "WeaponType")
 	TArray<TObjectPtr<UWeaponFragment>> Fragments;
 
-	/** Активные навыки. Ключ — Ability.Slot.* (Q/E/R/F и далее по канону восьми
+	/** Активные навыки. Ключ — Slot.* (Q/E/R/F и далее по канону восьми
 	 *  слотов, `ability_system.md`, «Слоты активных навыков»; `Combatant Hierarchy.md`,
 	 *  «Ключ по слоту, а не по имени навыка»), а не имя скилла: слот один и тот же для всех оружий,
 	 *  а именованные поля-на-скилл зашивали бы имя класса в поле, которое обязано
@@ -73,7 +73,7 @@ public:
 	 *  вручную в редакторе, ссылаются на несуществующий тег — грант молча не срабатывает.
 	 *  Переехало с UCharacterSheetData: набор активок принадлежит оружию, а не персонажу
 	 *  (`ability_system.md`, «Физические активные навыки»). */
-	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Ability.Slot"))
+	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Slot"))
 	TMap<FGameplayTag, TObjectPtr<UAbilityData>> Skills;
 
 	/** Теги владения этим типом оружия по рангам: индекс 0 — ранг 1, индекс 3 — ранг 4.

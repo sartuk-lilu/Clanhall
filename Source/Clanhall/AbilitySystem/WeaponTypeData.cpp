@@ -3,19 +3,19 @@
 
 int32 UWeaponTypeData::GetRequiredProficiencyRank(FGameplayTag SlotTag)
 {
-	if (SlotTag == ClanhallGameplayTags::Ability_Slot_Q.GetTag() || SlotTag == ClanhallGameplayTags::Ability_Slot_E.GetTag())
+	if (SlotTag == ClanhallGameplayTags::Slot_Q.GetTag() || SlotTag == ClanhallGameplayTags::Slot_E.GetTag())
 	{
 		return 1;
 	}
-	if (SlotTag == ClanhallGameplayTags::Ability_Slot_R.GetTag() || SlotTag == ClanhallGameplayTags::Ability_Slot_F.GetTag())
+	if (SlotTag == ClanhallGameplayTags::Slot_R.GetTag() || SlotTag == ClanhallGameplayTags::Slot_F.GetTag())
 	{
 		return 2;
 	}
-	if (SlotTag == ClanhallGameplayTags::Ability_Slot_Z.GetTag() || SlotTag == ClanhallGameplayTags::Ability_Slot_X.GetTag())
+	if (SlotTag == ClanhallGameplayTags::Slot_Z.GetTag() || SlotTag == ClanhallGameplayTags::Slot_X.GetTag())
 	{
 		return 3;
 	}
-	if (SlotTag == ClanhallGameplayTags::Ability_Slot_C.GetTag() || SlotTag == ClanhallGameplayTags::Ability_Slot_V.GetTag())
+	if (SlotTag == ClanhallGameplayTags::Slot_C.GetTag() || SlotTag == ClanhallGameplayTags::Slot_V.GetTag())
 	{
 		return 4;
 	}

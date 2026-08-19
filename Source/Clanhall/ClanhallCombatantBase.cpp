@@ -75,7 +75,7 @@ void AClanhallCombatantBase::BeginPlay()
 
 void AClanhallCombatantBase::HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason)
 {
-	if (FailureReason.HasTagExact(ClanhallGameplayTags::Ability_Denied_Charges.GetTag()))
+	if (FailureReason.HasTagExact(ClanhallGameplayTags::Denied_Charges.GetTag()))
 	{
 		OnChargesDenied.Broadcast();
 	}

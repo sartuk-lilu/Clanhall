@@ -125,6 +125,6 @@ protected:
 
 private:
 	/** Слушает UAbilitySystemComponent::AbilityFailedCallbacks и ретранслирует в OnChargesDenied,
-	 *  только когда причина отказа — Ability.Denied.Charges (`Combatant Hierarchy.md`, «Denied-фидбек»). */
+	 *  только когда причина отказа — Denied.Charges (`Combatant Hierarchy.md`, «Denied-фидбек»). */
 	void HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason);
 };

@@ -53,7 +53,7 @@ bool UGA_Dodge::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 	{
 		if (OptionalRelevantTags)
 		{
-			OptionalRelevantTags->AddTag(ClanhallGameplayTags::Ability_Denied_Charges.GetTag());
+			OptionalRelevantTags->AddTag(ClanhallGameplayTags::Denied_Charges.GetTag());
 		}
 		return false;
 	}

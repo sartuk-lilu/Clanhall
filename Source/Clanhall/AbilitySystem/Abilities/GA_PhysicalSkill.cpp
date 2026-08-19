@@ -107,7 +107,7 @@ FGameplayTag UGA_PhysicalSkill::GetAbilitySlotTag(const FGameplayAbilitySpecHand
 
 	for (const FGameplayTag& Tag : Spec->GetDynamicSpecSourceTags())
 	{
-		if (Tag.MatchesTag(ClanhallGameplayTags::Ability_Slot.GetTag()))
+		if (Tag.MatchesTag(ClanhallGameplayTags::Slot.GetTag()))
 		{
 			return Tag;
 		}
@@ -143,7 +143,7 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 			// которые отсеиваются Super::CanActivateAbility ещё до этой точки.
 			if (OptionalRelevantTags)
 			{
-				OptionalRelevantTags->AddTag(ClanhallGameplayTags::Ability_Denied_Charges.GetTag());
+				OptionalRelevantTags->AddTag(ClanhallGameplayTags::Denied_Charges.GetTag());
 			}
 			return false;
 		}

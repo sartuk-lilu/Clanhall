@@ -51,7 +51,7 @@ protected:
 	TObjectPtr<UClanhallParryComponent> ParryComponent;
 
 	/** Лист персонажа одним ассетом (`weapon_system.md`, «Ассеты вместо `UClassKitData`») — оружие и
-	 *  карта активных навыков по слоту (Ability.Slot.*) вместо шести отдельных полей.
+	 *  карта активных навыков по слоту (Slot.*) вместо шести отдельных полей.
 	 *  Назначается в Blueprint-наследнике (и игрока, и AClanhallHumanoidBoss — один и тот
 	 *  же лист на класс). */
 	UPROPERTY(EditAnywhere, Category = "Combat|Sheet")
@@ -85,7 +85,7 @@ protected:
 	FGameplayAbilitySpecHandle AttackLeftSlashHandle;
 	FGameplayAbilitySpecHandle AttackLowSweepHandle;
 
-	/** Хэндлы активок по слоту (Ability.Slot.*), гранятся
+	/** Хэндлы активок по слоту (Slot.*), гранятся
 	 *  в BeginPlay из GetWeaponType()->Skills через два гейта владения — один цикл на любой
 	 *  класс, а не четыре именованных поля (`Combatant Hierarchy.md`, «Грант в BeginPlay»;
 	 *  `weapon_system.md`, «Владение оружием»). */
@@ -115,7 +115,7 @@ public:
 	 *  активировать (`Combat Stance and WASD Attacks.md`: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 
-	/** Хэндл активного навыка по слоту (Ability.Slot.Q/E/R/F/...) — не найден на момент
+	/** Хэндл активного навыка по слоту (Slot.Q/E/R/F/...) — не найден на момент
 	 *  BeginPlay (слот закрыт рангом, навык не выучен, или в GetWeaponType()->Skills вовсе
 	 *  нет записи) = невалидный хэндл, TryActivateAbility просто откажет. */
 	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const;

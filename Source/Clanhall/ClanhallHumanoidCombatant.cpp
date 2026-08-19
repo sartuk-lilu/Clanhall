@@ -104,15 +104,15 @@ void AClanhallHumanoidCombatant::BeginPlay()
 
 		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : WeaponType->Skills)
 		{
-			// Невалидный ключ ИЛИ сам корень Ability.Slot (а не лист Q/E/R/F/...) грантится, но
-			// GetActiveSkillHandle(Ability_Slot_Q) его никогда не найдёт — ключ карты другой.
-			// Корень стал выбираемым значением поля, как только завели native-тег Ability.Slot
-			// под фильтр GetAbilitySlotTag: meta=(Categories="Ability.Slot") пропускает и его
+			// Невалидный ключ ИЛИ сам корень Slot (а не лист Q/E/R/F/...) грантится, но
+			// GetActiveSkillHandle(Slot_Q) его никогда не найдёт — ключ карты другой.
+			// Корень стал выбираемым значением поля, как только завели native-тег Slot
+			// под фильтр GetAbilitySlotTag: meta=(Categories="Slot") пропускает и его
 			// самого, не только листья. Симптом без этой проверки — "Q не нажимается", причина
 			// не ищется.
-			if (!Skill.Key.IsValid() || Skill.Key == ClanhallGameplayTags::Ability_Slot.GetTag())
+			if (!Skill.Key.IsValid() || Skill.Key == ClanhallGameplayTags::Slot.GetTag())
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в WeaponType->Skills с невалидным ключом или корнем Ability.Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
+				UE_LOG(LogClanhall, Warning, TEXT("%s: запись в WeaponType->Skills с невалидным ключом или корнем Slot вместо листа (Q/E/R/F/...) — навык не будет вызываем."), *GetName());
 				continue;
 			}
 

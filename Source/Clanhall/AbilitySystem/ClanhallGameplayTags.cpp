@@ -28,17 +28,17 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_A, "Attack.Direction.A", "Владелец сейчас бьёт Left Slash (A) — висит на время замаха");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_D, "Attack.Direction.D", "Владелец сейчас бьёт Right Slash (D) — висит на время замаха");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot, "Ability.Slot", "Корень слотов активок — фильтр динамических тегов спека в GA_PhysicalSkill::GetAbilitySlotTag");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_Q, "Ability.Slot.Q", "Слот Q — общий для всех оружий (ability_system.md, «Слоты активных навыков»)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_E, "Ability.Slot.E", "Слот E — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_R, "Ability.Slot.R", "Слот R — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_F, "Ability.Slot.F", "Слот F — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_Z, "Ability.Slot.Z", "Слот Z — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_X, "Ability.Slot.X", "Слот X — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_C, "Ability.Slot.C", "Слот C — общий для всех оружий");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Slot_V, "Ability.Slot.V", "Слот V — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot, "Slot", "Корень слотов активок — фильтр динамических тегов спека в GA_PhysicalSkill::GetAbilitySlotTag");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_Q, "Slot.Q", "Слот Q — общий для всех оружий (ability_system.md, «Слоты активных навыков»)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_E, "Slot.E", "Слот E — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_R, "Slot.R", "Слот R — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_F, "Slot.F", "Слот F — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_Z, "Slot.Z", "Слот Z — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_X, "Slot.X", "Слот X — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_C, "Slot.C", "Слот C — общий для всех оружий");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_V, "Slot.V", "Слот V — общий для всех оружий");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Denied_Charges, "Ability.Denied.Charges", "CanActivateAbility отказал из-за нехватки Charges — причина для Denied-фидбека на HUD");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Denied_Charges, "Denied.Charges", "CanActivateAbility отказал из-за нехватки Charges — причина для Denied-фидбека на HUD");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP/Charges/Stagger)");
 

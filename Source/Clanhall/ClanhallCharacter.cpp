@@ -465,7 +465,7 @@ void AClanhallCharacter::OnActiveSkillQ()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Ability_Slot_Q.GetTag()));
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_Q.GetTag()));
 	}
 }
 
@@ -473,7 +473,7 @@ void AClanhallCharacter::OnActiveSkillE()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Ability_Slot_E.GetTag()));
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_E.GetTag()));
 	}
 }
 
@@ -481,7 +481,7 @@ void AClanhallCharacter::OnActiveSkillR()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Ability_Slot_R.GetTag()));
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_R.GetTag()));
 	}
 }
 
@@ -489,6 +489,6 @@ void AClanhallCharacter::OnActiveSkillF()
 {
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Ability_Slot_F.GetTag()));
+		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_F.GetTag()));
 	}
 }

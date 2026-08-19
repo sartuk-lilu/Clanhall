@@ -58,33 +58,44 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_A);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_D);
 
-	// ---- Ability.Slot.* ----
+	// ---- Slot.* ----
 	// Слот принадлежит клавише, а не конкретному навыку (`ability_system.md`, «Слоты активных навыков») — общий для всех
 	// оружий, ключует UCharacterSheetData::Skills и живёт как динамический тег спека
 	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит
 	// (`Combatant Hierarchy.md`, «Ключ по слоту, а не по имени навыка»). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
 	// отфильтровать слот среди прочих динамических тегов спека.
-	// Мигрировано из Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов»): слот пережил смерть
-	// кулдаунов, но неймспейс Cooldown.* стал бы врать. Старые теги удалены из кода; ключи
-	// существующих UCharacterSheetData-ассетов, если ещё не перенесены вручную в редакторе, ссылаются
-	// на несуществующий тег — гранты активок для них молчаливо сломаны, чинится только правкой
+	// Разведён из-под Ability (был Ability.Slot.*, `task_tag_roots.md`): слот про клавишу
+	// и тир, а не про идентичность навыка, и жил под чужим корнем — meta=(Categories="Ability")
+	// на полях идентичности навыка (CounterTag, CounteredBy, SeenSkills, LearnedSkills)
+	// предлагал слоты как валидное значение.
+	// Корень принадлежит СЛОТАМ АКТИВНЫХ НАВЫКОВ. Слоты оружия 1–6 сегодня тегами не являются —
+	// UCharacterSheetData::Loadout это TArray, слот там индекс массива. Если они когда-нибудь
+	// станут тегами, им место в Slot.Weapon.*, а не в этом корне: иначе meta=(Categories="Slot")
+	// на Skills начнёт предлагать и слоты оружия — та же дыра уровнем ниже.
+	// Раньше мигрировано из Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов»):
+	// слот пережил смерть кулдаунов, но неймспейс Cooldown.* стал бы врать. Ключи существующих
+	// UCharacterSheetData-ассетов, если ещё не перенесены вручную в редакторе, ссылаются на
+	// несуществующий тег — гранты активок для них молчаливо сломаны, чинится только правкой
 	// ассета, не кодом.
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_Q);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_E);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_R);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_F);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_Z);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_X);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_C);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Slot_V);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_Q);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_E);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_R);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_F);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_Z);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_X);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_C);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_V);
 
-	// ---- Ability.Denied.* ----
+	// ---- Denied.* ----
 	// Причина отказа TryActivateAbility, пробрасывается в OptionalRelevantTags у
 	// CanActivateAbility и долетает до UAbilitySystemComponent::AbilityFailedCallbacks
 	// (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»). Charges — единственная причина, которую HUD обязан
 	// показать игроку отдельно от прочих отказов (State.SkillCommitted/State.Stunned).
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Denied_Charges);
+	// Разведён из-под Ability (был Ability.Denied.Charges, `task_tag_roots.md`) — причина
+	// отказа не навык вообще. Следующая причина (нет ранга владения, State.SkillCommitted)
+	// ложится сюда же: Denied.Proficiency, Denied.Committed.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Denied_Charges);
 
 	// ---- SetByCaller.* ----
 	// Служебный тег: все наши generic GameplayEffect-классы (GE_Modify*) несут
