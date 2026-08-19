@@ -41,6 +41,10 @@ namespace ClanhallGameplayTags
 	// (`combat_system.md`, «Боевое состояние»). Снятие идёт с задержкой — не в момент, когда
 	// последний противник покинул радиус.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InCombat);
+	// Лок-аут после КОРОТКОГО отскока в стойке — по образцу State.ComboRecovery, длительность
+	// ровно длина DodgeRecoveryMontage (`combat_system.md`, «Отскок»). Дальний отскок вне
+	// стойки этот тег не вешает — там нет WASD-серии, которую защищать.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_DodgeRecovery);
 
 	// ---- Attack.Direction.* ----
 	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО

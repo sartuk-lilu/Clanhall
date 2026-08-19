@@ -16,11 +16,13 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/Abilities/GA_CombatStance.h"
+#include "AbilitySystem/Abilities/GA_Dodge.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "Engine/Engine.h"
+#include "TimerManager.h"
 
 AClanhallCharacter::AClanhallCharacter()
 {
@@ -86,6 +88,10 @@ void AClanhallCharacter::BeginPlay()
 		// Грант способности боевой стойки (`combat_system.md`, «Боевая стойка и переключение режимов»). WASD-удары и активки Q/E/R/F
 		// гранятся выше по иерархии — см. AClanhallHumanoidCombatant::BeginPlay.
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
+
+		// Грант отскока (`combat_system.md`, «Отскок») — рядом со стойкой. У противников
+		// отскока пока нет: стойки как способности у них тоже нет.
+		DodgeAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_Dodge::StaticClass(), 1, INDEX_NONE, this));
 	}
 }
 
@@ -110,10 +116,6 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-
-		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Move);
@@ -150,6 +152,12 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(ActiveSkillEAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillE);
 		EnhancedInputComponent->BindAction(ActiveSkillRAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillR);
 		EnhancedInputComponent->BindAction(ActiveSkillFAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillF);
+
+		// Пробел: тап/двойной тап/удержание разводятся в C++ на этом классе, не тремя триггерами
+		// Enhanced Input на одну клавишу (`combat_system.md`, «Отскок»). Заменяет старый JumpAction.
+		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSpacePressed);
+		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnSpaceReleased);
+		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnSpaceReleased);
 	}
 	else
 	{
@@ -242,6 +250,19 @@ void AClanhallCharacter::DoJumpEnd()
 
 void AClanhallCharacter::OnStancePressed()
 {
+	// Бег вообще не должен пережить вход в стойку — скорость стойки обязана победить скорость
+	// бега (`combat_system.md`, «Отскок», блок «Бег»). Гасим ДО активации GA_CombatStance: та
+	// на входе читает текущий MaxWalkSpeed, и если не остановить бег первым, стойка на выходе
+	// восстановила бы скорость бега, а не настоящую базовую.
+	if (bSpaceSprinting)
+	{
+		StopSprint();
+		bSpaceSprinting = false;
+	}
+	GetWorldTimerManager().ClearTimer(SpaceHoldTimerHandle);
+	GetWorldTimerManager().ClearTimer(SpaceDoubleTapTimerHandle);
+	bSpaceAwaitingDoubleTap = false;
+
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(StanceAbilityHandle);
@@ -278,6 +299,86 @@ void AClanhallCharacter::OnStanceMoveModifierPressed()
 void AClanhallCharacter::OnStanceMoveModifierReleased()
 {
 	bStanceMoveHeld = false;
+}
+
+void AClanhallCharacter::OnSpacePressed()
+{
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	{
+		// В стойке у Пробела нет альтернатив — прыжок в стойке запрещён, перемещение это
+		// Shift+WASD. Короткий отскок стреляет прямо на Started, без ожидания второго тапа
+		// (`combat_system.md`: исключение из приоритета отзывчивости существует только вне стойки).
+		AbilitySystemComponent->TryActivateAbility(DodgeAbilityHandle);
+		return;
+	}
+
+	if (bSpaceAwaitingDoubleTap)
+	{
+		// Второй Started в открытом окне — прыжок.
+		GetWorldTimerManager().ClearTimer(SpaceDoubleTapTimerHandle);
+		bSpaceAwaitingDoubleTap = false;
+		Jump();
+		return;
+	}
+
+	// Первое нажатие вне стойки — не знаем ещё, тап это или начало удержания.
+	GetWorldTimerManager().SetTimer(SpaceHoldTimerHandle, this, &AClanhallCharacter::OnSpaceHoldThresholdReached, HoldThreshold, false);
+}
+
+void AClanhallCharacter::OnSpaceReleased()
+{
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	{
+		// Короткий отскок уже случился на Started — Completed в стойке ничего не делает.
+		return;
+	}
+
+	if (bSpaceSprinting)
+	{
+		StopSprint();
+		bSpaceSprinting = false;
+		return;
+	}
+
+	// Отпустили раньше HoldThreshold — это тап: ждём второй Started в окне DoubleTapWindow.
+	// Пришёл — прыжок (см. OnSpacePressed), не пришёл — дальний отскок (см. OnSpaceDoubleTapWindowExpired).
+	GetWorldTimerManager().ClearTimer(SpaceHoldTimerHandle);
+	bSpaceAwaitingDoubleTap = true;
+	GetWorldTimerManager().SetTimer(SpaceDoubleTapTimerHandle, this, &AClanhallCharacter::OnSpaceDoubleTapWindowExpired, DoubleTapWindow, false);
+}
+
+void AClanhallCharacter::OnSpaceHoldThresholdReached()
+{
+	bSpaceSprinting = true;
+	StartSprint();
+}
+
+void AClanhallCharacter::OnSpaceDoubleTapWindowExpired()
+{
+	bSpaceAwaitingDoubleTap = false;
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbility(DodgeAbilityHandle);
+	}
+}
+
+void AClanhallCharacter::StartSprint()
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		// Сохранять и восстанавливать, а не писать константой — та же причина, что
+		// в UGA_CombatStance::EndAbility: MaxWalkSpeed вне стойки задаётся в BP-персонаже.
+		SavedWalkSpeedBeforeSprint = Movement->MaxWalkSpeed;
+		Movement->MaxWalkSpeed = GetSprintSpeed();
+	}
+}
+
+void AClanhallCharacter::StopSprint()
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->MaxWalkSpeed = SavedWalkSpeedBeforeSprint;
+	}
 }
 
 void AClanhallCharacter::OnAttackOverhead()

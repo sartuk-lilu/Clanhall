@@ -48,6 +48,13 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 		return;
 	}
 
+	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_DodgeRecovery.GetTag()))
+	{
+		// Лок-аут после короткого отскока в стойке (`combat_system.md`, «Отскок») — та же причина,
+		// что у State.ComboRecovery выше: хвост отскока ещё доигрывает, новый удар не начинается.
+		return;
+	}
+
 	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
 		// Активка в фазе коммита — начатую активку нельзя оборвать (`combat_system.md`, «Боевая стойка и переключение режимов»).

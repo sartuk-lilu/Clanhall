@@ -97,6 +97,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float StanceBaseSpeed = 300.0f;
 
+	/** Бег вне стойки — удержание Пробела поднимает MaxWalkSpeed до этого значения, отпускание
+	 *  возвращает прежнее (`combat_system.md`, «Отскок», блок «Бег»). Плейсхолдер. */
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float SprintSpeed = 900.0f;
+
 public:
 	AClanhallCombatantBase();
 
@@ -111,6 +116,9 @@ public:
 
 	/** Читает UGA_CombatStance при входе в стойку, чтобы посчитать итоговый MaxWalkSpeed. */
 	float GetStanceBaseSpeed() const { return StanceBaseSpeed; }
+
+	/** Читает AClanhallCharacter при удержании Пробела вне стойки. */
+	float GetSprintSpeed() const { return SprintSpeed; }
 
 protected:
 	virtual void BeginPlay() override;

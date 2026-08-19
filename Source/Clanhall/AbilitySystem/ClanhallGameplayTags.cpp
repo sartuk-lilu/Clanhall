@@ -21,6 +21,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InCombat, "State.InCombat", "Вешает/снимает UClanhallCombatStateComponent — живой противник в радиусе, снятие с задержкой");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_DodgeRecovery, "State.DodgeRecovery", "Лок-аут после короткого отскока в стойке — длительность DodgeRecoveryMontage, дальний отскок не вешает");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "Владелец сейчас бьёт Overhead (W) — висит на время замаха");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_S, "Attack.Direction.S", "Владелец сейчас бьёт Low Sweep (S) — висит на время замаха");

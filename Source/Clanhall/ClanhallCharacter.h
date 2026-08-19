@@ -47,10 +47,6 @@ class AClanhallCharacter : public AClanhallHumanoidCombatant
 
 protected:
 
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* JumpAction;
-
 	/** Move Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MoveAction;
@@ -115,6 +111,43 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* ActiveSkillFAction;
 
+	// --- Пробел: отскок / прыжок / бег (`combat_system.md`, «Отскок») ---
+	// Разведение тапа/двойного тапа/удержания живёт в C++ на этом классе, не тремя триггерами
+	// Enhanced Input на одну клавишу: те сработали бы независимо, и одиночный тап внутри
+	// двойного выстрелил бы отскоком до прыжка.
+
+	/** Пробел — единственный бинд на весь функционал ниже. Заменяет старый JumpAction:
+	 *  прыжок теперь тоже вызывается из этой логики (двойной тап вне стойки). */
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	UInputAction* SpaceAction;
+
+	/** Вне стойки: удержание дольше этого — бег, короче — тап (ждёт второй на DoubleTapWindow).
+	 *  Плейсхолдер. */
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge")
+	float HoldThreshold = 0.25f;
+
+	/** Вне стойки: окно ожидания второго тапа после первого — пришёл вовремя, значит прыжок,
+	 *  не пришёл — отскок. Единственное осознанное ожидание в системе, и оно живёт только вне
+	 *  стойки: в стойке у Пробела нет альтернатив, отскок стреляет на Started без ожидания.
+	 *  Плейсхолдер. */
+	UPROPERTY(EditAnywhere, Category = "Combat|Dodge")
+	float DoubleTapWindow = 0.25f;
+
+	FGameplayAbilitySpecHandle DodgeAbilityHandle;
+
+	/** Ждём второй Started в окне DoubleTapWindow — первый тап уже случился и не был удержанием. */
+	bool bSpaceAwaitingDoubleTap = false;
+
+	/** Бег активен удержанием Пробела вне стойки. */
+	bool bSpaceSprinting = false;
+
+	/** MaxWalkSpeed до начала бега — возвращается по Completed, не константой (та же причина,
+	 *  что в UGA_CombatStance::EndAbility: MaxWalkSpeed вне стойки задаётся в BP-персонаже). */
+	float SavedWalkSpeedBeforeSprint = 0.0f;
+
+	FTimerHandle SpaceHoldTimerHandle;
+	FTimerHandle SpaceDoubleTapTimerHandle;
+
 public:
 
 	/** Constructor */
@@ -161,6 +194,24 @@ protected:
 	void OnActiveSkillE();
 	void OnActiveSkillR();
 	void OnActiveSkillF();
+
+	/** Пробел нажат. В стойке — отскок сразу, без ожидания (`combat_system.md`: исключение
+	 *  из приоритета отзывчивости существует только вне стойки). Вне стойки: второй тап
+	 *  в открытом окне DoubleTapWindow — прыжок; иначе взводит таймер HoldThreshold. */
+	void OnSpacePressed();
+
+	/** Пробел отпущен. Если удержание уже перешло в бег — гасит бег. Если нет — это был тап:
+	 *  открывает окно ожидания второго Started. */
+	void OnSpaceReleased();
+
+	/** HoldThreshold истёк без Completed — превращает удержание в бег. */
+	void OnSpaceHoldThresholdReached();
+
+	/** DoubleTapWindow истёк без второго Started — тап был одиночным, это дальний отскок. */
+	void OnSpaceDoubleTapWindowExpired();
+
+	void StartSprint();
+	void StopSprint();
 
 public:
 
