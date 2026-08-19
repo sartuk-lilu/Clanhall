@@ -14,6 +14,8 @@ struct FInputActionValue;
 class UClanhallTargetingComponent;
 class UClanhallBossSensorComponent;
 class UAnimSequence;
+class UBlendSpace;
+class UGA_Dodge;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -111,6 +113,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* ActiveSkillFAction;
 
+	/** Класс отскока, гранится в BeginPlay вместо UGA_Dodge::StaticClass() напрямую — только так
+	 *  его EditDefaultsOnly-поля (дистанции, монтажи) открываются в редакторе: у C++-класса без
+	 *  Blueprint-наследника их негде править. Дефолт — сам C++-класс, так что без Blueprint-
+	 *  наследника всё продолжает работать на дефолтах кода. */
+	UPROPERTY(EditDefaultsOnly, Category = "Input|Combat")
+	TSubclassOf<UGA_Dodge> DodgeAbilityClass;
+
 	// --- Пробел: отскок / прыжок / бег (`combat_system.md`, «Отскок») ---
 	// Разведение тапа/двойного тапа/удержания живёт в C++ на этом классе, не тремя триггерами
 	// Enhanced Input на одну клавишу: те сработали бы независимо, и одиночный тап внутри
@@ -166,6 +175,9 @@ protected:
 	/** Initializes the ASC actor info and grants starting attribute values (hardcoded placeholders, see combat_system.md) */
 	virtual void BeginPlay() override;
 
+	/** Считает доворот корпуса в боевой стойке — см. TickStanceTurn. */
+	virtual void Tick(float DeltaSeconds) override;
+
 	/** Прыжок запрещён, пока игрок в боевой стойке (State.InStance) — см. GA_CombatStance. */
 	virtual bool CanJumpInternal_Implementation() const override;
 
@@ -218,6 +230,13 @@ protected:
 	void StartSprint();
 	void StopSprint();
 
+	/** Считает YawDelta между камерой и корпусом и по нему включает/выключает движковый
+	 *  bUseControllerDesiredRotation (доворот) на CharacterMovementComponent, только пока висит
+	 *  State.InStance (`locomotion_structure.md`, «Локомоция стойки»). В движении
+	 *  (Shift + WASD) доворот идёт постоянно, без порога; стоя — по гистерезису
+	 *  StanceTurnThreshold/StanceTurnSettleAngle, со взводом bStanceTurning для ABP (подшаг). */
+	void TickStanceTurn();
+
 public:
 
 	/** Гасит бег и все таймеры/флаги Пробела — вызывается ровно один раз на реальный вход
@@ -260,4 +279,12 @@ public:
 	 *  функция BlueprintPure читает ABP игрока по имени класса, перенос сломал бы ноду в графе. */
 	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
 	static UAnimSequence* GetStanceAnim(const ACharacter* Character);
+
+	/** BlendSpace локомоции стойки текущего оружия (UComboData::StanceLocomotion). Точная копия
+	 *  шаблона GetStanceAnim — статичная, берёт ACharacter, каст внутри, по той же причине:
+	 *  нода читается в ABP по имени класса, переносить нельзя. nullptr, если Character не этого
+	 *  класса, ComboData не назначен, или StanceLocomotion не задан — тогда ABP играет
+	 *  StanceAnim как раньше. */
+	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
+	static UBlendSpace* GetStanceBlendSpace(const ACharacter* Character);
 };

@@ -37,12 +37,20 @@ void UGA_CombatStance::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 
 	bSavedOrientRotationToMovement = Movement->bOrientRotationToMovement;
 	bSavedUseControllerRotationYaw = Character->bUseControllerRotationYaw;
+	bSavedUseControllerDesiredRotation = Movement->bUseControllerDesiredRotation;
+	SavedRotationRateYaw = Movement->RotationRate.Yaw;
 	SavedMaxWalkSpeed = Movement->MaxWalkSpeed;
 
-	// В стойке разворот — за камерой (мышь), не за направлением движения: ход спиной
-	// не должен разворачивать персонаж лицом по ходу (`locomotion_structure.md`, «Локомоция стойки»).
+	// bUseControllerRotationYaw = true было бы мгновенным прилипанием капсулы к йаву камеры —
+	// угла между "куда смотрит камера" и "куда развёрнут корпус" тогда не существует вовсе.
+	// Вместо этого — движковый плавный доворот (bUseControllerDesiredRotation), но не всегда
+	// включённый: им управляет AClanhallCharacter::Tick по порогу/гистерезису
+	// (`locomotion_structure.md`, «Локомоция стойки»). Здесь он выключен — тик включит сам,
+	// когда угол реально накопится.
 	Movement->bOrientRotationToMovement = false;
-	Character->bUseControllerRotationYaw = true;
+	Character->bUseControllerRotationYaw = false;
+	Movement->bUseControllerDesiredRotation = false;
+	Movement->RotationRate.Yaw = Character->GetStanceTurnRate();
 
 	// Оружия нет или множитель не прочитался — берётся StanceBaseSpeed как есть, множитель 1.0
 	// (`weapon_system.md`: множитель применяется к отдельной базовой скорости стойки, не к бегу).
@@ -62,7 +70,10 @@ void UGA_CombatStance::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 	{
 		Movement->bOrientRotationToMovement = bSavedOrientRotationToMovement;
 		Character->bUseControllerRotationYaw = bSavedUseControllerRotationYaw;
+		Movement->bUseControllerDesiredRotation = bSavedUseControllerDesiredRotation;
+		Movement->RotationRate.Yaw = SavedRotationRateYaw;
 		Movement->MaxWalkSpeed = SavedMaxWalkSpeed;
+		Character->ResetStanceTurning();
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);

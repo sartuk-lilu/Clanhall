@@ -22,20 +22,23 @@ class CLANHALL_API UGA_CombatStance : public UGameplayAbility
 public:
 	UGA_CombatStance();
 
-	/** Переключает ротацию на "лицом за камерой" и скорость на StanceBaseSpeed бойца *
-	 *  StanceSpeedMultiplier активного оружия, сохранив прежние значения для EndAbility.
-	 *  StopMovementImmediately() — резкий стоп вместо доката
+	/** Переключает ротацию на плавный доворот корпуса (порог/подшаг считает
+	 *  AClanhallCharacter::Tick, см. `locomotion_structure.md`, «Локомоция стойки») и скорость
+	 *  на StanceBaseSpeed бойца * StanceSpeedMultiplier активного оружия, сохранив прежние
+	 *  значения для EndAbility. StopMovementImmediately() — резкий стоп вместо доката
 	 *  (`combat_system.md`, «Боевая стойка и переключение режимов»). */
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
-	/** Возвращает сохранённые ротацию и скорость. Выход из стойки идёт через
-	 *  CancelAbilityHandle, то есть это всегда EndAbility(bWasCancelled=true) — восстановление
-	 *  обязано работать что на отменённой, что на штатной ветке. Не константами: MaxWalkSpeed
-	 *  вне стойки задаётся в BP-персонаже, хардкод затёр бы её при первом же выходе. */
+	/** Возвращает сохранённые ротацию и скорость, сбрасывает bStanceTurning на бойце. Выход
+	 *  из стойки идёт через CancelAbilityHandle, то есть это всегда EndAbility(bWasCancelled=true) —
+	 *  восстановление обязано работать что на отменённой, что на штатной ветке. Не константами:
+	 *  MaxWalkSpeed вне стойки задаётся в BP-персонаже, хардкод затёр бы её при первом же выходе. */
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 
 private:
 	bool bSavedOrientRotationToMovement = true;
 	bool bSavedUseControllerRotationYaw = false;
+	bool bSavedUseControllerDesiredRotation = false;
+	float SavedRotationRateYaw = 0.0f;
 	float SavedMaxWalkSpeed = 0.0f;
 };

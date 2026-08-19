@@ -23,9 +23,18 @@
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "Engine/Engine.h"
 #include "TimerManager.h"
+#include "Animation/BlendSpace.h"
 
 AClanhallCharacter::AClanhallCharacter()
 {
+	// Нужен для доворота корпуса в стойке (`TickStanceTurn`) — без него State.InStance держит
+	// bUseControllerDesiredRotation молча выключенным навсегда, доворота не будет вовсе.
+	PrimaryActorTick.bCanEverTick = true;
+
+	// Дефолт — сам C++-класс отскока: если разработчик не завёл Blueprint-наследника
+	// UGA_Dodge, всё продолжает работать на дефолтах кода (см. поле в заголовке).
+	DodgeAbilityClass = UGA_Dodge::StaticClass();
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -90,9 +99,18 @@ void AClanhallCharacter::BeginPlay()
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
 
 		// Грант отскока (`combat_system.md`, «Отскок») — рядом со стойкой. У противников
-		// отскока пока нет: стойки как способности у них тоже нет.
-		DodgeAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_Dodge::StaticClass(), 1, INDEX_NONE, this));
+		// отскока пока нет: стойки как способности у них тоже нет. Гранится DodgeAbilityClass,
+		// не UGA_Dodge::StaticClass() напрямую — иначе EditDefaultsOnly-поля класса (дистанции,
+		// монтажи) негде было бы открыть в редакторе.
+		DodgeAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DodgeAbilityClass, 1, INDEX_NONE, this));
 	}
+}
+
+void AClanhallCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	TickStanceTurn();
 }
 
 bool AClanhallCharacter::CanJumpInternal_Implementation() const
@@ -397,6 +415,63 @@ void AClanhallCharacter::CancelSpaceHoldAndSprint()
 	bSpaceJumpConsumed = false;
 }
 
+void AClanhallCharacter::TickStanceTurn()
+{
+	// Вне стойки в эту логику не заходить вовсе — вне State.InStance движковой ротацией
+	// заведует GA_CombatStance::EndAbility (восстановила прежние значения) и обычная локомоция.
+	if (!AbilitySystemComponent || !AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (!Movement || !GetController())
+	{
+		return;
+	}
+
+	const float YawDelta = FRotator::NormalizeAxis(GetControlRotation().Yaw - GetActorRotation().Yaw);
+
+	// GetCurrentAcceleration() отражает ввод WASD этого шага (ноль без нажатых клавиш) — тот же
+	// сигнал, каким движок сам гейтит bOrientRotationToMovement.
+	const bool bStanceMoving = bStanceMoveHeld && !Movement->GetCurrentAcceleration().IsNearlyZero();
+
+	if (bStanceMoving)
+	{
+		// Двигается (Shift + WASD) — доворачивается к камере постоянно, без порога: иначе боец
+		// несколько секунд бежит боком относительно взгляда (`locomotion_structure.md`,
+		// «Локомоция стойки»). Подшаг тут не играет.
+		Movement->bUseControllerDesiredRotation = true;
+		bStanceTurning = false;
+	}
+	else
+	{
+		// Гистерезис: порог входа (StanceTurnThreshold) и угол выхода (StanceTurnSettleAngle) —
+		// разные числа, иначе на границе порога доворот дёргался бы "начал — тут же перестал"
+		// каждый кадр.
+		if (!bStanceTurning && FMath::Abs(YawDelta) > GetStanceTurnThreshold())
+		{
+			bStanceTurning = true;
+			StanceTurnDirection = FMath::Sign(YawDelta);
+		}
+
+		if (bStanceTurning)
+		{
+			Movement->bUseControllerDesiredRotation = true;
+			if (FMath::Abs(YawDelta) <= GetStanceTurnSettleAngle())
+			{
+				bStanceTurning = false;
+			}
+		}
+		else
+		{
+			// В пределах порога корпус не вращается вовсе — визуально за камерой тянется
+			// только верх, это работа ABP, не движка.
+			Movement->bUseControllerDesiredRotation = false;
+		}
+	}
+}
+
 void AClanhallCharacter::OnAttackOverhead()
 {
 	// Shift зажат — этот WASD-ввод перемещает (DoMove), а не бьёт. Гейт стоит здесь, а не
@@ -453,6 +528,13 @@ UAnimSequence* AClanhallCharacter::GetStanceAnim(const ACharacter* Character)
 	const AClanhallHumanoidCombatant* Combatant = Cast<AClanhallHumanoidCombatant>(Character);
 	const UComboData* Data = Combatant ? Combatant->GetComboData() : nullptr;
 	return Data ? Data->StanceAnim : nullptr;
+}
+
+UBlendSpace* AClanhallCharacter::GetStanceBlendSpace(const ACharacter* Character)
+{
+	const AClanhallHumanoidCombatant* Combatant = Cast<AClanhallHumanoidCombatant>(Character);
+	const UComboData* Data = Combatant ? Combatant->GetComboData() : nullptr;
+	return Data ? Data->StanceLocomotion : nullptr;
 }
 
 // ---------------------------------------------------------------------------

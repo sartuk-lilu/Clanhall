@@ -102,6 +102,32 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float SprintSpeed = 900.0f;
 
+	/** Угол между камерой и корпусом (градусы), после которого стоящий боец начинает доворот
+	 *  (`locomotion_structure.md`, «Локомоция стойки»). Ниже порога корпус не вращается вовсе —
+	 *  визуально за камерой тянется только верх, это работа ABP. Плейсхолдер. */
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float StanceTurnThreshold = 60.0f;
+
+	/** Угол, на котором начавшийся доворот считается завершённым. Меньше StanceTurnThreshold —
+	 *  гистерезис нужен, иначе на границе порога доворот дёргается "начал — тут же перестал"
+	 *  каждый кадр (`locomotion_structure.md`, «Локомоция стойки»). Плейсхолдер. */
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float StanceTurnSettleAngle = 10.0f;
+
+	/** Скорость доворота корпуса в стойке, градусов в секунду. Плейсхолдер. */
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float StanceTurnRate = 300.0f;
+
+	/** Играть ли подшаг (ABP) — взводится, когда угол между камерой и корпусом уходит за
+	 *  StanceTurnThreshold, снимается на StanceTurnSettleAngle или при перемещении в стойке
+	 *  (`locomotion_structure.md`, «Локомоция стойки»). */
+	UPROPERTY(BlueprintReadOnly, Category = "Movement")
+	bool bStanceTurning = false;
+
+	/** Направление доворота для ABP: -1 влево, +1 вправо, 0 — не поворачивает. */
+	UPROPERTY(BlueprintReadOnly, Category = "Movement")
+	float StanceTurnDirection = 0.0f;
+
 public:
 	AClanhallCombatantBase();
 
@@ -119,6 +145,21 @@ public:
 
 	/** Читает AClanhallCharacter при удержании Пробела вне стойки. */
 	float GetSprintSpeed() const { return SprintSpeed; }
+
+	/** Читает AClanhallCharacter::Tick — порог входа в доворот корпуса. */
+	float GetStanceTurnThreshold() const { return StanceTurnThreshold; }
+
+	/** Читает AClanhallCharacter::Tick — угол, на котором доворот считается завершённым. */
+	float GetStanceTurnSettleAngle() const { return StanceTurnSettleAngle; }
+
+	/** Читает UGA_CombatStance::ActivateAbility (RotationRate.Yaw на вход в стойку) и
+	 *  AClanhallCharacter::Tick (сам доворот через движковый bUseControllerDesiredRotation). */
+	float GetStanceTurnRate() const { return StanceTurnRate; }
+
+	/** Сбрасывает состояние доворота для ABP — вызывается UGA_CombatStance::EndAbility на выходе
+	 *  из стойки, а не изнутри Tick: тик перестаёт считаться сразу после снятия State.InStance,
+	 *  и последнее значение bStanceTurning иначе могло бы остаться висеть "true". */
+	void ResetStanceTurning() { bStanceTurning = false; StanceTurnDirection = 0.0f; }
 
 protected:
 	virtual void BeginPlay() override;
