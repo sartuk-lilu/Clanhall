@@ -90,6 +90,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxStagger = 4.0f;
 
+	/** Базовая скорость стойки — отдельная от MaxWalkSpeed бега, принадлежит бойцу, а не
+	 *  оружию (`weapon_system.md`: множитель оружия применяется к ней, не к скорости бега).
+	 *  Итоговая скорость в стойке = StanceBaseSpeed * UWeaponTypeData::StanceSpeedMultiplier
+	 *  активного оружия (`UGA_CombatStance::ActivateAbility`). Плейсхолдер. */
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float StanceBaseSpeed = 300.0f;
+
 public:
 	AClanhallCombatantBase();
 
@@ -101,6 +108,9 @@ public:
 	 *  нехватки Charges. */
 	UPROPERTY(BlueprintAssignable, Category = "AbilitySystem")
 	FOnClanhallChargesDenied OnChargesDenied;
+
+	/** Читает UGA_CombatStance при входе в стойку, чтобы посчитать итоговый MaxWalkSpeed. */
+	float GetStanceBaseSpeed() const { return StanceBaseSpeed; }
 
 protected:
 	virtual void BeginPlay() override;

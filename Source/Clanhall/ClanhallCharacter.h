@@ -69,6 +69,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* StanceAction;
 
+	/** Shift в стойке — переключает WASD с ударов на перемещение (`combat_system.md`,
+	 *  «Боевая стойка и переключение режимов»). */
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	UInputAction* StanceMoveModifierAction;
+
+	/** Shift зажат — WASD в стойке перемещает, а не бьёт. Не сбрасывает живую серию
+	 *  (`combat_system.md`: «Shift живую серию не сбрасывает») — гейтит только приём новых
+	 *  ударных нажатий в OnAttack*, открытое окно ComboComponent не трогаем и не гасим. */
+	bool bStanceMoveHeld = false;
+
 	/** W в стойке — Overhead */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* AttackOverheadAction;
@@ -134,6 +144,13 @@ protected:
 
 	/** ЛКМ отпущен — CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `combat_system.md`, «Боевая стойка и переключение режимов») */
 	void OnStanceReleased();
+
+	/** Shift нажат — WASD в стойке переключается на перемещение. */
+	void OnStanceMoveModifierPressed();
+
+	/** Shift отпущен — WASD в стойке снова бьёт. Открытое окно продолжения серии не трогаем:
+	 *  оно дотикивает своим таймером и закрывается само (`combat_system.md`). */
+	void OnStanceMoveModifierReleased();
 
 	void OnAttackOverhead();
 	void OnAttackRightSlash();

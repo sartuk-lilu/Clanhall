@@ -25,6 +25,7 @@ namespace ClanhallWeaponDefaults
 	constexpr int32 ChargeIncome = 1;
 	constexpr int32 SeriesLength = 2;
 	constexpr float ArmorPenetration = 0.0f;
+	constexpr float StanceSpeedMultiplier = 1.0f;
 }
 
 UCLASS()

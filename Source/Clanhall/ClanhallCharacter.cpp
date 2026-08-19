@@ -132,6 +132,11 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnStanceReleased);
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnStanceReleased);
 
+		// Shift + WASD в стойке = перемещение (`combat_system.md`, «Боевая стойка и переключение режимов»).
+		EnhancedInputComponent->BindAction(StanceMoveModifierAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnStanceMoveModifierPressed);
+		EnhancedInputComponent->BindAction(StanceMoveModifierAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnStanceMoveModifierReleased);
+		EnhancedInputComponent->BindAction(StanceMoveModifierAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnStanceMoveModifierReleased);
+
 		// Directional WASD-attacks (`combat_system.md`, «Направления атаки (WASD)») — те же клавиши, что и Move,
 		// но отдельные дискретные действия: срабатывают один раз на нажатие, а не каждый кадр.
 		// GA_DirectionalAttackBase сам отказывает, если игрок не в стойке (ActivationRequiredTags).
@@ -176,8 +181,11 @@ void AClanhallCharacter::DoMove(float Right, float Forward)
 	// Стойка наземная: тег State.InStance может висеть и в воздухе (держим ЛКМ при прыжке/падении),
 	// поэтому здесь дополнительно спрашиваем IsFalling() — тем же предикатом, что гейтит позу
 	// стойки в ABP. В воздухе air control не режем; тег сам "включит" стойку в кадре приземления.
+	// Shift + WASD в стойке — исключение: перемещение, не удары (`combat_system.md`,
+	// «Боевая стойка и переключение режимов», «Локомоция в стойке»).
 	if (AbilitySystemComponent
 		&& AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag())
+		&& !bStanceMoveHeld
 		&& GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
 		return;
@@ -262,8 +270,25 @@ void AClanhallCharacter::OnStanceReleased()
 // UClanhallHitboxComponent при хите врага зоной с bParryable == true (State.Parrying на ASC
 // врага, не игрока).
 
+void AClanhallCharacter::OnStanceMoveModifierPressed()
+{
+	bStanceMoveHeld = true;
+}
+
+void AClanhallCharacter::OnStanceMoveModifierReleased()
+{
+	bStanceMoveHeld = false;
+}
+
 void AClanhallCharacter::OnAttackOverhead()
 {
+	// Shift зажат — этот WASD-ввод перемещает (DoMove), а не бьёт. Гейт стоит здесь, а не
+	// в UClanhallComboComponent::HandleAttackInput: Shift — ввод игрока, компонент
+	// стороне-нейтрален и одинаково обслуживает игрока и AI, которому Shift не существует.
+	if (bStanceMoveHeld)
+	{
+		return;
+	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::Overhead);
@@ -272,6 +297,10 @@ void AClanhallCharacter::OnAttackOverhead()
 
 void AClanhallCharacter::OnAttackRightSlash()
 {
+	if (bStanceMoveHeld)
+	{
+		return;
+	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::RightSlash);
@@ -280,6 +309,10 @@ void AClanhallCharacter::OnAttackRightSlash()
 
 void AClanhallCharacter::OnAttackLeftSlash()
 {
+	if (bStanceMoveHeld)
+	{
+		return;
+	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LeftSlash);
@@ -288,6 +321,10 @@ void AClanhallCharacter::OnAttackLeftSlash()
 
 void AClanhallCharacter::OnAttackLowSweep()
 {
+	if (bStanceMoveHeld)
+	{
+		return;
+	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LowSweep);
