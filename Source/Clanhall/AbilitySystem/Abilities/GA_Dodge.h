@@ -53,7 +53,7 @@ protected:
 	/** Цена дальнего отскока в бою — списывается тем же механизмом, что в UGA_PhysicalSkill:
 	 *  на активации и безвозвратно. Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
-	int32 DodgeChargeCost = 2;
+	int32 DodgeChargeCost = 1;
 
 	/** Косметический монтаж короткой формы — механика не зависит от него (`CLAUDE.md`,
 	 *  «Механика работает без анимационных ассетов»). nullptr — законное состояние. */

@@ -138,6 +138,11 @@ protected:
 	/** Ждём второй Started в окне DoubleTapWindow — первый тап уже случился и не был удержанием. */
 	bool bSpaceAwaitingDoubleTap = false;
 
+	/** Второй Started двойного тапа уже вызвал Jump() — его парное Completed не должно
+	 *  провалиться в ветку "это тап" и завести отскок через DoubleTapWindow. Снимается первым
+	 *  делом в OnSpaceReleased. */
+	bool bSpaceJumpConsumed = false;
+
 	/** Бег активен удержанием Пробела вне стойки. */
 	bool bSpaceSprinting = false;
 
@@ -214,6 +219,14 @@ protected:
 	void StopSprint();
 
 public:
+
+	/** Гасит бег и все таймеры/флаги Пробела — вызывается ровно один раз на реальный вход
+	 *  в стойку, из UGA_CombatStance::ActivateAbility, а не из OnStancePressed: тот выполняется
+	 *  каждый кадр удержания ЛКМ (ретрай на Triggered при State.ComboRecovery) и на активной
+	 *  Recovery убивал бы таймер Пробела кадром позже, до входа в стойку (`task_stage4_code_fixes.md`,
+	 *  п.5). Порядок «сначала погасить бег, потом прочитать MaxWalkSpeed» обязан сохраняться —
+	 *  вызывать в самом начале ActivateAbility, до сохранения текущих значений движения. */
+	void CancelSpaceHoldAndSprint();
 
 	/** Handles move inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")

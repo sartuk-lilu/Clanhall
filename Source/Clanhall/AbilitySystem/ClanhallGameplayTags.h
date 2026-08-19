@@ -42,8 +42,9 @@ namespace ClanhallGameplayTags
 	// последний противник покинул радиус.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InCombat);
 	// Лок-аут после КОРОТКОГО отскока в стойке — по образцу State.ComboRecovery, длительность
-	// ровно длина DodgeRecoveryMontage (`combat_system.md`, «Отскок»). Дальний отскок вне
-	// стойки этот тег не вешает — там нет WASD-серии, которую защищать.
+	// ровно длина DodgeRecoveryMontage (`combat_system.md`, «Отскок»). Вешает только короткая
+	// форма, но UGA_Dodge::ActivationBlockedTags блокирует им любую активацию — тег защищает
+	// сам отскок от спама, а не WASD-серию: короткий → выход из стойки → дальний тоже ждёт.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_DodgeRecovery);
 
 	// ---- Attack.Direction.* ----

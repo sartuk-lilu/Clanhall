@@ -29,6 +29,12 @@ void UGA_CombatStance::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
+	// Гасит бег и таймеры Пробела ДО чтения MaxWalkSpeed ниже — вызывается отсюда, а не из
+	// AClanhallCharacter::OnStancePressed: тот выполняется каждый кадр удержания ЛКМ (ретрай
+	// на Triggered при State.ComboRecovery), а этот метод — ровно один раз на реальный вход
+	// (`task_stage4_code_fixes.md`, п.5).
+	Character->CancelSpaceHoldAndSprint();
+
 	bSavedOrientRotationToMovement = Movement->bOrientRotationToMovement;
 	bSavedUseControllerRotationYaw = Character->bUseControllerRotationYaw;
 	SavedMaxWalkSpeed = Movement->MaxWalkSpeed;

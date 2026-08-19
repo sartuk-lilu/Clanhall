@@ -14,8 +14,10 @@ UGA_Dodge::UGA_Dodge()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
-	// Лок-аут после короткого отскока блокирует новый отскок, пока хвост доигрывает. Дальний
-	// отскок этот тег не вешает вовсе, так что вне стойки ограничение не действует.
+	// Вешает State.DodgeRecovery только КОРОТКАЯ форма (см. OnDodgeFinished), но
+	// ActivationBlockedTags блокирует ЛЮБУЮ активацию, пока тег висит — короткий отскок
+	// в стойке → выход из стойки → дальний отскок тоже заблокирован до конца хвоста.
+	// Это осознанно: тег защищает не WASD-серию, а сам отскок от спама.
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_DodgeRecovery.GetTag());
 }
 
@@ -85,10 +87,14 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 		ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(DodgeChargeCost));
 	}
 
-	// Направление — вектор ввода перемещения: в стойке он существует только при Shift+WASD
-	// (DoMove не регистрирует AddMovementInput без него), вне стойки всегда, если ввод не
-	// заблокирован State.SkillCommitted. Ввода нет — назад от камеры, не от форварда актора.
-	FVector DodgeDirection = Character->GetPendingMovementInputVector();
+	// Направление — вектор ввода перемещения ИЗ УЖЕ СВЕДЁННОГО прошлого кадра
+	// (GetLastMovementInputVector(), не Pending): порядок обработки MoveAction (Triggered)
+	// и SpaceAction (Started) внутри одного кадра — свойство Enhanced Input, не кода,
+	// и Pending-вектор в кадре нажатия Пробела мог ещё не накопиться. В стойке вектор
+	// существует только при Shift+WASD (DoMove не регистрирует AddMovementInput без него —
+	// то же правило "в стойке без Shift назад" получаем бесплатно), вне стойки всегда, если
+	// ввод не заблокирован State.SkillCommitted. Ввода нет — назад от камеры, не от форварда актора.
+	FVector DodgeDirection = Character->GetLastMovementInputVector();
 	if (!DodgeDirection.IsNearlyZero())
 	{
 		DodgeDirection = DodgeDirection.GetSafeNormal();

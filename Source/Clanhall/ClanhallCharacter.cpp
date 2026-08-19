@@ -250,19 +250,6 @@ void AClanhallCharacter::DoJumpEnd()
 
 void AClanhallCharacter::OnStancePressed()
 {
-	// Бег вообще не должен пережить вход в стойку — скорость стойки обязана победить скорость
-	// бега (`combat_system.md`, «Отскок», блок «Бег»). Гасим ДО активации GA_CombatStance: та
-	// на входе читает текущий MaxWalkSpeed, и если не остановить бег первым, стойка на выходе
-	// восстановила бы скорость бега, а не настоящую базовую.
-	if (bSpaceSprinting)
-	{
-		StopSprint();
-		bSpaceSprinting = false;
-	}
-	GetWorldTimerManager().ClearTimer(SpaceHoldTimerHandle);
-	GetWorldTimerManager().ClearTimer(SpaceDoubleTapTimerHandle);
-	bSpaceAwaitingDoubleTap = false;
-
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(StanceAbilityHandle);
@@ -314,9 +301,12 @@ void AClanhallCharacter::OnSpacePressed()
 
 	if (bSpaceAwaitingDoubleTap)
 	{
-		// Второй Started в открытом окне — прыжок.
+		// Второй Started в открытом окне — прыжок. Помечаем парное Completed как потраченное:
+		// без этого оно провалилось бы в ветку "это тап" в OnSpaceReleased и через
+		// DoubleTapWindow завело бы лишний отскок на каждый прыжок (`task_stage4_code_fixes.md`, п.1).
 		GetWorldTimerManager().ClearTimer(SpaceDoubleTapTimerHandle);
 		bSpaceAwaitingDoubleTap = false;
+		bSpaceJumpConsumed = true;
 		Jump();
 		return;
 	}
@@ -327,6 +317,14 @@ void AClanhallCharacter::OnSpacePressed()
 
 void AClanhallCharacter::OnSpaceReleased()
 {
+	if (bSpaceJumpConsumed)
+	{
+		// Это Completed — парное ко второму Started двойного тапа, прыжок уже случился
+		// в OnSpacePressed. Гасим флаг и выходим первым делом, до любых других веток.
+		bSpaceJumpConsumed = false;
+		return;
+	}
+
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
 	{
 		// Короткий отскок уже случился на Started — Completed в стойке ничего не делает.
@@ -379,6 +377,24 @@ void AClanhallCharacter::StopSprint()
 	{
 		Movement->MaxWalkSpeed = SavedWalkSpeedBeforeSprint;
 	}
+}
+
+void AClanhallCharacter::CancelSpaceHoldAndSprint()
+{
+	// Бег вообще не должен пережить вход в стойку — скорость стойки обязана победить скорость
+	// бега (`combat_system.md`, «Отскок», блок «Бег»). Вызывается из
+	// UGA_CombatStance::ActivateAbility ДО чтения текущего MaxWalkSpeed: та сохраняет его для
+	// восстановления на выходе, и если не остановить бег первым, стойка на выходе вернула бы
+	// скорость бега, а не настоящую базовую.
+	if (bSpaceSprinting)
+	{
+		StopSprint();
+		bSpaceSprinting = false;
+	}
+	GetWorldTimerManager().ClearTimer(SpaceHoldTimerHandle);
+	GetWorldTimerManager().ClearTimer(SpaceDoubleTapTimerHandle);
+	bSpaceAwaitingDoubleTap = false;
+	bSpaceJumpConsumed = false;
 }
 
 void AClanhallCharacter::OnAttackOverhead()
