@@ -8,7 +8,7 @@
 #include "WeaponData.generated.h"
 
 class UWeaponTypeData;
-class UStaticMesh;
+class AClanhallWeaponActor;
 
 UCLASS()
 class CLANHALL_API UWeaponData : public UPrimaryDataAsset
@@ -20,9 +20,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	TObjectPtr<UWeaponTypeData> Type;
 
-	/** Меш в основной руке. Крепит Blueprint — потребителя в C++ нет. */
+	/** Класс актора оружия в основной руке, не меш — сокет, трансформ и визуал несёт сам
+	 *  актор (`weapon_system.md`, «Оружие как актор»). */
 	UPROPERTY(EditAnywhere, Category = "Weapon")
-	TObjectPtr<UStaticMesh> Mesh;
+	TSubclassOf<AClanhallWeaponActor> WeaponClass;
 
 	/** Плоская надбавка к профилю урона типа. Потребителя в C++ пока не имеет — урон резолвится
 	 *  через UComboData::FindDamageByDirection, DT-атрибута в UClanhallAttributeSet нет вовсе.

@@ -6,7 +6,6 @@
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
-#include "AbilitySystem/CharacterSheetData.h"
 #include "AbilitySystem/WeaponData.h"
 #include "AbilitySystem/WeaponTypeData.h"
 #include "AbilitySystem/Fragments/ComboData.h"
@@ -327,7 +326,7 @@ static float GetMontagePlayLength(const UAnimMontage* Montage)
 	return Montage ? Montage->GetPlayLength() : 0.0f;
 }
 
-// Разбор направлений, резолв цепочки CharacterSheet -> Weapon -> Type -> ComboData и печать
+// Разбор направлений, резолв цепочки CurrentWeapon -> Type -> ComboData и печать
 // инварианта экономики оружия (`economy_system.md`, «Инвариант экономики оружия»). Своей
 // логики поверх систем не пишем — только чтение UWeaponTypeData/UComboData и вывод.
 static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
@@ -347,17 +346,10 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 	}
 
 	// Цепочка неполна -> сказать явно, ГДЕ обрыв, а не просто "нет данных".
-	const UCharacterSheetData* Sheet = Combatant->GetCharacterSheet();
-	if (!Sheet)
-	{
-		PrintError(Key, TEXT("Chain broken: no CharacterSheet"));
-		return;
-	}
-
-	const UWeaponData* Weapon = Sheet->Weapon;
+	const UWeaponData* Weapon = Combatant->GetCurrentWeapon();
 	if (!Weapon)
 	{
-		PrintError(Key, TEXT("Chain broken: CharacterSheet has no Weapon"));
+		PrintError(Key, TEXT("Chain broken: no CurrentWeapon (empty CharacterSheet->Loadout?)"));
 		return;
 	}
 

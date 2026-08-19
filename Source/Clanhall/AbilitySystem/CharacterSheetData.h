@@ -20,9 +20,12 @@ class CLANHALL_API UCharacterSheetData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	/** Экземпляр оружия в руках. */
+	/** Стартовый набор оружия, не то, что в руках сейчас — активное оружие рантайм-состояние
+	 *  бойца (`weapon_system.md`, «Что в лист входит, а что нет»): боец свапает оружие в бою,
+	 *  шаблон описывает только то, с чем он вышел. У игрока это слоты 1–6, у противника —
+	 *  набор, между которыми ходит AI. */
 	UPROPERTY(EditAnywhere, Category = "CharacterSheet")
-	TObjectPtr<UWeaponData> Weapon;
+	TArray<TObjectPtr<UWeaponData>> Loadout;
 
 	/** Стартовые значения статов. Атрибутов STR/DEX в UClanhallAttributeSet нет, скейла урона
 	 *  от них тоже — числа лежат здесь, потребитель появится вместе со скейлом

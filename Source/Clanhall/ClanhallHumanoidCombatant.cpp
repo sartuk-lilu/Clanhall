@@ -6,6 +6,7 @@
 #include "AbilitySystem/CharacterSheetData.h"
 #include "AbilitySystem/WeaponData.h"
 #include "AbilitySystem/WeaponTypeData.h"
+#include "AbilitySystem/Fragments/WeaponFragments.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/Fragments/GameplayFragments.h"
@@ -13,6 +14,9 @@
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
 #include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
+#include "ClanhallWeaponActor.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/World.h"
 #include "EngineUtils.h"
 
 AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
@@ -33,6 +37,19 @@ AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
 	AttackLowSweepClass   = UGA_DirectionalAttack_LowSweep::StaticClass();
 }
 
+void AClanhallHumanoidCombatant::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// PostInitializeComponents отрабатывает у ВСЕХ акторов уровня до того, как хоть у одного
+	// стартует BeginPlay — в отличие от BeginPlay, где UClanhallParryComponent::BeginPlay уже
+	// читает GetWeaponType() через HasOpponentWithMarkSynergy раньше, чем выполнилось бы тело
+	// BeginPlay этого актора. Пустой Loadout — законное состояние, CurrentWeapon остаётся null,
+	// фолбэки в BeginPlay ниже отрабатывают как и раньше.
+	CurrentWeapon = (CharacterSheet && CharacterSheet->Loadout.IsValidIndex(0))
+		? CharacterSheet->Loadout[0] : nullptr;
+}
+
 void AClanhallHumanoidCombatant::BeginPlay()
 {
 	Super::BeginPlay();
@@ -45,11 +62,24 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	// Отсутствие данных не должно ломать бой (`weapon_system.md`, «Шаблон и живой лист») — боец
 	// без листа дерётся на фолбэках, а не встаёт с нулевым доходом. Один варнинг на бойца,
 	// здесь и только здесь: варнить в местах чтения означало бы залить лог на каждом ударе.
-	if (!CharacterSheet || !CharacterSheet->Weapon || !CharacterSheet->Weapon->Type)
+	if (!CurrentWeapon || !CurrentWeapon->Type)
 	{
-		UE_LOG(LogClanhall, Warning, TEXT("%s: цепочка CharacterSheet -> Weapon -> Type неполна — "
+		UE_LOG(LogClanhall, Warning, TEXT("%s: цепочка CurrentWeapon -> Type неполна — "
 			"бой идёт на фолбэках (ChargeIncome %d, SeriesLength %d), комбо-дерева нет."),
 			*GetName(), ClanhallWeaponDefaults::ChargeIncome, ClanhallWeaponDefaults::SeriesLength);
+	}
+
+	// Спавн и крепление визуала текущего оружия и оффхенда, если он есть у экземпляра
+	// (`weapon_system.md`, «Оружие как актор»). Свапа в этом задании нет — акторы ставятся
+	// один раз здесь.
+	if (CurrentWeapon)
+	{
+		SpawnedWeapon = SpawnAndAttachWeapon(CurrentWeapon->WeaponClass);
+
+		if (const UWeaponOffhandFragment* Offhand = CurrentWeapon->FindFragment<UWeaponOffhandFragment>())
+		{
+			SpawnedOffhand = SpawnAndAttachWeapon(Offhand->OffhandClass);
+		}
 	}
 
 	// Грант способностей 4 направлений WASD-удара (`combat_system.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»). Классы дефолтно
@@ -140,9 +170,71 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	}
 }
 
+void AClanhallHumanoidCombatant::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// Без явного Destroy оружие переживает своего носителя — PIE, запущенный дважды,
+	// оставляет мечи на уровне.
+	if (SpawnedWeapon)
+	{
+		SpawnedWeapon->Destroy();
+		SpawnedWeapon = nullptr;
+	}
+	if (SpawnedOffhand)
+	{
+		SpawnedOffhand->Destroy();
+		SpawnedOffhand = nullptr;
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+AClanhallWeaponActor* AClanhallHumanoidCombatant::SpawnAndAttachWeapon(TSubclassOf<AClanhallWeaponActor> WeaponClass)
+{
+	if (!WeaponClass)
+	{
+		// Законное состояние, не ошибка — оружие без визуала тестируется (`weapon_system.md`,
+		// «Оружие как актор»). Verbose, не Warning, но не молчит: иначе "меча нет" ищется
+		// глазами так же долго, как и "меч торчит из живота".
+		UE_LOG(LogClanhall, Verbose, TEXT("%s: WeaponClass не задан — оружие без визуала."), *GetName());
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	AClanhallWeaponActor* SpawnedActor = GetWorld()->SpawnActor<AClanhallWeaponActor>(WeaponClass, SpawnParams);
+	if (!SpawnedActor)
+	{
+		return nullptr;
+	}
+
+	USkeletalMeshComponent* OwnerMesh = GetMesh();
+	const bool bSocketNamed = !SpawnedActor->AttachSocketName.IsNone();
+	const bool bSocketExists = bSocketNamed && OwnerMesh && OwnerMesh->DoesSocketExist(SpawnedActor->AttachSocketName);
+
+	if (!bSocketNamed)
+	{
+		// Молча ронять оружие в центр персонажа нельзя: симптом «меч торчит из живота»
+		// ищется глазами полчаса.
+		UE_LOG(LogClanhall, Warning, TEXT("%s: у %s не задан AttachSocketName — крепление в корень меша."),
+			*GetName(), *SpawnedActor->GetClass()->GetName());
+	}
+	else if (!bSocketExists)
+	{
+		UE_LOG(LogClanhall, Warning, TEXT("%s: сокет %s (заданный в %s) не найден на скелете — крепление в корень меша."),
+			*GetName(), *SpawnedActor->AttachSocketName.ToString(), *SpawnedActor->GetClass()->GetName());
+	}
+
+	const FName SocketToUse = bSocketExists ? SpawnedActor->AttachSocketName : NAME_None;
+	const FAttachmentTransformRules AttachRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, false);
+	SpawnedActor->AttachToComponent(OwnerMesh, AttachRules, SocketToUse);
+	SpawnedActor->SetActorRelativeTransform(SpawnedActor->AttachRelativeTransform);
+
+	return SpawnedActor;
+}
+
 const UWeaponTypeData* AClanhallHumanoidCombatant::GetWeaponType() const
 {
-	return CharacterSheet && CharacterSheet->Weapon ? CharacterSheet->Weapon->Type : nullptr;
+	return CurrentWeapon ? CurrentWeapon->Type : nullptr;
 }
 
 const UComboData* AClanhallHumanoidCombatant::GetComboData() const

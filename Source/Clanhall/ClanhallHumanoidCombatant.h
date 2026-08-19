@@ -29,6 +29,8 @@ class UClanhallParryComponent;
 class UCharacterSheetData;
 class UComboData;
 class UWeaponTypeData;
+class UWeaponData;
+class AClanhallWeaponActor;
 class UGA_DirectionalAttackBase;
 
 UCLASS(abstract)
@@ -55,6 +57,21 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Combat|Sheet")
 	TObjectPtr<UCharacterSheetData> CharacterSheet;
 
+	/** Оружие в руках сейчас. Рантайм-состояние, не шаблон: боец свапает оружие в бою, и
+	 *  шаблон описывает только то, с чем он вышел (`weapon_system.md`, «Что в лист входит»).
+	 *  Транзиентно — в ассете не сериализуется. Выставляется в PostInitializeComponents,
+	 *  не в BeginPlay — см. комментарий у объявления. */
+	UPROPERTY(Transient)
+	TObjectPtr<UWeaponData> CurrentWeapon;
+
+	/** Спавненные акторы текущего оружия — хранить полями, иначе будущий свап не сможет
+	 *  убрать старое оружие. Уничтожаются в EndPlay. */
+	UPROPERTY(Transient)
+	TObjectPtr<AClanhallWeaponActor> SpawnedWeapon;
+
+	UPROPERTY(Transient)
+	TObjectPtr<AClanhallWeaponActor> SpawnedOffhand;
+
 	/** Не UPROPERTY (`Combatant Hierarchy.md`, «Грант в BeginPlay»): значение одинаково у всех китов — это
 	 *  плумбинг GAS, не контент класса. Не видно ни редактору, ни Blueprint — переопределить
 	 *  дефолт может только C++-наследник в своём конструкторе, если когда-то понадобится. */
@@ -77,15 +94,19 @@ protected:
 public:
 	AClanhallHumanoidCombatant();
 
-	/** Тип оружия в руках: CharacterSheet -> Weapon -> Type. nullptr на любом разрыве цепочки —
+	/** Тип оружия в руках: CurrentWeapon -> Type. nullptr на любом разрыве цепочки —
 	 *  вызывающий обязан иметь фолбэк, а не разыменовывать. */
 	const UWeaponTypeData* GetWeaponType() const;
 
 	/** Лист персонажа как есть, без разворачивания цепочки — нужен читам вроде
 	 *  Clanhall.Player.ShowWeaponEconomy, которым важно различать, ГДЕ именно цепочка
-	 *  CharacterSheet -> Weapon -> Type оборвалась, а не только факт разрыва (GetWeaponType()
+	 *  CurrentWeapon -> Type оборвалась, а не только факт разрыва (GetWeaponType()
 	 *  это различие стирает, возвращая nullptr на любом звене). */
 	const UCharacterSheetData* GetCharacterSheet() const { return CharacterSheet; }
+
+	/** Оружие в руках сейчас, как есть — тот же смысл, что у GetCharacterSheet(): читам вроде
+	 *  Clanhall.Player.ShowWeaponEconomy важно различать, ГДЕ цепочка оборвалась. */
+	const UWeaponData* GetCurrentWeapon() const { return CurrentWeapon; }
 
 	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
 	const UComboData* GetComboData() const;
@@ -106,12 +127,30 @@ public:
 	bool HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const;
 
 protected:
+	/** Выставляет CurrentWeapon из CharacterSheet->Loadout[0]. Не BeginPlay — ловушка:
+	 *  AActor::BeginPlay диспатчит BeginPlay компонентам (в т.ч. UClanhallParryComponent,
+	 *  который читает GetWeaponType() через HasOpponentWithMarkSynergy) раньше, чем выполняется
+	 *  тело переопределения BeginPlay этого актора. Поставь инициализацию туда — и на момент
+	 *  вызова ParryComponent CurrentWeapon ещё null: шкала Stagger молча решит, что
+	 *  обналичивать метку противнику нечем, и не будет копиться вовсе. Ни ошибки, ни варнинга.
+	 *  PostInitializeComponents для акторов, размещённых на уровне, отрабатывает у ВСЕХ
+	 *  акторов до того, как хоть у одного стартует BeginPlay — значит и чужой лист к этому
+	 *  моменту готов. Пустой Loadout — законное состояние, фолбэки работают как раньше. */
+	virtual void PostInitializeComponents() override;
+
 	/** Грант WASD-ударов из CharacterSheet и активок из GetWeaponType()->Skills, через два
 	 *  гейта владения — общий для игрока и AClanhallHumanoidBoss (`Combatant Hierarchy.md`,
-	 *  «Грант в BeginPlay»; `weapon_system.md`, «Владение оружием»). */
+	 *  «Грант в BeginPlay»; `weapon_system.md`, «Владение оружием»). Спавнит и крепит акторы
+	 *  текущего оружия и оффхенда. */
 	virtual void BeginPlay() override;
 
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 private:
+	/** Спавнит актор оружия и крепит к сокету, который назвал сам актор. Возвращает nullptr,
+	 *  если класс не задан — это законное состояние (оружие без визуала тестируется). */
+	AClanhallWeaponActor* SpawnAndAttachWeapon(TSubclassOf<AClanhallWeaponActor> WeaponClass);
+
 	/** Прототип 1v1: единственный ДРУГОЙ AClanhallHumanoidCombatant в мире. Полноценного
 	 *  таргетинга (кто чей противник) в проекте ещё нет — AIController/BT тоже нет
 	 *  (`Combatant Hierarchy.md`, «Прототипный поиск противника»).

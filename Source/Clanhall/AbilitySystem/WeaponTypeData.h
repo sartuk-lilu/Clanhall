@@ -48,9 +48,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "1"))
 	int32 ChargeIncome = ClanhallWeaponDefaults::ChargeIncome;
 
-	/** См/с в боевой стойке. Потребитель появится в этапе 4 — сейчас никто не читает. */
-	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "0.0"))
-	float StanceMoveSpeed = 0.0f;
+	/** Множитель к базовой скорости бойца в боевой стойке, не см/с — абсолютное число
+	 *  непереносимо между бойцами с разной базой (`weapon_system.md`, «Оружие как актор»).
+	 *  1.0 — как обычно. ClampMin 0.1, не 0: ноль означал бы «в стойке не двигается вовсе»,
+	 *  такого решения нет. Потребитель появится в этапе 4 — сейчас никто не читает. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "0.1"))
+	float StanceSpeedMultiplier = 1.0f;
 
 	/** База плоского пробития DT. Потребитель — этап 6. */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "0.0"))
