@@ -17,6 +17,7 @@ class UClanhallAttributeSet;
 class UClanhallMarkComponent;
 class UClanhallHitboxComponent;
 class UClanhallCounterComponent;
+class UClanhallCombatStateComponent;
 class UGameplayAbility;
 
 /** Denied-фидбек: TryActivateAbility отказал именно по нехватке Charges (не по
@@ -50,6 +51,11 @@ protected:
 	/** Окно контрнавыка — симметричный компонент, нужен и монстру: его каст тоже сбивают. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCounterComponent> CounterComponent;
+
+	/** State.InCombat — стороне-нейтральный, нужен и монстру под A-life так же, как игроку
+	 *  (`combat_system.md`, «Боевое состояние»). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallCombatStateComponent> CombatStateComponent;
 
 	/** Unit.Role.* — вешается на ASC в BeginPlay (`Combatant Hierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
 	 *  (актор не участвует в ролевой логике HUD/AI), так у игрока по умолчанию. */

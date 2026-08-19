@@ -4,6 +4,7 @@
 // систем не пишем — только резолв цели/атрибута и вывод результата.
 
 #include "AbilitySystem/ClanhallAttributeSet.h"
+#include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/WeaponData.h"
@@ -38,6 +39,7 @@ enum class EDebugMsgKey : int32
 	EnemyAddMark,
 	ListStats,
 	PlayerShowWeaponEconomy,
+	PlayerShowCombatState,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -472,6 +474,35 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 	PrintResult(Key, Message, FColor::Cyan);
 }
 
+// Читает UClanhallCombatStateComponent на игроке: без этой команды граница боя невидима,
+// а от неё зависит цена дальнего отскока и работоспособность вне-боевого лечения
+// (`combat_system.md`, «Боевое состояние»).
+static void HandleShowCombatState(UWorld* World)
+{
+	const EDebugMsgKey Key = EDebugMsgKey::PlayerShowCombatState;
+
+	APawn* Pawn = ResolvePlayerPawn(World, Key);
+	if (!Pawn)
+	{
+		return;
+	}
+
+	const UClanhallCombatStateComponent* CombatState = Pawn->FindComponentByClass<UClanhallCombatStateComponent>();
+	if (!CombatState)
+	{
+		PrintError(Key, TEXT("Pawn has no CombatStateComponent"));
+		return;
+	}
+
+	const FString Message = FString::Printf(
+		TEXT("%s | enemies in radius: %d | exit timer: %.1fs"),
+		CombatState->IsInCombat() ? TEXT("IN COMBAT") : TEXT("out of combat"),
+		CombatState->GetTrackedEnemyCount(),
+		CombatState->GetExitTimeRemaining());
+
+	PrintResult(Key, Message, CombatState->IsInCombat() ? FColor::Red : FColor::Green);
+}
+
 static FAutoConsoleCommandWithWorldAndArgs CVarPlayerSetStat(
 	TEXT("Clanhall.Player.SetStat"),
 	TEXT("Set an attribute on the player, clamped by UClanhallAttributeSet. Usage: Clanhall.Player.SetStat <Name> <Value>"),
@@ -534,6 +565,14 @@ static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowWeaponEconomy(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandleShowWeaponEconomy(World, Args);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowCombatState(
+	TEXT("Clanhall.Player.ShowCombatState"),
+	TEXT("Print combat state (in/out of combat), tracked enemy count and exit timer for the player."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		HandleShowCombatState(World);
 	}));
 
 #endif // !UE_BUILD_SHIPPING

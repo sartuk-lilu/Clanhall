@@ -37,6 +37,10 @@ namespace ClanhallGameplayTags
 	// нельзя начать WASD-серию и нельзя запустить вторую активку (`combat_system.md`, «Боевая стойка и переключение режимов»,
 	// «начатую активку нельзя оборвать»). Выход из стойки при этом свободен всегда.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_SkillCommitted);
+	// Вешает и снимает UClanhallCombatStateComponent, пока в радиусе есть живой противник
+	// (`combat_system.md`, «Боевое состояние»). Снятие идёт с задержкой — не в момент, когда
+	// последний противник покинул радиус.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InCombat);
 
 	// ---- Attack.Direction.* ----
 	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
@@ -137,6 +141,10 @@ namespace ClanhallGameplayTags
 	// Роль юнита, навешивается loose-тегом на его ASC в BeginPlay (`HUD.md`).
 	// Unit.Role.Boss — родитель для Humanoid/Monster: сенсор рамки (UClanhallBossSensorComponent)
 	// запрашивает именно родителя, чтобы матчить оба подтипа боссов разом.
+	// Unit_Role (корень) — умбрелла-тег для «это вообще участник боя» без разбора подтипа:
+	// UClanhallCombatStateComponent матчит им любой Unit.Role.* разом, фракций в проекте нет
+	// (`combat_system.md`, «Боевое состояние»; `Combatant Hierarchy.md`).
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Mob);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Boss);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Boss_Humanoid);

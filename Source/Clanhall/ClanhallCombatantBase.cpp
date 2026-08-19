@@ -4,6 +4,7 @@
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
+#include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 
 AClanhallCombatantBase::AClanhallCombatantBase()
@@ -24,6 +25,9 @@ AClanhallCombatantBase::AClanhallCombatantBase()
 
 	// Симметричный компонент окна контрнавыка, тот же класс на враге.
 	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
+
+	// State.InCombat — стороне-нейтрален, как парирование и WASD-серия (`combat_system.md`, «Боевое состояние»).
+	CombatStateComponent = CreateDefaultSubobject<UClanhallCombatStateComponent>(TEXT("CombatStateComponent"));
 }
 
 UAbilitySystemComponent* AClanhallCombatantBase::GetAbilitySystemComponent() const
