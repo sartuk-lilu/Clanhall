@@ -204,12 +204,24 @@ AClanhallWeaponActor* AClanhallHumanoidCombatant::SpawnAndAttachWeapon(TSubclass
 	AClanhallWeaponActor* SpawnedActor = GetWorld()->SpawnActor<AClanhallWeaponActor>(WeaponClass, SpawnParams);
 	if (!SpawnedActor)
 	{
+		// Реальный случай, не теоретический — WeaponClass указывает сам AClanhallWeaponActor:
+		// он Abstract, но пикер TSubclassOf абстрактные классы всё равно показывает. Симптом
+		// без этой строки — оружия нет, лог чист.
+		UE_LOG(LogClanhall, Warning, TEXT("%s: SpawnActor(%s) вернул nullptr — оружия не будет."),
+			*GetName(), *WeaponClass->GetName());
 		return nullptr;
 	}
 
 	USkeletalMeshComponent* OwnerMesh = GetMesh();
+	if (!OwnerMesh)
+	{
+		UE_LOG(LogClanhall, Warning, TEXT("%s: GetMesh() вернул nullptr — крепить %s некуда, оружие остаётся в мире рут-трансформом."),
+			*GetName(), *SpawnedActor->GetClass()->GetName());
+		return SpawnedActor;
+	}
+
 	const bool bSocketNamed = !SpawnedActor->AttachSocketName.IsNone();
-	const bool bSocketExists = bSocketNamed && OwnerMesh && OwnerMesh->DoesSocketExist(SpawnedActor->AttachSocketName);
+	const bool bSocketExists = bSocketNamed && OwnerMesh->DoesSocketExist(SpawnedActor->AttachSocketName);
 
 	if (!bSocketNamed)
 	{
