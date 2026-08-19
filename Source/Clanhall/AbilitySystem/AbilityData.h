@@ -29,17 +29,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	TObjectPtr<UTexture2D> Icon;
 
-	/** Идентичность навыка — чем я контрю (Ability.Skill.Knight.PowerStrike и т.д.), а не кого я контрю.
+	/** Идентичность навыка — чем я контрю (Ability.Knight.PowerStrike и т.д.), а не кого я контрю.
 	 *  Уходит в TryResolveCounter как IncomingCounterTag; матчится против набора CounteredBy на
 	 *  защищающемся (`ability_system.md`, «Контрнавык»). */
-	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Skill"))
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability"))
 	FGameplayTag CounterTag;
 
 	/** Чем ЭТОТ навык можно сбить. Контейнер, не один тег: один навык врага может контриться
 	 *  навыками нескольких классов. Проверка идёт через HasTag, поэтому запись ветки
-	 *  (Ability.Skill.Lancer) матчит любой навык Ланцера. Пусто = навык не контрится.
+	 *  (Ability.Lancer) матчит любой навык Ланцера. Пусто = навык не контрится.
 	 *  Парный к CounterTag: тот — идентичность («чем я контрю»), этот — уязвимость. */
-	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability.Skill"))
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability"))
 	FGameplayTagContainer CounteredBy;
 
 	/** Стоимость в Charges. Канон: Q/E=2, R/F=4, Z/X=6, C/V=8 (`combat_system.md`, «Ресурсы персонажа») — бесплатных

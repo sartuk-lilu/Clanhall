@@ -11,18 +11,18 @@
 
 namespace ClanhallGameplayTags
 {
-	// ---- Ability.Skill.* ----
+	// ---- Ability.* ----
 	// Корневые теги веток навыков + листовые теги Knight Ранг 1-2.
 	// Листья других классов добавляются вместе с самими навыками.
 	// Листья нужны для контрнавыка: детектор сравнивает активный тег врага с известными.
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight_ShieldSlam);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight_PowerStrike);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight_ShieldCharge);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Knight_Retribution);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Warrior);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Assassin);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Skill_Lancer);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Knight);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Knight_ShieldSlam);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Knight_PowerStrike);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Knight_ShieldCharge);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Knight_Retribution);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Warrior);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Assassin);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Lancer);
 
 	// ---- State.* ----
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Casting);
@@ -117,7 +117,7 @@ namespace ClanhallGameplayTags
 	// а не перезаписываются — у бойца с рангом 3 в UCharacterSheetData::Perks висят
 	// одновременно Rank1, Rank2 и Rank3. Проверка «открыт ли тир» — обычный HasTag, без
 	// разбора номера из имени тега. Четыре листа на Knight — единственный тип оружия в
-	// проекте; новый тип оружия заводит свои четыре, как Ability.Skill.* заводит листья
+	// проекте; новый тип оружия заводит свои четыре, как Ability.* заводит листья
 	// вместе с самими навыками.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank1);

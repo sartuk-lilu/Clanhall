@@ -45,11 +45,11 @@ public:
 	/** Навыки, которые боец видел в бою. Симметрично SeenSyllables/SeenSpells магии
 	 *  (`ability_system.md`, «Боевой журнал как источник «узнанного»»). Писателя пока нет —
 	 *  заполняется вручную в редакторе; потребитель (условия выдачи ранга) не спроектирован. */
-	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability.Skill"))
+	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability"))
 	FGameplayTagContainer SeenSkills;
 
 	/** Навыки, которые боец выучил. Второй из двух гейтов гранта активки — первый ранг владения
 	 *  (`weapon_system.md`, «Владение оружием»). Ключ — идентичность навыка, UAbilityData::CounterTag. */
-	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability.Skill"))
+	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability"))
 	FGameplayTagContainer LearnedSkills;
 };

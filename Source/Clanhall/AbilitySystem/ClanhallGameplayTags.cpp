@@ -2,14 +2,14 @@
 
 namespace ClanhallGameplayTags
 {
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight, "Ability.Skill.Knight", "Корень навыков Knight");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_ShieldSlam, "Ability.Skill.Knight.ShieldSlam", "Knight Q — Shield Slam (Ранг 1, тир Q/E — 2 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_PowerStrike, "Ability.Skill.Knight.PowerStrike", "Knight E — Power Strike (Ранг 1, тир Q/E — 2 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_ShieldCharge, "Ability.Skill.Knight.ShieldCharge", "Knight R — Shield Charge (Ранг 2, тир R/F — 4 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Knight_Retribution, "Ability.Skill.Knight.Retribution", "Knight F — Retribution (Ранг 2, тир R/F — 4 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Warrior, "Ability.Skill.Warrior", "Корень навыков Warrior");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Assassin, "Ability.Skill.Assassin", "Корень навыков Assassin");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Skill_Lancer, "Ability.Skill.Lancer", "Корень навыков Lancer");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight, "Ability.Knight", "Корень навыков Knight");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_ShieldSlam, "Ability.Knight.ShieldSlam", "Knight Q — Shield Slam (Ранг 1, тир Q/E — 2 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_PowerStrike, "Ability.Knight.PowerStrike", "Knight E — Power Strike (Ранг 1, тир Q/E — 2 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_ShieldCharge, "Ability.Knight.ShieldCharge", "Knight R — Shield Charge (Ранг 2, тир R/F — 4 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_Retribution, "Ability.Knight.Retribution", "Knight F — Retribution (Ранг 2, тир R/F — 4 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Warrior, "Ability.Warrior", "Корень навыков Warrior");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Assassin, "Ability.Assassin", "Корень навыков Assassin");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Lancer, "Ability.Lancer", "Корень навыков Lancer");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Casting, "State.Casting", "Идёт набор слогов обычного заклинания (ПКМ зажат)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CastingAntimagic, "State.CastingAntimagic", "Идёт набор слогов антимагии (ПКМ зажат, Ctrl)");
