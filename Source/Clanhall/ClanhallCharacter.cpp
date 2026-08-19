@@ -452,11 +452,15 @@ void AClanhallCharacter::TickStanceTurn()
 		if (!bStanceTurning && FMath::Abs(YawDelta) > GetStanceTurnThreshold())
 		{
 			bStanceTurning = true;
-			StanceTurnDirection = FMath::Sign(YawDelta);
 		}
 
 		if (bStanceTurning)
 		{
+			// Направление обновляется каждый кадр, не только на взводе: если камера
+			// перекладывается на другую сторону посреди уже идущего подшага, |YawDelta| остаётся
+			// большим и bStanceTurning не опускается — без этого ABP доигрывал бы шаг в сторону,
+			// которая уже не актуальна, хотя капсулу движок довернул в новую верно.
+			StanceTurnDirection = FMath::Sign(YawDelta);
 			Movement->bUseControllerDesiredRotation = true;
 			if (FMath::Abs(YawDelta) <= GetStanceTurnSettleAngle())
 			{
