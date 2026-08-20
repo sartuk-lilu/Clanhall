@@ -1,7 +1,9 @@
 # Технический документ - План Разработки Прототипа  
 
 **Engine:** Unreal Engine 5
+
 **Архитектура:** C++, Blueprint, Gameplay Ability System (GAS)
+
 **Язык:** [🇷🇺 Русский](README.md) | [🇬🇧 English](README_EN.md)
 
 ---
