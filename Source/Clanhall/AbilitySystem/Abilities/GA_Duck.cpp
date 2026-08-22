@@ -12,7 +12,7 @@ UGA_Duck::UGA_Duck()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
-	// Общий с уходом/рывком тег хвоста восстановления — защищает класс действий от спама
+	// Общий с уходом/рывком тег хвоста восстановления - защищает класс действий от спама
 	// (`combat_system.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag());
 }
@@ -30,7 +30,7 @@ bool UGA_Duck::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return false;
 	}
 
-	// Удар коммитится (`combat_system.md`) — живой удар-монтаж блокирует присед, тот же
+	// Удар коммитится (`combat_system.md`) - живой удар-монтаж блокирует присед, тот же
 	// предикат, что у UGA_Dodge::CanActivateAbility.
 	if (const UClanhallComboComponent* Combo = Avatar->FindComponentByClass<UClanhallComboComponent>())
 	{
@@ -54,7 +54,7 @@ void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 		return;
 	}
 
-	// Косметика — механика не зависит от того, стартовал ли монтаж (`CLAUDE.md`, «Механика
+	// Косметика - механика не зависит от того, стартовал ли монтаж (`CLAUDE.md`, «Механика
 	// работает без анимационных ассетов»).
 	if (DuckMontage)
 	{
@@ -71,8 +71,8 @@ void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 
 void UGA_Duck::OnWindupFinished()
 {
-	// Задержка отыграна — теперь капсула обязана попасть в замах: опускаем её ровно на
-	// DuckWindowDuration — присед - окно, а не удержание (`combat_system.md`).
+	// Задержка отыграна - теперь капсула обязана попасть в замах: опускаем её ровно на
+	// DuckWindowDuration (`combat_system.md`: присед - окно, а не удержание).
 	if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
 	{
 		Character->Crouch();
@@ -85,11 +85,6 @@ void UGA_Duck::OnWindupFinished()
 
 void UGA_Duck::OnWindowFinished()
 {
-	if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
-	{
-		Character->UnCrouch();
-	}
-
 	FinishWithRecovery();
 }
 
@@ -99,7 +94,7 @@ void UGA_Duck::FinishWithRecovery()
 	UAnimInstance* AnimInst = (Character && Character->GetMesh()) ? Character->GetMesh()->GetAnimInstance() : nullptr;
 	UAbilitySystemComponent* ASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
 
-	// Монтаж не стартовал — лок не вешаем, невидимого лока в системе не бывает ни при каких
+	// Монтаж не стартовал - лок не вешаем, невидимого лока в системе не бывает ни при каких
 	// условиях (по образцу UClanhallComboComponent::EndSequenceWithRecovery).
 	if (AnimInst && DuckRecoveryMontage && ASC)
 	{
@@ -111,4 +106,19 @@ void UGA_Duck::FinishWithRecovery()
 	}
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_Duck::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	// Безусловный подъём капсулы - единственная гарантия против залипшего приседа. Windup ещё
+	// не дошёл до Crouch() -> UnCrouch() безвреден (bWantsToCrouch и так false). Прервали между
+	// Crouch() и UnCrouch() (смерть, отмена, CancelAbilities, смена уровня) -> без этой строки
+	// капсула осталась бы опущенной до конца сессии - тот же класс залипшего состояния, что
+	// ForceEndHitboxes лечит у зон поражения (`UClanhallComboComponent::OnAttackMontageEnded`).
+	if (ACharacter* Character = ActorInfo ? Cast<ACharacter>(ActorInfo->AvatarActor.Get()) : nullptr)
+	{
+		Character->UnCrouch();
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

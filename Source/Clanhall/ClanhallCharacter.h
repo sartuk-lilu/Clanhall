@@ -5,6 +5,10 @@
 #include "CoreMinimal.h"
 #include "Logging/LogMacros.h"
 #include "ClanhallHumanoidCombatant.h"
+// Полное определение, не forward-declare: EClanhallInputMode - возвращаемый тип
+// UFUNCTION(BlueprintPure) ниже, UHT для рефлексируемых типов требует видеть определение,
+// не полагаться на то, что оно придёт транзитивно через ClanhallHumanoidCombatant.h.
+#include "ClanhallCombatTypes.h"
 #include "ClanhallCharacter.generated.h"
 
 class USpringArmComponent;
@@ -16,8 +20,6 @@ class UClanhallBossSensorComponent;
 class UAnimSequence;
 class UGA_Dodge;
 class UGA_Duck;
-enum class EClanhallInputMode : uint8;
-enum class EClanhallEvadeDirection : uint8;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -127,6 +129,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* SprintAction;
 
+	/** Физическое состояние клавиши Shift, независимо от режима и State.Sprinting. Started
+	 *  на SprintAction приходит один раз на нажатие - если Shift зажат ещё со входа в стойку
+	 *  (CancelSprint снял тег на входе), при выходе из стойки новый Started не придёт, и без
+	 *  этого флага игрок "залипал" бы на ходьбе до перенажатия Shift. OnStanceReleased
+	 *  перепроверяет флаг и запускает бег сам. */
+	bool bSprintKeyHeld = false;
+
 	// --- Пробел: прыжок / рывок (`combat_system.md`) ---
 
 	/** Пробел - в режиме защиты: прыжок, либо (с зажатым Shift) длинный рывок вперёд.
@@ -232,8 +241,7 @@ public:
 	EClanhallInputMode GetInputMode() const;
 
 	/** Активирует DodgeAbilityHandle событием, с направлением в EventMagnitude - см.
-	 *  UGA_Dodge::ActivateAbility (`stage4_rev2_handoff.md`, «Словарь защиты зеркален
-	 *  словарю атаки»). */
+	 *  UGA_Dodge::ActivateAbility (`combat_system.md`). */
 	void TriggerEvade(EClanhallEvadeDirection Direction);
 
 	/** Handles move inputs from either controls or UI interfaces */

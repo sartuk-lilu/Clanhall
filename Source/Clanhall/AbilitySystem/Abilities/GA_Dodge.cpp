@@ -78,6 +78,11 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
 		if (!Attributes || Attributes->GetCharges() < static_cast<float>(LongDashChargeCost))
 		{
+			// Отказ идёт здесь, а не из CanActivateAbility (см. комментарий там) - это уже
+			// ПОСЛЕ Super::ActivateAbility, то есть после PreActivate, где движок вешает
+			// ActivationOwnedTags. У UGA_Dodge их сегодня нет, поэтому моргания не видно, но
+			// если когда-нибудь появятся - тег повесится и снимется в один кадр вместе с этим
+			// EndAbility(bWasCancelled=true). Безвредно как есть, учитывать при добавлении тегов.
 			FGameplayTagContainer FailureTags;
 			FailureTags.AddTag(ClanhallGameplayTags::Denied_Charges.GetTag());
 			ASC->NotifyAbilityFailed(Handle, this, FailureTags);

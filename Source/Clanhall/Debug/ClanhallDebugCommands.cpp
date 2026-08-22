@@ -519,7 +519,7 @@ static void HandleShowCombatState(UWorld* World)
 
 	// InputMode/Sprinting - только у AClanhallCharacter (игрок), TurningInPlace - общий для
 	// любого AClanhallCombatantBase. Без них редакторная проверка локомоции превращается
-	// в угадайку (`task_stage4_code_rev2.md`, «Отладка»).
+	// в угадайку.
 	const AClanhallCharacter* Character = Cast<AClanhallCharacter>(Pawn);
 	const FString ModeStr = Character ? InputModeToString(Character->GetInputMode()) : TEXT("n/a");
 	const FString SprintingStr = Character ? (Character->IsSprinting() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");

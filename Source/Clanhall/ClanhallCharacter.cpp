@@ -301,15 +301,24 @@ void AClanhallCharacter::OnStanceReleased()
 {
 	if (AbilitySystemComponent)
 	{
-		// (`combat_system.md`, «Боевая стойка и переключение режимов»): "Отпустить LMB в любой момент = мгновенный выход из стойки".
+		// (`combat_system.md`): "Отпустить LMB в любой момент = мгновенный выход из стойки".
 		AbilitySystemComponent->CancelAbilityHandle(StanceAbilityHandle);
 	}
 
-	// Выход из стойки — всегда, вне ворот. Останавливает активный
-	// монтаж комбо с blend-out и сбрасывает последовательность независимо от фазы.
+	// Выход из стойки - всегда, вне ворот. Живой удар-монтаж коммитится и доигрывает сам
+	// (`combat_system.md`), здесь только помечается закрывающимся.
 	if (ComboComponent)
 	{
 		ComboComponent->OnStanceExit();
+	}
+
+	// Shift мог быть зажат ещё до входа в стойку (или нажат прямо в ней, где не действует) -
+	// GA_CombatStance::ActivateAbility снял тег бега через CancelSprint, но физическая клавиша
+	// не отпускалась, значит Started для SprintAction больше не придёт. Без этой перепроверки
+	// игрок «залипал» бы на ходьбе до перенажатия Shift.
+	if (bSprintKeyHeld)
+	{
+		StartSprint();
 	}
 }
 
@@ -321,6 +330,11 @@ void AClanhallCharacter::OnStanceReleased()
 
 void AClanhallCharacter::OnSprintPressed()
 {
+	// Физическое состояние клавиши - раньше гейта по режиму: OnStanceReleased читает флаг
+	// уже после выхода из стойки, когда режим снова Free, и должен знать, зажат ли Shift
+	// прямо сейчас, а не только в момент этого Started.
+	bSprintKeyHeld = true;
+
 	// В режиме атаки Shift не делает ничего: стойка статична, бежать можно только
 	// отпустив ЛКМ (`combat_system.md`).
 	if (GetInputMode() != EClanhallInputMode::Free)
@@ -332,6 +346,7 @@ void AClanhallCharacter::OnSprintPressed()
 
 void AClanhallCharacter::OnSprintReleased()
 {
+	bSprintKeyHeld = false;
 	if (IsSprinting())
 	{
 		StopSprint();
