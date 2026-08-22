@@ -1,10 +1,14 @@
-// Боевая стойка (ЛКМ зажат). Канон: (`combat_system.md`, «Боевая стойка и переключение режимов»).
+// Боевая стойка (ЛКМ зажат). Канон: (`combat_system.md`).
 // Держит тег State.InStance, пока активна (через ActivationOwnedTags, движок добавляет/снимает
 // тег автоматически в PreActivate/EndAbility) — WASD-удары и активные навыки читают
-// этот тег, чтобы понять, в стойке персонаж или нет. С этапа 4 ещё и переключает ротацию
-// и скорость движения на правила стойки (`combat_system.md`, «Боевая стойка и переключение
-// режимов»; `locomotion_structure.md`, «Локомоция стойки»): ход спиной и стрейф не должны
-// разворачивать персонаж лицом по ходу движения, как обычная локомоция.
+// этот тег, чтобы понять, в стойке персонаж или нет.
+//
+// Ротацию и скорость стойка больше не трогает вовсе - страйф с доворотом по камере теперь
+// общая локомоция (AClanhallCharacter::BeginPlay/TickBodyTurn), а не привилегия стойки
+// (`locomotion_structure.md`); множитель скорости оружия применяется при экипировке
+// (`AClanhallHumanoidCombatant::PostInitializeComponents`), не в момент входа в стойку.
+// Единственное, что стойка ещё делает с движением - гасит бег (CancelSprint) и текущий разгон
+// (StopMovementImmediately), потому что скорость стойки обязана победить скорость бега.
 //
 // Активируется явно по хэндлу на нажатие ЛКМ, завершается по CancelAbilityHandle на отпускание —
 // см. AClanhallCharacter::OnStancePressed/OnStanceReleased.
@@ -22,23 +26,7 @@ class CLANHALL_API UGA_CombatStance : public UGameplayAbility
 public:
 	UGA_CombatStance();
 
-	/** Переключает ротацию на плавный доворот корпуса (порог/подшаг считает
-	 *  AClanhallCharacter::Tick, см. `locomotion_structure.md`, «Локомоция стойки») и скорость
-	 *  на StanceBaseSpeed бойца * StanceSpeedMultiplier активного оружия, сохранив прежние
-	 *  значения для EndAbility. StopMovementImmediately() — резкий стоп вместо доката
-	 *  (`combat_system.md`, «Боевая стойка и переключение режимов»). */
+	/** Гасит бег (CancelSprint) и текущий разгон (StopMovementImmediately) - скорость стойки
+	 *  обязана победить скорость бега. Ротацию и скорость не трогает: обе - общая локомоция. */
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
-
-	/** Возвращает сохранённые ротацию и скорость, сбрасывает bStanceTurning на бойце. Выход
-	 *  из стойки идёт через CancelAbilityHandle, то есть это всегда EndAbility(bWasCancelled=true) —
-	 *  восстановление обязано работать что на отменённой, что на штатной ветке. Не константами:
-	 *  MaxWalkSpeed вне стойки задаётся в BP-персонаже, хардкод затёр бы её при первом же выходе. */
-	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
-
-private:
-	bool bSavedOrientRotationToMovement = true;
-	bool bSavedUseControllerRotationYaw = false;
-	bool bSavedUseControllerDesiredRotation = false;
-	float SavedRotationRateYaw = 0.0f;
-	float SavedMaxWalkSpeed = 0.0f;
 };

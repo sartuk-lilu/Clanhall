@@ -12,6 +12,7 @@
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "ClanhallCombatTypes.h"
 #include "ClanhallHumanoidCombatant.h"
+#include "ClanhallCharacter.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -299,6 +300,17 @@ static AClanhallHumanoidCombatant* ResolvePlayerCombatant(UWorld* World, EDebugM
 	return Combatant;
 }
 
+static const TCHAR* InputModeToString(EClanhallInputMode Mode)
+{
+	switch (Mode)
+	{
+	case EClanhallInputMode::Free:   return TEXT("Free");
+	case EClanhallInputMode::Attack: return TEXT("Attack");
+	case EClanhallInputMode::Cast:   return TEXT("Cast");
+	default:                         return TEXT("?");
+	}
+}
+
 static TCHAR DirectionToChar(EClanhallAttackDirection Direction)
 {
 	switch (Direction)
@@ -454,6 +466,17 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 	FString Message = FString::Printf(TEXT("Weapon: %s   Type: %s\nSeriesLength %d   ChargeIncome %d\n"),
 		*Weapon->GetName(), *WeaponType->GetName(), WeaponType->SeriesLength, WeaponType->ChargeIncome);
 
+	// Множитель больше не про стойку - применяется при экипировке ко всем трём базовым
+	// скоростям разом (`weapon_system.md`; `AClanhallHumanoidCombatant::PostInitializeComponents`).
+	// Walk (кап хода спиной) не хранится отдельным полем движения - печатаем эффективное
+	// значение WalkSpeed * multiplier, оно совпадает с тем, что реально получается из
+	// (JogSpeed * multiplier) * (WalkSpeed / JogSpeed) в DoMove.
+	Message += FString::Printf(TEXT("WeaponSpeedMultiplier %.2f -> Jog %.0f   Walk(back cap) %.0f   Sprint %.0f\n"),
+		WeaponType->WeaponSpeedMultiplier,
+		Combatant->GetJogSpeed() * WeaponType->WeaponSpeedMultiplier,
+		Combatant->GetWalkSpeed() * WeaponType->WeaponSpeedMultiplier,
+		Combatant->GetSprintSpeed() * WeaponType->WeaponSpeedMultiplier);
+
 	FString RequestedSequence;
 	for (const EClanhallAttackDirection Direction : Requested)
 	{
@@ -494,11 +517,21 @@ static void HandleShowCombatState(UWorld* World)
 		return;
 	}
 
+	// InputMode/Sprinting - только у AClanhallCharacter (игрок), TurningInPlace - общий для
+	// любого AClanhallCombatantBase. Без них редакторная проверка локомоции превращается
+	// в угадайку (`task_stage4_code_rev2.md`, «Отладка»).
+	const AClanhallCharacter* Character = Cast<AClanhallCharacter>(Pawn);
+	const FString ModeStr = Character ? InputModeToString(Character->GetInputMode()) : TEXT("n/a");
+	const FString SprintingStr = Character ? (Character->IsSprinting() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");
+	const AClanhallCombatantBase* Combatant = Cast<AClanhallCombatantBase>(Pawn);
+	const FString TurningStr = Combatant ? (Combatant->IsTurningInPlace() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");
+
 	const FString Message = FString::Printf(
-		TEXT("%s | enemies in radius: %d | exit timer: %.1fs"),
+		TEXT("%s | enemies in radius: %d | exit timer: %.1fs | InputMode: %s | Sprinting: %s | TurningInPlace: %s"),
 		CombatState->IsInCombat() ? TEXT("IN COMBAT") : TEXT("out of combat"),
 		CombatState->GetTrackedEnemyCount(),
-		CombatState->GetExitTimeRemaining());
+		CombatState->GetExitTimeRemaining(),
+		*ModeStr, *SprintingStr, *TurningStr);
 
 	PrintResult(Key, Message, CombatState->IsInCombat() ? FColor::Red : FColor::Green);
 }

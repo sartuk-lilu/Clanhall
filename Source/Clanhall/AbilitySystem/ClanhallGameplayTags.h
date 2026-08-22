@@ -41,11 +41,15 @@ namespace ClanhallGameplayTags
 	// (`combat_system.md`, «Боевое состояние»). Снятие идёт с задержкой — не в момент, когда
 	// последний противник покинул радиус.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InCombat);
-	// Лок-аут после КОРОТКОГО отскока в стойке — по образцу State.ComboRecovery, длительность
-	// ровно длина DodgeRecoveryMontage (`combat_system.md`, «Отскок»). Вешает только короткая
-	// форма, но UGA_Dodge::ActivationBlockedTags блокирует им любую активацию — тег защищает
-	// сам отскок от спама, а не WASD-серию: короткий → выход из стойки → дальний тоже ждёт.
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_DodgeRecovery);
+	// Лок-аут после ухода/рывка/приседа - общий для всех трёх (`stage4_rev2_handoff.md`,
+	// «Словарь защиты зеркален словарю атаки»), длительность ровно длина Recovery-монтажа
+	// конкретного действия. Вешается, только если монтаж реально стартовал; блокирует любую
+	// активацию защиты - тег защищает сам класс действий от спама. Было State.DodgeRecovery -
+	// переименован вместе с расширением словаря защиты (`task_stage4_code_rev2.md`).
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_EvadeRecovery);
+	// ЛКМ отпущен, Shift зажат - бег (`combat_system.md`). Вешает/снимает
+	// AClanhallCharacter::StartSprint/StopSprint.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Sprinting);
 
 	// ---- Attack.Direction.* ----
 	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
@@ -109,6 +113,10 @@ namespace ClanhallGameplayTags
 	// к GA_DirectionalAttackBase через TriggerAbilityFromGameplayEvent — Handle-активация сохраняется,
 	// тег тут служебный (не гейтит выбор способности, тот идёт по Handle).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_DirectionalAttack);
+	// Несёт направление (EClanhallEvadeDirection, EventMagnitude) от AClanhallCharacter::TriggerEvade
+	// к UGA_Dodge::ActivateAbility через TriggerAbilityFromGameplayEvent - служебный, не гейтит
+	// выбор способности (тот идёт по Handle), тем же приёмом, что Event.DirectionalAttack.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Evade);
 	// Сигналы от UClanhallHitboxComponent к живой способности.
 	// Hit: Instigator = владелец зоны, Target = задетый актор, EventMagnitude = хендл зоны
 	// (подписчик может отличить свою зону от чужой). Шлётся на КАЖДУЮ задетую цель.

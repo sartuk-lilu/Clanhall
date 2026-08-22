@@ -14,8 +14,10 @@ struct FInputActionValue;
 class UClanhallTargetingComponent;
 class UClanhallBossSensorComponent;
 class UAnimSequence;
-class UBlendSpace;
 class UGA_Dodge;
+class UGA_Duck;
+enum class EClanhallInputMode : uint8;
+enum class EClanhallEvadeDirection : uint8;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -61,21 +63,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
-	// --- Боевая стойка (`combat_system.md`, «Боевая стойка и переключение режимов»): ЛКМ зажат = стойка, WASD = удары вместо движения ---
+	// --- Боевая стойка (`combat_system.md`): ЛКМ зажат = стойка, WASD = удары вместо движения ---
 
 	/** ЛКМ — вход/выход из боевой стойки */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* StanceAction;
-
-	/** Shift в стойке — переключает WASD с ударов на перемещение (`combat_system.md`,
-	 *  «Боевая стойка и переключение режимов»). */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* StanceMoveModifierAction;
-
-	/** Shift зажат — WASD в стойке перемещает, а не бьёт. Не сбрасывает живую серию
-	 *  (`combat_system.md`: «Shift живую серию не сбрасывает») — гейтит только приём новых
-	 *  ударных нажатий в OnAttack*, открытое окно ComboComponent не трогаем и не гасим. */
-	bool bStanceMoveHeld = false;
 
 	/** W в стойке — Overhead */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
@@ -113,54 +105,39 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* ActiveSkillFAction;
 
-	/** Класс отскока, гранится в BeginPlay вместо UGA_Dodge::StaticClass() напрямую — только так
-	 *  его EditDefaultsOnly-поля (дистанции, монтажи) открываются в редакторе: у C++-класса без
-	 *  Blueprint-наследника их негде править. Дефолт — сам C++-класс, так что без Blueprint-
-	 *  наследника всё продолжает работать на дефолтах кода. */
+	/** Класс отскока/ухода, гранится в BeginPlay вместо UGA_Dodge::StaticClass() напрямую -
+	 *  только так его EditDefaultsOnly-поля (дистанции, монтажи) открываются в редакторе: у
+	 *  C++-класса без Blueprint-наследника их негде править. Дефолт - сам C++-класс, так что
+	 *  без Blueprint-наследника всё продолжает работать на дефолтах кода. */
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Combat")
 	TSubclassOf<UGA_Dodge> DodgeAbilityClass;
 
-	// --- Пробел: отскок / прыжок / бег (`combat_system.md`, «Отскок») ---
-	// Разведение тапа/двойного тапа/удержания живёт в C++ на этом классе, не тремя триггерами
-	// Enhanced Input на одну клавишу: те сработали бы независимо, и одиночный тап внутри
-	// двойного выстрелил бы отскоком до прыжка.
+	FGameplayAbilitySpecHandle DodgeAbilityHandle;
 
-	/** Пробел — единственный бинд на весь функционал ниже. Заменяет старый JumpAction:
-	 *  прыжок теперь тоже вызывается из этой логики (двойной тап вне стойки). */
+	/** Класс приседа, тем же приёмом, что DodgeAbilityClass - см. комментарий там. */
+	UPROPERTY(EditDefaultsOnly, Category = "Input|Combat")
+	TSubclassOf<UGA_Duck> DuckAbilityClass;
+
+	FGameplayAbilitySpecHandle DuckAbilityHandle;
+
+	// --- Shift: бег (`combat_system.md`) ---
+
+	/** Shift - бег в режиме защиты (ничего не зажато). В режиме атаки не делает ничего:
+	 *  стойка статична. */
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	UInputAction* SprintAction;
+
+	// --- Пробел: прыжок / рывок (`combat_system.md`) ---
+
+	/** Пробел - в режиме защиты: прыжок, либо (с зажатым Shift) длинный рывок вперёд.
+	 *  В режиме атаки не делает ничего - защиты в стойке нет. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* SpaceAction;
 
-	/** Вне стойки: удержание дольше этого — бег, короче — тап (ждёт второй на DoubleTapWindow).
-	 *  Плейсхолдер. */
-	UPROPERTY(EditAnywhere, Category = "Combat|Dodge")
-	float HoldThreshold = 0.25f;
+	// --- Ctrl: присед (`combat_system.md`) ---
 
-	/** Вне стойки: окно ожидания второго тапа после первого — пришёл вовремя, значит прыжок,
-	 *  не пришёл — отскок. Единственное осознанное ожидание в системе, и оно живёт только вне
-	 *  стойки: в стойке у Пробела нет альтернатив, отскок стреляет на Started без ожидания.
-	 *  Плейсхолдер. */
-	UPROPERTY(EditAnywhere, Category = "Combat|Dodge")
-	float DoubleTapWindow = 0.25f;
-
-	FGameplayAbilitySpecHandle DodgeAbilityHandle;
-
-	/** Ждём второй Started в окне DoubleTapWindow — первый тап уже случился и не был удержанием. */
-	bool bSpaceAwaitingDoubleTap = false;
-
-	/** Второй Started двойного тапа уже вызвал Jump() — его парное Completed не должно
-	 *  провалиться в ветку "это тап" и завести отскок через DoubleTapWindow. Снимается первым
-	 *  делом в OnSpaceReleased. */
-	bool bSpaceJumpConsumed = false;
-
-	/** Бег активен удержанием Пробела вне стойки. */
-	bool bSpaceSprinting = false;
-
-	/** MaxWalkSpeed до начала бега — возвращается по Completed, не константой (та же причина,
-	 *  что в UGA_CombatStance::EndAbility: MaxWalkSpeed вне стойки задаётся в BP-персонаже). */
-	float SavedWalkSpeedBeforeSprint = 0.0f;
-
-	FTimerHandle SpaceHoldTimerHandle;
-	FTimerHandle SpaceDoubleTapTimerHandle;
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	UInputAction* DuckAction;
 
 public:
 
@@ -172,10 +149,13 @@ protected:
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	/** Initializes the ASC actor info and grants starting attribute values (hardcoded placeholders, see combat_system.md) */
+	/** Initializes the ASC actor info and grants starting attribute values (hardcoded placeholders, see combat_system.md).
+	 *  Здесь же выставляется ротация и базовая скорость общей локомоции (`locomotion_structure.md`) -
+	 *  один раз, не в конструкторе: TurnRate это UPROPERTY, в конструкторе ещё не перезаписан
+	 *  значением из BP. */
 	virtual void BeginPlay() override;
 
-	/** Считает доворот корпуса в боевой стойке — см. TickStanceTurn. */
+	/** Считает доворот корпуса - см. TickBodyTurn. */
 	virtual void Tick(float DeltaSeconds) override;
 
 	/** Прыжок запрещён, пока игрок в боевой стойке (State.InStance) — см. GA_CombatStance. */
@@ -192,60 +172,69 @@ protected:
 	/** ЛКМ нажат — активировать GA_CombatStance */
 	void OnStancePressed();
 
-	/** ЛКМ отпущен — CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `combat_system.md`, «Боевая стойка и переключение режимов») */
+	/** ЛКМ отпущен - CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `combat_system.md`) */
 	void OnStanceReleased();
-
-	/** Shift нажат — WASD в стойке переключается на перемещение. */
-	void OnStanceMoveModifierPressed();
-
-	/** Shift отпущен — WASD в стойке снова бьёт. Открытое окно продолжения серии не трогаем:
-	 *  оно дотикивает своим таймером и закрывается само (`combat_system.md`). */
-	void OnStanceMoveModifierReleased();
 
 	void OnAttackOverhead();
 	void OnAttackRightSlash();
 	void OnAttackLeftSlash();
 	void OnAttackLowSweep();
 
+	/** Q - вне стойки уход влево (TriggerEvade), в стойке активка слота Q. */
 	void OnActiveSkillQ();
+
+	/** E - вне стойки уход вправо (TriggerEvade), в стойке активка слота E. */
 	void OnActiveSkillE();
+
 	void OnActiveSkillR();
 	void OnActiveSkillF();
 
-	/** Пробел нажат. В стойке — отскок сразу, без ожидания (`combat_system.md`: исключение
-	 *  из приоритета отзывчивости существует только вне стойки). Вне стойки: второй тап
-	 *  в открытом окне DoubleTapWindow — прыжок; иначе взводит таймер HoldThreshold. */
+	/** Shift нажат - в режиме защиты запускает бег. В режиме атаки не делает ничего:
+	 *  стойка статична, бежать можно только отпустив ЛКМ (`combat_system.md`). */
+	void OnSprintPressed();
+
+	/** Shift отпущен - гасит бег, если он был активен. */
+	void OnSprintReleased();
+
+	/** Пробел нажат. В режиме защиты: на бегу - длинный рывок вперёд (TriggerEvade), иначе
+	 *  прыжок. В режиме атаки не делает ничего - защиты в стойке нет (`combat_system.md`). */
 	void OnSpacePressed();
 
-	/** Пробел отпущен. Если удержание уже перешло в бег — гасит бег. Если нет — это был тап:
-	 *  открывает окно ожидания второго Started. */
+	/** Пробел отпущен - StopJumping(). */
 	void OnSpaceReleased();
 
-	/** HoldThreshold истёк без Completed — превращает удержание в бег. */
-	void OnSpaceHoldThresholdReached();
-
-	/** DoubleTapWindow истёк без второго Started — тап был одиночным, это дальний отскок. */
-	void OnSpaceDoubleTapWindowExpired();
+	/** Ctrl нажат - активирует UGA_Duck. Только в режиме защиты. */
+	void OnDuckPressed();
 
 	void StartSprint();
 	void StopSprint();
 
 	/** Считает YawDelta между камерой и корпусом и по нему включает/выключает движковый
-	 *  bUseControllerDesiredRotation (доворот) на CharacterMovementComponent, только пока висит
-	 *  State.InStance (`locomotion_structure.md`, «Локомоция стойки»). В движении
-	 *  (Shift + WASD) доворот идёт постоянно, без порога; стоя — по гистерезису
-	 *  StanceTurnThreshold/StanceTurnSettleAngle, со взводом bStanceTurning для ABP (подшаг). */
-	void TickStanceTurn();
+	 *  bUseControllerDesiredRotation (доворот) на CharacterMovementComponent. Доворот - общее
+	 *  правило локомоции, не привилегия стойки (`locomotion_structure.md`). На бегу ротацией
+	 *  заведует bOrientRotationToMovement, сюда тик не заходит. Стоя - по гистерезису
+	 *  TurnThreshold/TurnSettleAngle, со взводом bTurningInPlace для ABP (подшаг); двигаясь
+	 *  (не в стойке, не бегом) доворот идёт постоянно, без порога. */
+	void TickBodyTurn();
 
 public:
 
-	/** Гасит бег и все таймеры/флаги Пробела — вызывается ровно один раз на реальный вход
-	 *  в стойку, из UGA_CombatStance::ActivateAbility, а не из OnStancePressed: тот выполняется
-	 *  каждый кадр удержания ЛКМ (ретрай на Triggered при State.ComboRecovery) и на активной
-	 *  Recovery убивал бы таймер Пробела кадром позже, до входа в стойку (`task_stage4_code_fixes.md`,
-	 *  п.5). Порядок «сначала погасить бег, потом прочитать MaxWalkSpeed» обязан сохраняться —
-	 *  вызывать в самом начале ActivateAbility, до сохранения текущих значений движения. */
-	void CancelSpaceHoldAndSprint();
+	/** Гасит бег - вызывается из UGA_CombatStance::ActivateAbility при входе в стойку с зажатым
+	 *  Shift: скорость стойки обязана победить скорость бега. */
+	void CancelSprint();
+
+	/** Читает ABP - предикат состояния бега вместо прямого чтения State.Sprinting с ASC. */
+	UFUNCTION(BlueprintPure, Category = "Combat|Movement")
+	bool IsSprinting() const;
+
+	/** Режим ввода текущего кадра - см. EClanhallInputMode. */
+	UFUNCTION(BlueprintPure, Category = "Input")
+	EClanhallInputMode GetInputMode() const;
+
+	/** Активирует DodgeAbilityHandle событием, с направлением в EventMagnitude - см.
+	 *  UGA_Dodge::ActivateAbility (`stage4_rev2_handoff.md`, «Словарь защиты зеркален
+	 *  словарю атаки»). */
+	void TriggerEvade(EClanhallEvadeDirection Direction);
 
 	/** Handles move inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
@@ -279,12 +268,4 @@ public:
 	 *  функция BlueprintPure читает ABP игрока по имени класса, перенос сломал бы ноду в графе. */
 	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
 	static UAnimSequence* GetStanceAnim(const ACharacter* Character);
-
-	/** BlendSpace локомоции стойки текущего оружия (UComboData::StanceLocomotion). Точная копия
-	 *  шаблона GetStanceAnim — статичная, берёт ACharacter, каст внутри, по той же причине:
-	 *  нода читается в ABP по имени класса, переносить нельзя. nullptr, если Character не этого
-	 *  класса, ComboData не назначен, или StanceLocomotion не задан — тогда ABP играет
-	 *  StanceAnim как раньше. */
-	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
-	static UBlendSpace* GetStanceBlendSpace(const ACharacter* Character);
 };

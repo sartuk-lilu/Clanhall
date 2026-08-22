@@ -16,6 +16,7 @@
 #include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
 #include "ClanhallWeaponActor.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 
@@ -48,6 +49,15 @@ void AClanhallHumanoidCombatant::PostInitializeComponents()
 	// фолбэки в BeginPlay ниже отрабатывают как и раньше.
 	CurrentWeapon = (CharacterSheet && CharacterSheet->Loadout.IsValidIndex(0))
 		? CharacterSheet->Loadout[0] : nullptr;
+
+	// Множитель скорости оружия применяется при экипировке ко всем трём базовым скоростям
+	// разом (`weapon_system.md`; `stage4_rev2_handoff.md`) - не в момент входа в стойку, тяжёлое
+	// оружие медленное всегда. Считаем от базового JogSpeed бойца, не от текущего MaxWalkSpeed:
+	// повторный вызов при будущем свапе оружия иначе умножил бы второй раз.
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->MaxWalkSpeed = GetJogSpeed() * GetWeaponSpeedMultiplier();
+	}
 }
 
 void AClanhallHumanoidCombatant::BeginPlay()
@@ -253,6 +263,12 @@ const UComboData* AClanhallHumanoidCombatant::GetComboData() const
 {
 	const UWeaponTypeData* WeaponType = GetWeaponType();
 	return WeaponType ? WeaponType->ComboData : nullptr;
+}
+
+float AClanhallHumanoidCombatant::GetWeaponSpeedMultiplier() const
+{
+	const UWeaponTypeData* WeaponType = GetWeaponType();
+	return WeaponType ? WeaponType->WeaponSpeedMultiplier : ClanhallWeaponDefaults::WeaponSpeedMultiplier;
 }
 
 FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetAttackHandle(EClanhallAttackDirection Direction) const

@@ -47,12 +47,6 @@ class CLANHALL_API UClanhallComboComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	/** Blend-out монтажа комбо при выходе из стойки (отпуск ЛКМ), сек. (`Combat Stance and WASD Attacks.md`):
-	 *  обязано совпадать с Duration перехода Locomotion ↔ CombatStance в ABP, иначе на выходе
-	 *  из стойки заметна ступенька. */
-	UPROPERTY(EditDefaultsOnly, Category = "Combo")
-	float StanceExitBlendOutTime = 0.18f;
-
 	/** Единственный публичный сигнал для AI/BT о том, что окно
 	 *  чтения ввода открылось/закрылось — по нему водитель узнаёт момент подать направление
 	 *  в HandleAttackInput. Решений компонент не принимает и не подсказывает — какое именно
@@ -76,8 +70,9 @@ public:
 	void OnComboWindowOpen();
 	void OnComboWindowClose();
 
-	/** Зовётся из обработчика отпуска ЛКМ — работает в любой фазе, вне ворот. Останавливает
-	 *  активный монтаж комбо с blend-out и сбрасывает последовательность. */
+	/** Зовётся из обработчика отпуска ЛКМ - работает в любой фазе, вне ворот. Удар коммитится
+	 *  (`combat_system.md`): живой монтаж больше не режется, доигрывает
+	 *  целиком, серия только помечается закрывающейся. */
 	void OnStanceExit();
 
 	/** Внешнее прерывание серии чужим монтажом (активка Q/E/R/F в общей slot-группе,
@@ -107,6 +102,11 @@ private:
 	bool bReadWindowOpen = false;
 	TOptional<EClanhallAttackDirection> LatestInWindow;
 	TWeakObjectPtr<UAnimMontage> LastPlayedMontage;
+
+	/** Серия закрывается: игрок вышел из стойки, пока удар-монтаж ещё живой. Монтаж доигрывает
+	 *  целиком (`combat_system.md`: удар коммитится), но продолжения не будет - новый ввод
+	 *  отбрасывается, а окно чтения на закрытии уходит в Recovery, как будто ввода не было. */
+	bool bClosingAfterStanceExit = false;
 
 	/** Нейтраль + валидный опенер по данным -> активировать и стартовать серию. */
 	void TryStartSequence(EClanhallAttackDirection Direction);

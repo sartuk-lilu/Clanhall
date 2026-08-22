@@ -1,6 +1,5 @@
 #include "GA_CombatStance.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
-#include "AbilitySystem/WeaponTypeData.h"
 #include "ClanhallCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -29,52 +28,11 @@ void UGA_CombatStance::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
-	// Гасит бег и таймеры Пробела ДО чтения MaxWalkSpeed ниже — вызывается отсюда, а не из
-	// AClanhallCharacter::OnStancePressed: тот выполняется каждый кадр удержания ЛКМ (ретрай
-	// на Triggered при State.ComboRecovery), а этот метод — ровно один раз на реальный вход
-	// (`task_stage4_code_fixes.md`, п.5).
-	Character->CancelSpaceHoldAndSprint();
+	// Бег вообще не должен пережить вход в стойку - скорость стойки обязана победить скорость
+	// бега (`combat_system.md`).
+	Character->CancelSprint();
 
-	bSavedOrientRotationToMovement = Movement->bOrientRotationToMovement;
-	bSavedUseControllerRotationYaw = Character->bUseControllerRotationYaw;
-	bSavedUseControllerDesiredRotation = Movement->bUseControllerDesiredRotation;
-	SavedRotationRateYaw = Movement->RotationRate.Yaw;
-	SavedMaxWalkSpeed = Movement->MaxWalkSpeed;
-
-	// bUseControllerRotationYaw = true было бы мгновенным прилипанием капсулы к йаву камеры —
-	// угла между "куда смотрит камера" и "куда развёрнут корпус" тогда не существует вовсе.
-	// Вместо этого — движковый плавный доворот (bUseControllerDesiredRotation), но не всегда
-	// включённый: им управляет AClanhallCharacter::Tick по порогу/гистерезису
-	// (`locomotion_structure.md`, «Локомоция стойки»). Здесь он выключен — тик включит сам,
-	// когда угол реально накопится.
-	Movement->bOrientRotationToMovement = false;
-	Character->bUseControllerRotationYaw = false;
-	Movement->bUseControllerDesiredRotation = false;
-	Movement->RotationRate.Yaw = Character->GetStanceTurnRate();
-
-	// Оружия нет или множитель не прочитался — берётся StanceBaseSpeed как есть, множитель 1.0
-	// (`weapon_system.md`: множитель применяется к отдельной базовой скорости стойки, не к бегу).
-	const UWeaponTypeData* WeaponType = Character->GetWeaponType();
-	const float SpeedMultiplier = WeaponType ? WeaponType->StanceSpeedMultiplier : ClanhallWeaponDefaults::StanceSpeedMultiplier;
-	Movement->MaxWalkSpeed = Character->GetStanceBaseSpeed() * SpeedMultiplier;
-
-	// Вход в стойку на бегу гасит разгон — дальше игрок двигается уже по правилам стойки.
+	// Вход в стойку на бегу/движении гасит разгон - дальше игрок бьёт по правилам стойки
+	// (перемещения в ней нет вовсе).
 	Movement->StopMovementImmediately();
-}
-
-void UGA_CombatStance::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
-	AClanhallCharacter* Character = ActorInfo ? Cast<AClanhallCharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
-	UCharacterMovementComponent* Movement = Character ? Character->GetCharacterMovement() : nullptr;
-	if (Character && Movement)
-	{
-		Movement->bOrientRotationToMovement = bSavedOrientRotationToMovement;
-		Character->bUseControllerRotationYaw = bSavedUseControllerRotationYaw;
-		Movement->bUseControllerDesiredRotation = bSavedUseControllerDesiredRotation;
-		Movement->RotationRate.Yaw = SavedRotationRateYaw;
-		Movement->MaxWalkSpeed = SavedMaxWalkSpeed;
-		Character->ResetStanceTurning();
-	}
-
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

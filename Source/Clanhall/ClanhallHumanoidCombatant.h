@@ -111,6 +111,12 @@ public:
 	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
 	const UComboData* GetComboData() const;
 
+	/** Множитель скорости активного оружия - GetWeaponType()->WeaponSpeedMultiplier, фолбэк
+	 *  ClanhallWeaponDefaults::WeaponSpeedMultiplier на разрыве цепочки (`weapon_system.md`).
+	 *  Читает PostInitializeComponents (применение к базовым скоростям при экипировке) и
+	 *  AClanhallCharacter (BeginPlay, StartSprint/StopSprint). */
+	float GetWeaponSpeedMultiplier() const;
+
 	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
 	 *  активировать (`Combat Stance and WASD Attacks.md`: инверсия потока активации). */
 	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;

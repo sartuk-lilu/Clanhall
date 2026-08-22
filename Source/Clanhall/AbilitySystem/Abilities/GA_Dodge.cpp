@@ -1,6 +1,7 @@
 #include "GA_Dodge.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
+#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
 #include "AbilitySystemComponent.h"
@@ -8,17 +9,15 @@
 #include "Animation/AnimMontage.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/Controller.h"
 
 UGA_Dodge::UGA_Dodge()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
-	// Вешает State.DodgeRecovery только КОРОТКАЯ форма (см. OnDodgeFinished), но
-	// ActivationBlockedTags блокирует ЛЮБУЮ активацию, пока тег висит — короткий отскок
-	// в стойке → выход из стойки → дальний отскок тоже заблокирован до конца хвоста.
-	// Это осознанно: тег защищает не WASD-серию, а сам отскок от спама.
-	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_DodgeRecovery.GetTag());
+	// ActivationBlockedTags блокирует ЛЮБУЮ активацию, пока хвост восстановления доигрывает -
+	// тег защищает сам класс уход/рывок/присед от спама, общий для всех трёх
+	// (`combat_system.md`).
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag());
 }
 
 bool UGA_Dodge::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
@@ -28,36 +27,28 @@ bool UGA_Dodge::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		return false;
 	}
 
-	UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr;
-	if (!ASC)
+	AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
+	if (!Avatar)
 	{
 		return false;
 	}
 
-	// Короткий отскок в стойке — чистое репозиционирование, зарядов не стоит никогда.
-	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	// Удар коммитится (`combat_system.md`) - живой удар-монтаж блокирует любой уход. Предикат
+	// точный: окно чтения серии находится ВНУТРИ удар-монтажа, поэтому «серия активна» и есть
+	// «удар живой». Хвост Recovery уже не серия - убежать во время него законно, тег
+	// State.ComboRecovery гасит атаки, а не побег.
+	if (const UClanhallComboComponent* Combo = Avatar->FindComponentByClass<UClanhallComboComponent>())
 	{
-		return true;
-	}
-
-	// Дальний вне боя — цена не проверяется вовсе: не "цена ноль", а "шага списания нет"
-	// (`combat_system.md`, «Боевое состояние»).
-	if (!ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_InCombat.GetTag()))
-	{
-		return true;
-	}
-
-	// Дальний в бою — единственный случай, где отскок вообще стоит зарядов.
-	const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
-	if (!Attributes || Attributes->GetCharges() < static_cast<float>(DodgeChargeCost))
-	{
-		if (OptionalRelevantTags)
+		if (Combo->IsSequenceActive())
 		{
-			OptionalRelevantTags->AddTag(ClanhallGameplayTags::Denied_Charges.GetTag());
+			return false;
 		}
-		return false;
 	}
 
+	// Цена (только рывок вперёд, только в бою) зависит от направления, которое известно лишь
+	// на активации - CanActivateAbility событие (TriggerEventData) не получает, движковая
+	// сигнатура его не несёт. Проверка и списание живут в ActivateAbility, где направление уже
+	// известно; отказ там идёт тем же Denied.Charges через ручной NotifyAbilityFailed.
 	return true;
 }
 
@@ -68,50 +59,67 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 	ACharacter* Character = ActorInfo ? Cast<ACharacter>(ActorInfo->AvatarActor.Get()) : nullptr;
 	UAbilitySystemComponent* ASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr;
 	UCharacterMovementComponent* Movement = Character ? Character->GetCharacterMovement() : nullptr;
-	if (!Character || !ASC || !Movement)
+	if (!Character || !ASC || !Movement || !TriggerEventData)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	const bool bInStance = ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag());
+	const EClanhallEvadeDirection Direction = static_cast<EClanhallEvadeDirection>(FMath::RoundToInt(TriggerEventData->EventMagnitude));
 	const bool bInCombat = ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_InCombat.GetTag());
-	bShortFormPending = bInStance;
+	const bool bChargedDash = (Direction == EClanhallEvadeDirection::ForwardDash) && bInCombat;
 
-	const float Distance = bInStance ? ShortDodgeDistance : LongDodgeDistance;
+	// Цена - только у рывка вперёд в бою, списывается тем же механизмом, что в
+	// UGA_PhysicalSkill: на активации и безвозвратно (`economy_system.md`, «Почему кулдаунов нет»).
+	// Боковой уход не стоит зарядов никогда; рывок вне боя цену не проверяет вовсе - не «цена
+	// ноль», а «шага списания нет» (`combat_system.md`, «Боевое состояние»).
+	if (bChargedDash && LongDashChargeCost > 0)
+	{
+		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
+		if (!Attributes || Attributes->GetCharges() < static_cast<float>(LongDashChargeCost))
+		{
+			FGameplayTagContainer FailureTags;
+			FailureTags.AddTag(ClanhallGameplayTags::Denied_Charges.GetTag());
+			ASC->NotifyAbilityFailed(Handle, this, FailureTags);
+			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+			return;
+		}
 
-	// Цена — только у дальнего отскока в бою, списывается тем же механизмом, что
-	// в UGA_PhysicalSkill: на активации и безвозвратно (`economy_system.md`, «Почему кулдаунов нет»).
-	if (!bInStance && bInCombat && DodgeChargeCost > 0)
-	{
-		ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(DodgeChargeCost));
+		ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(LongDashChargeCost));
 	}
 
-	// Направление — вектор ввода перемещения ИЗ УЖЕ СВЕДЁННОГО прошлого кадра
-	// (GetLastMovementInputVector(), не Pending): порядок обработки MoveAction (Triggered)
-	// и SpaceAction (Started) внутри одного кадра — свойство Enhanced Input, не кода,
-	// и Pending-вектор в кадре нажатия Пробела мог ещё не накопиться. В стойке вектор
-	// существует только при Shift+WASD (DoMove не регистрирует AddMovementInput без него —
-	// то же правило "в стойке без Shift назад" получаем бесплатно), вне стойки всегда, если
-	// ввод не заблокирован State.SkillCommitted. Ввода нет — назад от камеры, не от форварда актора.
-	FVector DodgeDirection = Character->GetLastMovementInputVector();
-	if (!DodgeDirection.IsNearlyZero())
+	float Distance = 0.0f;
+	UAnimMontage* TravelMontage = nullptr;
+	FVector WorldDirection = FVector::ZeroVector;
+
+	switch (Direction)
 	{
-		DodgeDirection = DodgeDirection.GetSafeNormal();
+	case EClanhallEvadeDirection::Left:
+		Distance = SideDodgeDistance;
+		TravelMontage = SideDodgeLeftMontage;
+		// Корпус в страйфе развёрнут по камере, на бегу - по движению, поэтому направление
+		// ухода берётся от корпуса, а не от камеры и не от вектора ввода (`combat_system.md`):
+		// в страйфе, чтобы уйти влево, вектор ввода потребовал бы сначала поехать влево - то
+		// есть занять плохую позицию, прежде чем получить право из неё уйти.
+		WorldDirection = -Character->GetActorRightVector();
+		break;
+	case EClanhallEvadeDirection::Right:
+		Distance = SideDodgeDistance;
+		TravelMontage = SideDodgeRightMontage;
+		WorldDirection = Character->GetActorRightVector();
+		break;
+	case EClanhallEvadeDirection::ForwardDash:
+	default:
+		Distance = LongDashDistance;
+		TravelMontage = LongDashMontage;
+		WorldDirection = Character->GetActorForwardVector();
+		break;
 	}
-	else if (AController* Controller = Character->GetController())
-	{
-		const FRotator YawRotation(0.0f, Controller->GetControlRotation().Yaw, 0.0f);
-		DodgeDirection = -FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	}
-	else
-	{
-		DodgeDirection = -Character->GetActorForwardVector();
-	}
+
+	const float Duration = (Direction == EClanhallEvadeDirection::ForwardDash) ? LongDashDuration : SideDodgeDuration;
 
 	// Косметика — механика не зависит от того, стартовал ли монтаж (`CLAUDE.md`, «Механика
 	// работает без анимационных ассетов»).
-	UAnimMontage* TravelMontage = bInStance ? ShortDodgeMontage : LongDodgeMontage;
 	if (TravelMontage)
 	{
 		if (UAnimInstance* AnimInst = Character->GetMesh() ? Character->GetMesh()->GetAnimInstance() : nullptr)
@@ -120,14 +128,14 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 		}
 	}
 
-	const FVector TargetLocation = Character->GetActorLocation() + DodgeDirection * Distance;
+	const FVector TargetLocation = Character->GetActorLocation() + WorldDirection * Distance;
 
-	// Кадров неуязвимости нет: перемещение капсулы Root Motion Source'ом, тем же способом,
-	// что рывок в UGA_PhysicalSkill/UDashFragment — не LaunchCharacter и не телепорт
-	// SetActorLocation, иначе свип противника прошёл бы сквозь то место, где игрока уже нет,
-	// но коллизия ещё есть.
+	// Корпус на уходе не доворачивается - смещение и только (`combat_system.md`). Кадров
+	// неуязвимости нет: перемещение капсулы Root Motion Source'ом, тем же способом, что рывок
+	// в UGA_PhysicalSkill/UDashFragment - не LaunchCharacter и не телепорт SetActorLocation,
+	// иначе свип противника прошёл бы сквозь то место, где игрока уже нет, но коллизия ещё есть.
 	UAbilityTask_ApplyRootMotionMoveToForce* DodgeTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(
-		this, TEXT("ClanhallDodge"), TargetLocation, DodgeDuration,
+		this, TEXT("ClanhallDodge"), TargetLocation, Duration,
 		/*bSetNewMovementMode*/ false, EMovementMode::MOVE_Walking,
 		/*bRestrictSpeedToExpected*/ false, /*PathOffsetCurve*/ nullptr,
 		ERootMotionFinishVelocityMode::SetVelocity, FVector::ZeroVector, /*ClampVelocityOnFinish*/ 0.0f);
@@ -138,21 +146,18 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 
 void UGA_Dodge::OnDodgeFinished()
 {
-	if (bShortFormPending)
-	{
-		ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
-		UAnimInstance* AnimInst = (Character && Character->GetMesh()) ? Character->GetMesh()->GetAnimInstance() : nullptr;
-		UAbilitySystemComponent* ASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	UAnimInstance* AnimInst = (Character && Character->GetMesh()) ? Character->GetMesh()->GetAnimInstance() : nullptr;
+	UAbilitySystemComponent* ASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
 
-		// Монтаж не стартовал — лок не вешаем, невидимого лока в системе не бывает
-		// ни при каких условиях (по образцу UClanhallComboComponent::EndSequenceWithRecovery).
-		if (AnimInst && DodgeRecoveryMontage && ASC)
+	// Монтаж не стартовал - лок не вешаем, невидимого лока в системе не бывает ни при каких
+	// условиях (по образцу UClanhallComboComponent::EndSequenceWithRecovery).
+	if (AnimInst && EvadeRecoveryMontage && ASC)
+	{
+		const float PlayedDuration = AnimInst->Montage_Play(EvadeRecoveryMontage);
+		if (PlayedDuration > 0.0f)
 		{
-			const float PlayedDuration = AnimInst->Montage_Play(DodgeRecoveryMontage);
-			if (PlayedDuration > 0.0f)
-			{
-				ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_DodgeRecovery.GetTag(), DodgeRecoveryMontage->GetPlayLength());
-			}
+			ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_EvadeRecovery.GetTag(), EvadeRecoveryMontage->GetPlayLength());
 		}
 	}
 

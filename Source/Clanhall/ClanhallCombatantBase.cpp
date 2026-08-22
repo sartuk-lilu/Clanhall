@@ -28,6 +28,10 @@ AClanhallCombatantBase::AClanhallCombatantBase()
 
 	// State.InCombat — стороне-нейтрален, как парирование и WASD-серия (`combat_system.md`, «Боевое состояние»).
 	CombatStateComponent = CreateDefaultSubobject<UClanhallCombatStateComponent>(TEXT("CombatStateComponent"));
+
+	// Без этого Crouch() молча ничего не делает (`stage4_rev2_handoff.md`, присед - окно, а не
+	// удержание) - UGA_Duck опускает капсулу движковым Crouch(), не SetCapsuleSize.
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 }
 
 UAbilitySystemComponent* AClanhallCombatantBase::GetAbilitySystemComponent() const

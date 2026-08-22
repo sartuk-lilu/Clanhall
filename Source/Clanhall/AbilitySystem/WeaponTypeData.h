@@ -25,7 +25,7 @@ namespace ClanhallWeaponDefaults
 	constexpr int32 ChargeIncome = 1;
 	constexpr int32 SeriesLength = 2;
 	constexpr float ArmorPenetration = 0.0f;
-	constexpr float StanceSpeedMultiplier = 1.0f;
+	constexpr float WeaponSpeedMultiplier = 1.0f;
 }
 
 UCLASS()
@@ -49,12 +49,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "1"))
 	int32 ChargeIncome = ClanhallWeaponDefaults::ChargeIncome;
 
-	/** Множитель к базовой скорости бойца в боевой стойке, не см/с — абсолютное число
-	 *  непереносимо между бойцами с разной базой (`weapon_system.md`, «Оружие как актор»).
-	 *  1.0 — как обычно. ClampMin 0.1, не 0: ноль означал бы «в стойке не двигается вовсе»,
-	 *  такого решения нет. Потребитель появится в этапе 4 — сейчас никто не читает. */
+	/** Множитель к базовым скоростям бойца (JogSpeed/WalkSpeed/SprintSpeed), не см/с -
+	 *  абсолютное число непереносимо между бойцами с разной базой (`weapon_system.md`,
+	 *  «Оружие как актор»). Применяется при экипировке ко всем трём разом
+	 *  (`AClanhallHumanoidCombatant::PostInitializeComponents`), не только в стойке - тяжёлое
+	 *  оружие медленное всегда, а не в момент боевого контакта. 1.0 - как обычно, тяжёлое -
+	 *  0.6-0.7. ClampMin 0.1, не 0: ноль означал бы «этим оружием не двигаться вовсе», такого
+	 *  решения нет. */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "0.1"))
-	float StanceSpeedMultiplier = 1.0f;
+	float WeaponSpeedMultiplier = 1.0f;
 
 	/** База плоского пробития DT. Потребитель — этап 6. */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "0.0"))

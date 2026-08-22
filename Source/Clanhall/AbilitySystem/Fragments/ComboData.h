@@ -17,7 +17,6 @@
 
 class UAnimMontage;
 class UAnimSequence;
-class UBlendSpace;
 
 /** Базовый урон и тип на направление — направление задаётся именем поля-владельца в UComboData,
  *  в самой структуре не хранится. */
@@ -201,15 +200,6 @@ public:
 	 *  UAnimMontage: стойка — поза в state machine, а не монтаж через слот. */
 	UPROPERTY(EditAnywhere, Category = "Combo")
 	TObjectPtr<UAnimSequence> StanceAnim;
-
-	/** Локомоция стойки (Shift + WASD) текущего оружия — стрейф с двуручом и с кинжалом
-	 *  выглядит по-разному. ABP забирает её через статичный
-	 *  AClanhallCharacter::GetStanceBlendSpace(Character), точная копия шаблона GetStanceAnim.
-	 *  nullptr — законное состояние: тогда ABP играет StanceAnim как раньше, локомоция стойки
-	 *  работает без единого нового ассета (`CLAUDE.md`, «Механика работает без анимационных
-	 *  ассетов»). */
-	UPROPERTY(EditAnywhere, Category = "Combo")
-	TObjectPtr<UBlendSpace> StanceLocomotion;
 
 	/** Опенеры из боевой стойки. Ассеты: Stance_W / Stance_A / Stance_D / Stance_S. */
 	UPROPERTY(EditAnywhere, Category = "Combo")

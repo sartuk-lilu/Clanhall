@@ -90,43 +90,46 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxStagger = 4.0f;
 
-	/** Базовая скорость стойки — отдельная от MaxWalkSpeed бега, принадлежит бойцу, а не
-	 *  оружию (`weapon_system.md`: множитель оружия применяется к ней, не к скорости бега).
-	 *  Итоговая скорость в стойке = StanceBaseSpeed * UWeaponTypeData::StanceSpeedMultiplier
-	 *  активного оружия (`UGA_CombatStance::ActivateAbility`). Плейсхолдер. */
+	/** Скорость обычной ходьбы (страйф, вперёд, передние диагонали) - общая локомоция, не
+	 *  привилегия стойки: доворот корпуса по камере теперь работает везде (`locomotion_structure.md`).
+	 *  Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float StanceBaseSpeed = 300.0f;
+	float JogSpeed = 500.0f;
 
-	/** Бег вне стойки — удержание Пробела поднимает MaxWalkSpeed до этого значения, отпускание
-	 *  возвращает прежнее (`combat_system.md`, «Отскок», блок «Бег»). Плейсхолдер. */
+	/** Кап скорости хода спиной и по задним диагоналям (`locomotion_structure.md`) - отступать
+	 *  лицом к врагу это уступка. Плейсхолдер. */
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float WalkSpeed = 200.0f;
+
+	/** Бег (Shift) - во все стороны, корпус развёрнут по движению (`combat_system.md`).
+	 *  Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float SprintSpeed = 900.0f;
 
 	/** Угол между камерой и корпусом (градусы), после которого стоящий боец начинает доворот
-	 *  (`locomotion_structure.md`, «Локомоция стойки»). Ниже порога корпус не вращается вовсе —
-	 *  визуально за камерой тянется только верх, это работа ABP. Плейсхолдер. */
+	 *  (`locomotion_structure.md`). Ниже порога корпус не вращается вовсе - визуально за камерой
+	 *  тянется только верх, это работа ABP. Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float StanceTurnThreshold = 60.0f;
+	float TurnThreshold = 60.0f;
 
-	/** Угол, на котором начавшийся доворот считается завершённым. Меньше StanceTurnThreshold —
+	/** Угол, на котором начавшийся доворот считается завершённым. Меньше TurnThreshold -
 	 *  гистерезис нужен, иначе на границе порога доворот дёргается "начал — тут же перестал"
-	 *  каждый кадр (`locomotion_structure.md`, «Локомоция стойки»). Плейсхолдер. */
+	 *  каждый кадр (`locomotion_structure.md`). Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float StanceTurnSettleAngle = 10.0f;
+	float TurnSettleAngle = 10.0f;
 
-	/** Скорость доворота корпуса в стойке, градусов в секунду. Плейсхолдер. */
+	/** Скорость доворота корпуса, градусов в секунду. Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float StanceTurnRate = 300.0f;
+	float TurnRate = 300.0f;
 
 	/** Играть ли подшаг (ABP) — взводится, когда угол между камерой и корпусом уходит за
-	 *  StanceTurnThreshold, снимается на StanceTurnSettleAngle или при перемещении в стойке
-	 *  (`locomotion_structure.md`, «Локомоция стойки»). */
+	 *  TurnThreshold, снимается на TurnSettleAngle или на бегу (`locomotion_structure.md`). */
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
-	bool bStanceTurning = false;
+	bool bTurningInPlace = false;
 
 	/** Направление доворота для ABP: -1 влево, +1 вправо, 0 — не поворачивает. */
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
-	float StanceTurnDirection = 0.0f;
+	float TurnDirection = 0.0f;
 
 public:
 	AClanhallCombatantBase();
@@ -140,26 +143,33 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "AbilitySystem")
 	FOnClanhallChargesDenied OnChargesDenied;
 
-	/** Читает UGA_CombatStance при входе в стойку, чтобы посчитать итоговый MaxWalkSpeed. */
-	float GetStanceBaseSpeed() const { return StanceBaseSpeed; }
+	/** Читает AClanhallCharacter::BeginPlay и DoMove (кап хода спиной) и
+	 *  AClanhallHumanoidCombatant::PostInitializeComponents (множитель оружия). */
+	float GetJogSpeed() const { return JogSpeed; }
 
-	/** Читает AClanhallCharacter при удержании Пробела вне стойки. */
+	/** Читает AClanhallCharacter::DoMove - кап скорости хода спиной и по задним диагоналям. */
+	float GetWalkSpeed() const { return WalkSpeed; }
+
+	/** Читает AClanhallCharacter::StartSprint. */
 	float GetSprintSpeed() const { return SprintSpeed; }
 
-	/** Читает AClanhallCharacter::Tick — порог входа в доворот корпуса. */
-	float GetStanceTurnThreshold() const { return StanceTurnThreshold; }
+	/** Читает AClanhallCharacter::TickBodyTurn - порог входа в доворот корпуса. */
+	float GetTurnThreshold() const { return TurnThreshold; }
 
-	/** Читает AClanhallCharacter::Tick — угол, на котором доворот считается завершённым. */
-	float GetStanceTurnSettleAngle() const { return StanceTurnSettleAngle; }
+	/** Читает AClanhallCharacter::TickBodyTurn - угол, на котором доворот считается завершённым. */
+	float GetTurnSettleAngle() const { return TurnSettleAngle; }
 
-	/** Читает UGA_CombatStance::ActivateAbility (RotationRate.Yaw на вход в стойку) и
-	 *  AClanhallCharacter::Tick (сам доворот через движковый bUseControllerDesiredRotation). */
-	float GetStanceTurnRate() const { return StanceTurnRate; }
+	/** Читает AClanhallCharacter::BeginPlay (RotationRate.Yaw) и TickBodyTurn (сам доворот через
+	 *  движковый bUseControllerDesiredRotation). */
+	float GetTurnRate() const { return TurnRate; }
 
-	/** Сбрасывает состояние доворота для ABP — вызывается UGA_CombatStance::EndAbility на выходе
-	 *  из стойки, а не изнутри Tick: тик перестаёт считаться сразу после снятия State.InStance,
-	 *  и последнее значение bStanceTurning иначе могло бы остаться висеть "true". */
-	void ResetStanceTurning() { bStanceTurning = false; StanceTurnDirection = 0.0f; }
+	/** Сбрасывает состояние доворота для ABP - вызывается на бегу и на выходе из живого поворота
+	 *  (`locomotion_structure.md`). */
+	void ResetTurnInPlace() { bTurningInPlace = false; TurnDirection = 0.0f; }
+
+	/** Читает Clanhall.Player.ShowCombatState - редакторная проверка локомоции без bTurningInPlace
+	 *  превращается в угадайку. */
+	bool IsTurningInPlace() const { return bTurningInPlace; }
 
 protected:
 	virtual void BeginPlay() override;

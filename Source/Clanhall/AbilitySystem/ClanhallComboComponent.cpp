@@ -39,6 +39,13 @@ namespace
 
 void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Direction)
 {
+	if (bClosingAfterStanceExit)
+	{
+		// Серия уже помечена закрывающейся (`OnStanceExit`) - продолжения не будет, живой
+		// монтаж доигрывает сам по себе. Новый ввод отбрасывается, как будто его не было.
+		return;
+	}
+
 	UAbilitySystemComponent* ASC = GetASC();
 	if (!ASC || ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_ComboRecovery.GetTag()))
 	{
@@ -48,10 +55,10 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 		return;
 	}
 
-	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_DodgeRecovery.GetTag()))
+	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag()))
 	{
-		// Лок-аут после короткого отскока в стойке (`combat_system.md`, «Отскок») — та же причина,
-		// что у State.ComboRecovery выше: хвост отскока ещё доигрывает, новый удар не начинается.
+		// Лок-аут после ухода/рывка/приседа (`combat_system.md`) - та же причина,
+		// что у State.ComboRecovery выше: хвост защиты ещё доигрывает, новый удар не начинается.
 		return;
 	}
 
@@ -139,6 +146,14 @@ void UClanhallComboComponent::OnComboWindowClose()
 {
 	bReadWindowOpen = false;
 	OnComboWindowClosed.Broadcast();
+
+	if (bClosingAfterStanceExit)
+	{
+		// Игрок вышел из стойки до закрытия окна - продолжения не будет, независимо от того,
+		// подан ли был ввод в окно: ведём себя так, будто ввода не было вовсе.
+		EndSequenceWithRecovery();
+		return;
+	}
 
 	if (!LatestInWindow.IsSet())
 	{
@@ -412,6 +427,9 @@ void UClanhallComboComponent::ResetCombo()
 	// Упрочнение: гасим ворота даже если сброс пришёл при открытом окне (напр. OnStanceExit
 	// посреди чтения ввода) — не даём следующему нажатию попасть в уже мёртвое окно.
 	bReadWindowOpen = false;
+	// Флаг закрывающейся серии гасим здесь же - новая серия (TryStartSequence) обязана
+	// начинаться с чистого состояния.
+	bClosingAfterStanceExit = false;
 	// Тег State.ComboRecovery (если уже был повешен) НЕ снимается здесь — он живёт своим таймером
 	// независимо от состояния серии. Именно это не даёт связке "выйти из стойки и сразу войти
 	// обратно" бесплатно отменить лок-аут (см. OnStanceExit).
@@ -419,24 +437,12 @@ void UClanhallComboComponent::ResetCombo()
 
 void UClanhallComboComponent::OnStanceExit()
 {
-	// Прерываем ТОЛЬКО живой удар-монтаж (StepCount > 0). При StepCount == 0 это либо
-	// нейтраль (гасить нечего), либо уже играет Recovery — и он обязан доиграть: именно
-	// он показывает игроку, почему новые атаки и вход в стойку пока не работают.
-	// Recovery живёт в слоте upperbody, низ уходит в локомоцию по bInStance — персонаж
-	// бежит, руки доводят возврат к стойке.
 	if (StepCount > 0)
 	{
-		if (UAnimInstance* AnimInst = GetAnimInstance())
-		{
-			AnimInst->Montage_Stop(StanceExitBlendOutTime, LastPlayedMontage.Get());
-		}
-
-		// ForceEndHitboxes переехал СЮДА (E2.6): при StepCount == 0 живого удар-монтажа нет, а
-		// значит нет и своей зоны — всё открытое принадлежит активке в фазе коммита (State.
-		// SkillCommitted). Закрывать чужую зону нельзя: Event.Hitbox.Closed оборвал бы её до
-		// контакта, хотя выход из стойки по канону блокирует новые действия, а не отменяет
-		// начатое (`combat_system.md`, «Боевая стойка и переключение режимов») — тот же принцип, что уже защищает каст-монтаж строкой выше.
-		ForceEndHitboxes();
+		// Монтаж не режем: удар коммитится и доигрывает (`combat_system.md`).
+		// Зону тоже не трогаем - она принадлежит живому монтажу и закроется своим NotifyEnd.
+		bClosingAfterStanceExit = true;
+		return;
 	}
 
 	ResetCombo();

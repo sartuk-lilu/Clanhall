@@ -17,23 +17,24 @@
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/Abilities/GA_CombatStance.h"
 #include "AbilitySystem/Abilities/GA_Dodge.h"
+#include "AbilitySystem/Abilities/GA_Duck.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "Engine/Engine.h"
-#include "TimerManager.h"
-#include "Animation/BlendSpace.h"
 
 AClanhallCharacter::AClanhallCharacter()
 {
-	// Нужен для доворота корпуса в стойке (`TickStanceTurn`) — без него State.InStance держит
-	// bUseControllerDesiredRotation молча выключенным навсегда, доворота не будет вовсе.
+	// Нужен для доворота корпуса (`TickBodyTurn`) - без него bUseControllerDesiredRotation
+	// держится молча выключенным навсегда, доворота не будет вовсе.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Дефолт — сам C++-класс отскока: если разработчик не завёл Blueprint-наследника
-	// UGA_Dodge, всё продолжает работать на дефолтах кода (см. поле в заголовке).
+	// Дефолт - сам C++-класс отскока/ухода и приседа: если разработчик не завёл
+	// Blueprint-наследника, всё продолжает работать на дефолтах кода (см. поля в заголовке).
 	DodgeAbilityClass = UGA_Dodge::StaticClass();
+	DuckAbilityClass = UGA_Duck::StaticClass();
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -98,11 +99,23 @@ void AClanhallCharacter::BeginPlay()
 		// гранятся выше по иерархии — см. AClanhallHumanoidCombatant::BeginPlay.
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
 
-		// Грант отскока (`combat_system.md`, «Отскок») — рядом со стойкой. У противников
-		// отскока пока нет: стойки как способности у них тоже нет. Гранится DodgeAbilityClass,
-		// не UGA_Dodge::StaticClass() напрямую — иначе EditDefaultsOnly-поля класса (дистанции,
-		// монтажи) негде было бы открыть в редакторе.
+		// Грант ухода/рывка и приседа (`combat_system.md`) - рядом со стойкой.
+		// У противников их пока нет: стойки как способности у них тоже нет. Гранится
+		// DodgeAbilityClass/DuckAbilityClass, не StaticClass() напрямую - иначе
+		// EditDefaultsOnly-поля класса (дистанции, монтажи) негде было бы открыть в редакторе.
 		DodgeAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DodgeAbilityClass, 1, INDEX_NONE, this));
+		DuckAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DuckAbilityClass, 1, INDEX_NONE, this));
+	}
+
+	// Ротация и базовая скорость общей локомоции - один раз, не в конструкторе: TurnRate это
+	// UPROPERTY, в конструкторе ещё не перезаписан значением из BP (`locomotion_structure.md`).
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->bOrientRotationToMovement = false;   // страйф: корпус по камере
+		bUseControllerRotationYaw = false;             // не мгновенное прилипание, доворот считает тик
+		Movement->bUseControllerDesiredRotation = false;
+		Movement->RotationRate.Yaw = GetTurnRate();
+		Movement->MaxWalkSpeed = GetJogSpeed() * GetWeaponSpeedMultiplier();
 	}
 }
 
@@ -110,7 +123,7 @@ void AClanhallCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	TickStanceTurn();
+	TickBodyTurn();
 }
 
 bool AClanhallCharacter::CanJumpInternal_Implementation() const
@@ -152,11 +165,6 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnStanceReleased);
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnStanceReleased);
 
-		// Shift + WASD в стойке = перемещение (`combat_system.md`, «Боевая стойка и переключение режимов»).
-		EnhancedInputComponent->BindAction(StanceMoveModifierAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnStanceMoveModifierPressed);
-		EnhancedInputComponent->BindAction(StanceMoveModifierAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnStanceMoveModifierReleased);
-		EnhancedInputComponent->BindAction(StanceMoveModifierAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnStanceMoveModifierReleased);
-
 		// Directional WASD-attacks (`combat_system.md`, «Направления атаки (WASD)») — те же клавиши, что и Move,
 		// но отдельные дискретные действия: срабатывают один раз на нажатие, а не каждый кадр.
 		// GA_DirectionalAttackBase сам отказывает, если игрок не в стойке (ActivationRequiredTags).
@@ -171,11 +179,18 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(ActiveSkillRAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillR);
 		EnhancedInputComponent->BindAction(ActiveSkillFAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillF);
 
-		// Пробел: тап/двойной тап/удержание разводятся в C++ на этом классе, не тремя триггерами
-		// Enhanced Input на одну клавишу (`combat_system.md`, «Отскок»). Заменяет старый JumpAction.
+		// Пробел: прыжок / рывок, режим решает сам обработчик (`combat_system.md`).
 		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSpacePressed);
 		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnSpaceReleased);
 		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnSpaceReleased);
+
+		// Shift: бег в режиме защиты, ничего не делает в режиме атаки.
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSprintPressed);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnSprintReleased);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnSprintReleased);
+
+		// Ctrl: присед, окно а не удержание - биндится только Started (`combat_system.md`).
+		EnhancedInputComponent->BindAction(DuckAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnDuckPressed);
 	}
 	else
 	{
@@ -203,15 +218,12 @@ void AClanhallCharacter::Look(const FInputActionValue& Value)
 
 void AClanhallCharacter::DoMove(float Right, float Forward)
 {
-	// В боевой стойке WASD = направление удара, а не движение (`combat_system.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»).
-	// Стойка наземная: тег State.InStance может висеть и в воздухе (держим ЛКМ при прыжке/падении),
-	// поэтому здесь дополнительно спрашиваем IsFalling() — тем же предикатом, что гейтит позу
-	// стойки в ABP. В воздухе air control не режем; тег сам "включит" стойку в кадре приземления.
-	// Shift + WASD в стойке — исключение: перемещение, не удары (`combat_system.md`,
-	// «Боевая стойка и переключение режимов», «Локомоция в стойке»).
-	if (AbilitySystemComponent
-		&& AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag())
-		&& !bStanceMoveHeld
+	// В боевой стойке WASD = направление удара, а не движение (`combat_system.md`, «Режимы
+	// ввода», «Направления атаки (WASD)»). Стойка наземная: тег State.InStance может висеть и
+	// в воздухе (держим ЛКМ при прыжке/падении), поэтому здесь дополнительно спрашиваем
+	// IsFalling() - тем же предикатом, что гейтит позу стойки в ABP. В воздухе air control не
+	// режем; тег сам "включит" стойку в кадре приземления.
+	if (GetInputMode() == EClanhallInputMode::Attack
 		&& GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
 		return;
@@ -238,9 +250,20 @@ void AClanhallCharacter::DoMove(float Right, float Forward)
 		// get right vector
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
+		// Ход спиной и по задним диагоналям - только шагом (`locomotion_structure.md`).
+		// Отступать лицом к врагу это уступка, разрывать дистанцию надо бегом. На бегу кап
+		// не нужен: корпус развёрнут по движению, спиной там не бегают.
+		float Scale = 1.0f;
+		if (!AbilitySystemComponent || !AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag()))
+		{
+			const FVector2D Dir = FVector2D(Right, Forward).GetSafeNormal();
+			const float Backness = FMath::Clamp(-Dir.Y / 0.7071f, 0.0f, 1.0f);
+			Scale = FMath::Lerp(1.0f, GetWalkSpeed() / FMath::Max(GetJogSpeed(), 1.0f), Backness);
+		}
+
 		// add movement
-		AddMovementInput(ForwardDirection, Forward);
-		AddMovementInput(RightDirection, Right);
+		AddMovementInput(ForwardDirection, Forward * Scale);
+		AddMovementInput(RightDirection, Right * Scale);
 	}
 }
 
@@ -296,136 +319,141 @@ void AClanhallCharacter::OnStanceReleased()
 // UClanhallHitboxComponent при хите врага зоной с bParryable == true (State.Parrying на ASC
 // врага, не игрока).
 
-void AClanhallCharacter::OnStanceMoveModifierPressed()
+void AClanhallCharacter::OnSprintPressed()
 {
-	bStanceMoveHeld = true;
+	// В режиме атаки Shift не делает ничего: стойка статична, бежать можно только
+	// отпустив ЛКМ (`combat_system.md`).
+	if (GetInputMode() != EClanhallInputMode::Free)
+	{
+		return;
+	}
+	StartSprint();
 }
 
-void AClanhallCharacter::OnStanceMoveModifierReleased()
+void AClanhallCharacter::OnSprintReleased()
 {
-	bStanceMoveHeld = false;
+	if (IsSprinting())
+	{
+		StopSprint();
+	}
 }
 
 void AClanhallCharacter::OnSpacePressed()
 {
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	// Защиты в режиме атаки нет вовсе (`combat_system.md`).
+	if (GetInputMode() != EClanhallInputMode::Free)
 	{
-		// В стойке у Пробела нет альтернатив — прыжок в стойке запрещён, перемещение это
-		// Shift+WASD. Короткий отскок стреляет прямо на Started, без ожидания второго тапа
-		// (`combat_system.md`: исключение из приоритета отзывчивости существует только вне стойки).
-		AbilitySystemComponent->TryActivateAbility(DodgeAbilityHandle);
 		return;
 	}
 
-	if (bSpaceAwaitingDoubleTap)
+	// На бегу Пробел - длинный рывок вперёд по корпусу; корпус на бегу развёрнут по движению,
+	// так что отдельного направления не нужно.
+	if (IsSprinting())
 	{
-		// Второй Started в открытом окне — прыжок. Помечаем парное Completed как потраченное:
-		// без этого оно провалилось бы в ветку "это тап" в OnSpaceReleased и через
-		// DoubleTapWindow завело бы лишний отскок на каждый прыжок (`task_stage4_code_fixes.md`, п.1).
-		GetWorldTimerManager().ClearTimer(SpaceDoubleTapTimerHandle);
-		bSpaceAwaitingDoubleTap = false;
-		bSpaceJumpConsumed = true;
-		Jump();
+		TriggerEvade(EClanhallEvadeDirection::ForwardDash);
 		return;
 	}
 
-	// Первое нажатие вне стойки — не знаем ещё, тап это или начало удержания.
-	GetWorldTimerManager().SetTimer(SpaceHoldTimerHandle, this, &AClanhallCharacter::OnSpaceHoldThresholdReached, HoldThreshold, false);
+	Jump();
 }
 
 void AClanhallCharacter::OnSpaceReleased()
 {
-	if (bSpaceJumpConsumed)
-	{
-		// Это Completed — парное ко второму Started двойного тапа, прыжок уже случился
-		// в OnSpacePressed. Гасим флаг и выходим первым делом, до любых других веток.
-		bSpaceJumpConsumed = false;
-		return;
-	}
-
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
-	{
-		// Короткий отскок уже случился на Started — Completed в стойке ничего не делает.
-		return;
-	}
-
-	if (bSpaceSprinting)
-	{
-		StopSprint();
-		bSpaceSprinting = false;
-		return;
-	}
-
-	// Отпустили раньше HoldThreshold — это тап: ждём второй Started в окне DoubleTapWindow.
-	// Пришёл — прыжок (см. OnSpacePressed), не пришёл — дальний отскок (см. OnSpaceDoubleTapWindowExpired).
-	GetWorldTimerManager().ClearTimer(SpaceHoldTimerHandle);
-	bSpaceAwaitingDoubleTap = true;
-	GetWorldTimerManager().SetTimer(SpaceDoubleTapTimerHandle, this, &AClanhallCharacter::OnSpaceDoubleTapWindowExpired, DoubleTapWindow, false);
+	StopJumping();
 }
 
-void AClanhallCharacter::OnSpaceHoldThresholdReached()
+void AClanhallCharacter::OnDuckPressed()
 {
-	bSpaceSprinting = true;
-	StartSprint();
-}
-
-void AClanhallCharacter::OnSpaceDoubleTapWindowExpired()
-{
-	bSpaceAwaitingDoubleTap = false;
+	if (GetInputMode() != EClanhallInputMode::Free)
+	{
+		return;
+	}
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(DodgeAbilityHandle);
+		AbilitySystemComponent->TryActivateAbility(DuckAbilityHandle);
 	}
 }
 
 void AClanhallCharacter::StartSprint()
 {
-	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
-	{
-		// Сохранять и восстанавливать, а не писать константой — та же причина, что
-		// в UGA_CombatStance::EndAbility: MaxWalkSpeed вне стойки задаётся в BP-персонаже.
-		SavedWalkSpeedBeforeSprint = Movement->MaxWalkSpeed;
-		Movement->MaxWalkSpeed = GetSprintSpeed();
-	}
-}
-
-void AClanhallCharacter::StopSprint()
-{
-	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
-	{
-		Movement->MaxWalkSpeed = SavedWalkSpeedBeforeSprint;
-	}
-}
-
-void AClanhallCharacter::CancelSpaceHoldAndSprint()
-{
-	// Бег вообще не должен пережить вход в стойку — скорость стойки обязана победить скорость
-	// бега (`combat_system.md`, «Отскок», блок «Бег»). Вызывается из
-	// UGA_CombatStance::ActivateAbility ДО чтения текущего MaxWalkSpeed: та сохраняет его для
-	// восстановления на выходе, и если не остановить бег первым, стойка на выходе вернула бы
-	// скорость бега, а не настоящую базовую.
-	if (bSpaceSprinting)
-	{
-		StopSprint();
-		bSpaceSprinting = false;
-	}
-	GetWorldTimerManager().ClearTimer(SpaceHoldTimerHandle);
-	GetWorldTimerManager().ClearTimer(SpaceDoubleTapTimerHandle);
-	bSpaceAwaitingDoubleTap = false;
-	bSpaceJumpConsumed = false;
-}
-
-void AClanhallCharacter::TickStanceTurn()
-{
-	// Вне стойки в эту логику не заходить вовсе — вне State.InStance движковой ротацией
-	// заведует GA_CombatStance::EndAbility (восстановила прежние значения) и обычная локомоция.
-	if (!AbilitySystemComponent || !AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (!Movement || !AbilitySystemComponent)
 	{
 		return;
 	}
 
+	Movement->bOrientRotationToMovement = true;    // 360: корпус по движению
+	Movement->bUseControllerDesiredRotation = false;
+	Movement->MaxWalkSpeed = GetSprintSpeed() * GetWeaponSpeedMultiplier();
+	AbilitySystemComponent->AddLooseGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag());
+	ResetTurnInPlace(); // подшаг на бегу не играет
+}
+
+void AClanhallCharacter::StopSprint()
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (!Movement || !AbilitySystemComponent)
+	{
+		return;
+	}
+
+	Movement->bOrientRotationToMovement = false;
+	Movement->MaxWalkSpeed = GetJogSpeed() * GetWeaponSpeedMultiplier();
+	AbilitySystemComponent->RemoveLooseGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag());
+}
+
+void AClanhallCharacter::CancelSprint()
+{
+	// Бег вообще не должен пережить вход в стойку - скорость стойки обязана победить скорость
+	// бега (`combat_system.md`). Вызывается из UGA_CombatStance::ActivateAbility
+	// при входе в стойку с зажатым Shift.
+	if (IsSprinting())
+	{
+		StopSprint();
+	}
+}
+
+bool AClanhallCharacter::IsSprinting() const
+{
+	return AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag());
+}
+
+EClanhallInputMode AClanhallCharacter::GetInputMode() const
+{
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
+	{
+		return EClanhallInputMode::Attack;
+	}
+
+	// Cast зарезервирован под магию на ПКМ и сегодня недостижим - ПКМ ни к чему не привязана.
+	return EClanhallInputMode::Free;
+}
+
+void AClanhallCharacter::TriggerEvade(EClanhallEvadeDirection Direction)
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	FGameplayEventData EventData;
+	EventData.EventMagnitude = static_cast<float>(Direction);
+
+	AbilitySystemComponent->TriggerAbilityFromGameplayEvent(DodgeAbilityHandle, AbilitySystemComponent->AbilityActorInfo.Get(),
+		ClanhallGameplayTags::Event_Evade.GetTag(), &EventData, *AbilitySystemComponent);
+}
+
+void AClanhallCharacter::TickBodyTurn()
+{
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	if (!Movement || !GetController())
+	{
+		return;
+	}
+
+	// На бегу ротацией заведует движковый bOrientRotationToMovement (StartSprint/StopSprint) -
+	// тик сюда не лезет (`locomotion_structure.md`).
+	if (IsSprinting())
 	{
 		return;
 	}
@@ -433,38 +461,38 @@ void AClanhallCharacter::TickStanceTurn()
 	const float YawDelta = FRotator::NormalizeAxis(GetControlRotation().Yaw - GetActorRotation().Yaw);
 
 	// GetCurrentAcceleration() отражает ввод WASD этого шага (ноль без нажатых клавиш) — тот же
-	// сигнал, каким движок сам гейтит bOrientRotationToMovement.
-	const bool bStanceMoving = bStanceMoveHeld && !Movement->GetCurrentAcceleration().IsNearlyZero();
+	// сигнал, каким движок сам гейтит bOrientRotationToMovement. В стойке перемещения нет,
+	// bMoving здесь всегда false - стойка идёт по ветке порога с подшагом, это и требуется.
+	const bool bMoving = !Movement->GetCurrentAcceleration().IsNearlyZero();
 
-	if (bStanceMoving)
+	if (bMoving)
 	{
-		// Двигается (Shift + WASD) — доворачивается к камере постоянно, без порога: иначе боец
-		// несколько секунд бежит боком относительно взгляда (`locomotion_structure.md`,
-		// «Локомоция стойки»). Подшаг тут не играет.
+		// Двигается (страйф вне стойки) - доворачивается к камере постоянно, без порога: иначе
+		// боец несколько секунд бежит боком относительно взгляда (`locomotion_structure.md`).
+		// Подшаг тут не играет.
 		Movement->bUseControllerDesiredRotation = true;
-		bStanceTurning = false;
+		bTurningInPlace = false;
 	}
 	else
 	{
-		// Гистерезис: порог входа (StanceTurnThreshold) и угол выхода (StanceTurnSettleAngle) —
-		// разные числа, иначе на границе порога доворот дёргался бы "начал — тут же перестал"
-		// каждый кадр.
-		if (!bStanceTurning && FMath::Abs(YawDelta) > GetStanceTurnThreshold())
+		// Гистерезис: порог входа (TurnThreshold) и угол выхода (TurnSettleAngle) - разные
+		// числа, иначе на границе порога доворот дёргался бы "начал - тут же перестал" каждый кадр.
+		if (!bTurningInPlace && FMath::Abs(YawDelta) > GetTurnThreshold())
 		{
-			bStanceTurning = true;
+			bTurningInPlace = true;
 		}
 
-		if (bStanceTurning)
+		if (bTurningInPlace)
 		{
 			// Направление обновляется каждый кадр, не только на взводе: если камера
 			// перекладывается на другую сторону посреди уже идущего подшага, |YawDelta| остаётся
-			// большим и bStanceTurning не опускается — без этого ABP доигрывал бы шаг в сторону,
+			// большим и bTurningInPlace не опускается - без этого ABP доигрывал бы шаг в сторону,
 			// которая уже не актуальна, хотя капсулу движок довернул в новую верно.
-			StanceTurnDirection = FMath::Sign(YawDelta);
+			TurnDirection = FMath::Sign(YawDelta);
 			Movement->bUseControllerDesiredRotation = true;
-			if (FMath::Abs(YawDelta) <= GetStanceTurnSettleAngle())
+			if (FMath::Abs(YawDelta) <= GetTurnSettleAngle())
 			{
-				bStanceTurning = false;
+				bTurningInPlace = false;
 			}
 		}
 		else
@@ -478,13 +506,6 @@ void AClanhallCharacter::TickStanceTurn()
 
 void AClanhallCharacter::OnAttackOverhead()
 {
-	// Shift зажат — этот WASD-ввод перемещает (DoMove), а не бьёт. Гейт стоит здесь, а не
-	// в UClanhallComboComponent::HandleAttackInput: Shift — ввод игрока, компонент
-	// стороне-нейтрален и одинаково обслуживает игрока и AI, которому Shift не существует.
-	if (bStanceMoveHeld)
-	{
-		return;
-	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::Overhead);
@@ -493,10 +514,6 @@ void AClanhallCharacter::OnAttackOverhead()
 
 void AClanhallCharacter::OnAttackRightSlash()
 {
-	if (bStanceMoveHeld)
-	{
-		return;
-	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::RightSlash);
@@ -505,10 +522,6 @@ void AClanhallCharacter::OnAttackRightSlash()
 
 void AClanhallCharacter::OnAttackLeftSlash()
 {
-	if (bStanceMoveHeld)
-	{
-		return;
-	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LeftSlash);
@@ -517,10 +530,6 @@ void AClanhallCharacter::OnAttackLeftSlash()
 
 void AClanhallCharacter::OnAttackLowSweep()
 {
-	if (bStanceMoveHeld)
-	{
-		return;
-	}
 	if (ComboComponent)
 	{
 		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LowSweep);
@@ -534,13 +543,6 @@ UAnimSequence* AClanhallCharacter::GetStanceAnim(const ACharacter* Character)
 	return Data ? Data->StanceAnim : nullptr;
 }
 
-UBlendSpace* AClanhallCharacter::GetStanceBlendSpace(const ACharacter* Character)
-{
-	const AClanhallHumanoidCombatant* Combatant = Cast<AClanhallHumanoidCombatant>(Character);
-	const UComboData* Data = Combatant ? Combatant->GetComboData() : nullptr;
-	return Data ? Data->StanceLocomotion : nullptr;
-}
-
 // ---------------------------------------------------------------------------
 // Активные навыки (Q/E/R/F). Контрнавык (`ability_system.md`, «Контрнавык») больше не требует
 // модификатора — распознаётся резолвером внутри GA_PhysicalSkill::ActivateAbility
@@ -549,6 +551,11 @@ UBlendSpace* AClanhallCharacter::GetStanceBlendSpace(const ACharacter* Character
 
 void AClanhallCharacter::OnActiveSkillQ()
 {
+	if (GetInputMode() == EClanhallInputMode::Free)
+	{
+		TriggerEvade(EClanhallEvadeDirection::Left);
+		return;
+	}
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_Q.GetTag()));
@@ -557,6 +564,11 @@ void AClanhallCharacter::OnActiveSkillQ()
 
 void AClanhallCharacter::OnActiveSkillE()
 {
+	if (GetInputMode() == EClanhallInputMode::Free)
+	{
+		TriggerEvade(EClanhallEvadeDirection::Right);
+		return;
+	}
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_E.GetTag()));

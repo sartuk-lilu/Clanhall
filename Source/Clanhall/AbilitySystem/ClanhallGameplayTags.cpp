@@ -21,7 +21,8 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InCombat, "State.InCombat", "Вешает/снимает UClanhallCombatStateComponent — живой противник в радиусе, снятие с задержкой");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_DodgeRecovery, "State.DodgeRecovery", "Лок-аут после короткого отскока в стойке — длительность DodgeRecoveryMontage, дальний отскок не вешает");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_EvadeRecovery, "State.EvadeRecovery", "Лок-аут после ухода/рывка/приседа - общий тег, длительность равна Recovery-монтажу конкретного действия (было State.DodgeRecovery)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Sprinting, "State.Sprinting", "ЛКМ отпущен, Shift зажат - бег, корпус развёрнут по движению");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "Владелец сейчас бьёт Overhead (W) — висит на время замаха");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_S, "Attack.Direction.S", "Владелец сейчас бьёт Low Sweep (S) — висит на время замаха");
@@ -44,6 +45,7 @@ namespace ClanhallGameplayTags
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_ApplyMark, "Event.ApplyMark", "AnimNotify_ApplyMark отправляет этот GameplayEvent — GA_PhysicalSkill может слушать его для async-подтверждения хита");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_DirectionalAttack, "Event.DirectionalAttack", "Служебный тег для TriggerAbilityFromGameplayEvent — несёт BaseDamage (EventMagnitude) от UClanhallComboComponent к GA_DirectionalAttackBase, не гейтит выбор способности");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Evade, "Event.Evade", "Служебный тег для TriggerAbilityFromGameplayEvent - несёт направление (EClanhallEvadeDirection, EventMagnitude) от AClanhallCharacter::TriggerEvade к UGA_Dodge, не гейтит выбор способности");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Hitbox_Hit, "Event.Hitbox.Hit", "UClanhallHitboxComponent шлёт на каждую задетую цель — Instigator = владелец зоны, Target = задетый актор, EventMagnitude = хендл зоны");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Hitbox_Closed, "Event.Hitbox.Closed", "UClanhallHitboxComponent шлёт при переходе «были зоны -> зон не осталось» — фаза контакта окончена");
 
