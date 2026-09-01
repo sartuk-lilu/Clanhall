@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Logging/LogMacros.h"
-#include "ClanhallHumanoidCombatant.h"
+#include "ClanhallHumanoidBase.h"
 // Полное определение, не forward-declare: EClanhallInputMode - возвращаемый тип
 // UFUNCTION(BlueprintPure) ниже, UHT для рефлексируемых типов требует видеть определение,
-// не полагаться на то, что оно придёт транзитивно через ClanhallHumanoidCombatant.h.
+// не полагаться на то, что оно придёт транзитивно через ClanhallHumanoidBase.h.
 #include "ClanhallCombatTypes.h"
 #include "ClanhallCharacter.generated.h"
 
@@ -28,7 +28,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
  *  Implements a controllable orbiting camera
  */
 UCLASS(abstract)
-class AClanhallCharacter : public AClanhallHumanoidCombatant
+class AClanhallCharacter : public AClanhallHumanoidBase
 {
 	GENERATED_BODY()
 
@@ -232,10 +232,6 @@ public:
 	 *  Shift: скорость стойки обязана победить скорость бега. */
 	void CancelSprint();
 
-	/** Читает ABP - предикат состояния бега вместо прямого чтения State.Sprinting с ASC. */
-	UFUNCTION(BlueprintPure, Category = "Combat|Movement")
-	bool IsSprinting() const;
-
 	/** Режим ввода текущего кадра - см. EClanhallInputMode. */
 	UFUNCTION(BlueprintPure, Category = "Input")
 	EClanhallInputMode GetInputMode() const;
@@ -271,7 +267,7 @@ public:
 	/** Loop-поза боевой стойки текущего оружия (UComboData::StanceAnim). Статичная и берёт ACharacter,
 	 *  а не член AClanhallCharacter: в Event Blueprint Update Animation обычно уже есть закэшированная
 	 *  и провалидированная (IsValid) переменная Character как ACharacter — так не нужен второй Cast
-	 *  To Clanhall Character поверх неё, каст на AClanhallHumanoidCombatant делается внутри. nullptr, если
+	 *  To Clanhall Character поверх неё, каст на AClanhallHumanoidBase делается внутри. nullptr, если
 	 *  Character не этого класса или ComboData не назначен. Оставлена именно на этом классе —
 	 *  функция BlueprintPure читает ABP игрока по имени класса, перенос сломал бы ноду в графе. */
 	UFUNCTION(BlueprintPure, Category = "Combat|WASD")

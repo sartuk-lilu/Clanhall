@@ -98,7 +98,7 @@ private:
 	/** (`combat_system.md`, «Stagger — усталость»): подсистема Stagger владельца включена, только если у его
 	 *  противника есть навык с синергией на Mark.Staggered — иначе AddStagger no-op целиком.
 	 *  Считается один раз в BeginPlay, не «на входе в бой» — известное ограничение прототипа
-	 *  (`Combatant Hierarchy.md`, «Открытые пункты»). */
+	 *  (`Character Hierarchy.md`, «Открытые пункты»). */
 	bool bStaggerGateOpen = false;
 
 	virtual void BeginPlay() override;

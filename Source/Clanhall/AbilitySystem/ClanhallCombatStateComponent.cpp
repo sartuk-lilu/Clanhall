@@ -68,7 +68,7 @@ void UClanhallCombatStateComponent::UpdateTrackedEnemies()
 
 	// Фракций в проекте нет — «противник» = любой другой боец, размеченный Unit.Role.*
 	// (`combat_system.md`, «Боевое состояние»). То же допущение, на котором стоят
-	// FindPrototypeOpponent и HasOpponentWithMarkSynergy (`Combatant Hierarchy.md`);
+	// FindPrototypeOpponent и HasOpponentWithMarkSynergy (`Character Hierarchy.md`);
 	// заменяется вместе с ними, когда в сцене окажется больше двух бойцов.
 	const FGameplayTag UnitRoleTag = ClanhallGameplayTags::Unit_Role.GetTag();
 

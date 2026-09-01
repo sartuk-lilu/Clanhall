@@ -6,7 +6,7 @@
 // Ротацию и скорость стойка больше не трогает вовсе - страйф с доворотом по камере теперь
 // общая локомоция (AClanhallCharacter::BeginPlay/TickBodyTurn), а не привилегия стойки
 // (`locomotion_structure.md`); множитель скорости оружия применяется при экипировке
-// (`AClanhallHumanoidCombatant::PostInitializeComponents`), не в момент входа в стойку.
+// (`AClanhallHumanoidBase::PostInitializeComponents`), не в момент входа в стойку.
 // Единственное, что стойка ещё делает с движением - гасит бег (CancelSprint) и текущий разгон
 // (StopMovementImmediately), потому что скорость стойки обязана победить скорость бега.
 //

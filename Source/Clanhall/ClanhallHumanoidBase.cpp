@@ -1,4 +1,4 @@
-#include "ClanhallHumanoidCombatant.h"
+#include "ClanhallHumanoidBase.h"
 #include "Clanhall.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
@@ -20,7 +20,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 
-AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
+AClanhallHumanoidBase::AClanhallHumanoidBase()
 {
 	// (`Combat Stance and WASD Attacks.md`): ворота ввода + владелец активации WASD-ударов.
 	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
@@ -31,14 +31,14 @@ AClanhallHumanoidCombatant::AClanhallHumanoidCombatant()
 	// AClanhallCharacter, из-за чего у пустого конструктора Boss они оставались nullptr, и
 	// GiveAbility грантовал WASD-удары с null-классом — серии у босса не было вообще. Не
 	// UPROPERTY намеренно — значение одинаково у всех китов, это плумбинг GAS, не контент класса
-	// (`Combatant Hierarchy.md`, «Грант в BeginPlay»).
+	// (`Character Hierarchy.md`, «Грант в BeginPlay»).
 	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
 	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
 	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
 	AttackLowSweepClass   = UGA_DirectionalAttack_LowSweep::StaticClass();
 }
 
-void AClanhallHumanoidCombatant::PostInitializeComponents()
+void AClanhallHumanoidBase::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
@@ -60,7 +60,7 @@ void AClanhallHumanoidCombatant::PostInitializeComponents()
 	}
 }
 
-void AClanhallHumanoidCombatant::BeginPlay()
+void AClanhallHumanoidBase::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -100,7 +100,7 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 	// Один класс GA_PhysicalSkill гранится по числу записей в
-	// GetWeaponType()->Skills (`Combatant Hierarchy.md`, «Грант в BeginPlay»; `weapon_system.md`,
+	// GetWeaponType()->Skills (`Character Hierarchy.md`, «Грант в BeginPlay»; `weapon_system.md`,
 	// «Владение оружием») — набор активок принадлежит оружию, не листу. Каждая запись проходит
 	// два гейта владения: открыт ли тир слота рангом (CharacterSheet->Perks) и выучен ли сам
 	// навык (CharacterSheet->LearnedSkills). Тот же цикл обслуживает и игрока,
@@ -165,7 +165,7 @@ void AClanhallHumanoidCombatant::BeginPlay()
 			}
 
 			// Слот доносится до способности штатным путём GAS — динамическим тегом спека
-			// (не полем в UAbilityData, `Combatant Hierarchy.md`, «Ключ по слоту, а не по имени навыка»): один и тот же
+			// (не полем в UAbilityData, `Character Hierarchy.md`, «Ключ по слоту, а не по имени навыка»): один и тот же
 			// UAbilityData может лежать сразу в двух китах, слот же принадлежит гранту.
 			FGameplayAbilitySpec Spec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value);
 			Spec.GetDynamicSpecSourceTags().AddTag(Skill.Key);
@@ -180,7 +180,7 @@ void AClanhallHumanoidCombatant::BeginPlay()
 	}
 }
 
-void AClanhallHumanoidCombatant::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void AClanhallHumanoidBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// Без явного Destroy оружие переживает своего носителя — PIE, запущенный дважды,
 	// оставляет мечи на уровне.
@@ -198,7 +198,7 @@ void AClanhallHumanoidCombatant::EndPlay(const EEndPlayReason::Type EndPlayReaso
 	Super::EndPlay(EndPlayReason);
 }
 
-AClanhallWeaponActor* AClanhallHumanoidCombatant::SpawnAndAttachWeapon(TSubclassOf<AClanhallWeaponActor> WeaponClass)
+AClanhallWeaponActor* AClanhallHumanoidBase::SpawnAndAttachWeapon(TSubclassOf<AClanhallWeaponActor> WeaponClass)
 {
 	if (!WeaponClass)
 	{
@@ -254,24 +254,24 @@ AClanhallWeaponActor* AClanhallHumanoidCombatant::SpawnAndAttachWeapon(TSubclass
 	return SpawnedActor;
 }
 
-const UWeaponTypeData* AClanhallHumanoidCombatant::GetWeaponType() const
+const UWeaponTypeData* AClanhallHumanoidBase::GetWeaponType() const
 {
 	return CurrentWeapon ? CurrentWeapon->Type : nullptr;
 }
 
-const UComboData* AClanhallHumanoidCombatant::GetComboData() const
+const UComboData* AClanhallHumanoidBase::GetComboData() const
 {
 	const UWeaponTypeData* WeaponType = GetWeaponType();
 	return WeaponType ? WeaponType->ComboData : nullptr;
 }
 
-float AClanhallHumanoidCombatant::GetWeaponSpeedMultiplier() const
+float AClanhallHumanoidBase::GetWeaponSpeedMultiplier() const
 {
 	const UWeaponTypeData* WeaponType = GetWeaponType();
 	return WeaponType ? WeaponType->WeaponSpeedMultiplier : ClanhallWeaponDefaults::WeaponSpeedMultiplier;
 }
 
-FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetAttackHandle(EClanhallAttackDirection Direction) const
+FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetAttackHandle(EClanhallAttackDirection Direction) const
 {
 	switch (Direction)
 	{
@@ -283,20 +283,20 @@ FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetAttackHandle(EClanhall
 	}
 }
 
-FGameplayAbilitySpecHandle AClanhallHumanoidCombatant::GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const
+FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const
 {
 	return ActiveSkillHandles.FindRef(AbilitySlotTag);
 }
 
-bool AClanhallHumanoidCombatant::HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const
+bool AClanhallHumanoidBase::HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const
 {
-	const AClanhallHumanoidCombatant* Opponent = FindPrototypeOpponent();
+	const AClanhallHumanoidBase* Opponent = FindPrototypeOpponent();
 	return Opponent && Opponent->HasAbilityWithMarkSynergy(RequiredMark);
 }
 
-AClanhallHumanoidCombatant* AClanhallHumanoidCombatant::FindPrototypeOpponent() const
+AClanhallHumanoidBase* AClanhallHumanoidBase::FindPrototypeOpponent() const
 {
-	for (TActorIterator<AClanhallHumanoidCombatant> It(GetWorld()); It; ++It)
+	for (TActorIterator<AClanhallHumanoidBase> It(GetWorld()); It; ++It)
 	{
 		if (*It != this)
 		{
@@ -306,7 +306,7 @@ AClanhallHumanoidCombatant* AClanhallHumanoidCombatant::FindPrototypeOpponent() 
 	return nullptr;
 }
 
-bool AClanhallHumanoidCombatant::HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const
+bool AClanhallHumanoidBase::HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const
 {
 	// Гейтами владения намеренно не фильтруется (`weapon_system.md`, «Владение оружием»):
 	// вопрос «есть ли чем обналичить Staggered» решает, копится ли шкала усталости у

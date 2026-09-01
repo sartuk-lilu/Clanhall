@@ -4,7 +4,7 @@
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
-#include "ClanhallHumanoidCombatant.h"
+#include "ClanhallHumanoidBase.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayEffect.h"
@@ -19,10 +19,10 @@ void UClanhallParryComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// (`combat_system.md`, «Stagger — усталость»): гейт подсистемы, посчитан один раз на входе в бой.
-	// Прототип 1v1 — "противник" ищет AClanhallHumanoidCombatant::HasOpponentWithMarkSynergy,
+	// Прототип 1v1 — "противник" ищет AClanhallHumanoidBase::HasOpponentWithMarkSynergy,
 	// у которой пока нет полноценного таргетинга (см. её комментарий); пересчёт при смене
 	// оружия сознательно не делается.
-	if (const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner()))
+	if (const AClanhallHumanoidBase* Character = Cast<AClanhallHumanoidBase>(GetOwner()))
 	{
 		bStaggerGateOpen = Character->HasOpponentWithMarkSynergy(ClanhallGameplayTags::Mark_Staggered.GetTag());
 	}

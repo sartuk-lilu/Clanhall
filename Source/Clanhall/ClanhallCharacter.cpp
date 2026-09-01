@@ -76,8 +76,8 @@ AClanhallCharacter::AClanhallCharacter()
 	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (`HUD.md`).
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
 
-	// WASD-классы дефолтятся в AClanhallHumanoidCombatant — общий конструктор для игрока
-	// и AClanhallHumanoidBoss (`Combatant Hierarchy.md`, «Три слоя»). Здесь их больше нет намеренно:
+	// WASD-классы дефолтятся в AClanhallHumanoidBase — общий конструктор для игрока
+	// и AClanhallHumanoidBoss (`Character Hierarchy.md`, «Три слоя»). Здесь их больше нет намеренно:
 	// у пустого конструктора AClanhallHumanoidBoss эти поля оставались бы nullptr.
 }
 
@@ -85,7 +85,7 @@ void AClanhallCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Стартовые значения ресурсов инициализирует AClanhallCombatantBase::BeginPlay (Default*
+	// Стартовые значения ресурсов инициализирует AClanhallCharacterBase::BeginPlay (Default*
 	// поля) — общий путь для игрока и AI (`combat_system.md`, «Ресурсы персонажа»).
 
 	if (AbilitySystemComponent)
@@ -96,7 +96,7 @@ void AClanhallCharacter::BeginPlay()
 		// (`weapon_system.md`).
 
 		// Грант способности боевой стойки (`combat_system.md`, «Боевая стойка и переключение режимов»). WASD-удары и активки Q/E/R/F
-		// гранятся выше по иерархии — см. AClanhallHumanoidCombatant::BeginPlay.
+		// гранятся выше по иерархии — см. AClanhallHumanoidBase::BeginPlay.
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
 
 		// Грант ухода/рывка и приседа (`combat_system.md`) - рядом со стойкой.
@@ -254,7 +254,7 @@ void AClanhallCharacter::DoMove(float Right, float Forward)
 		// Отступать лицом к врагу это уступка, разрывать дистанцию надо бегом. На бегу кап
 		// не нужен: корпус развёрнут по движению, спиной там не бегают.
 		float Scale = 1.0f;
-		if (!AbilitySystemComponent || !AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag()))
+		if (!IsSprinting())
 		{
 			const FVector2D Dir = FVector2D(Right, Forward).GetSafeNormal();
 			const float Backness = FMath::Clamp(-Dir.Y / 0.7071f, 0.0f, 1.0f);
@@ -428,11 +428,6 @@ void AClanhallCharacter::CancelSprint()
 	}
 }
 
-bool AClanhallCharacter::IsSprinting() const
-{
-	return AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag());
-}
-
 EClanhallInputMode AClanhallCharacter::GetInputMode() const
 {
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_InStance.GetTag()))
@@ -553,8 +548,8 @@ void AClanhallCharacter::OnAttackLowSweep()
 
 UAnimSequence* AClanhallCharacter::GetStanceAnim(const ACharacter* Character)
 {
-	const AClanhallHumanoidCombatant* Combatant = Cast<AClanhallHumanoidCombatant>(Character);
-	const UComboData* Data = Combatant ? Combatant->GetComboData() : nullptr;
+	const AClanhallHumanoidBase* Humanoid = Cast<AClanhallHumanoidBase>(Character);
+	const UComboData* Data = Humanoid ? Humanoid->GetComboData() : nullptr;
 	return Data ? Data->StanceAnim : nullptr;
 }
 

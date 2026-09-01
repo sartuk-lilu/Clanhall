@@ -1,8 +1,8 @@
-// Общий предок для всего, что дерётся — игрока и врагов (`Combatant Hierarchy.md`, «Три слоя»).
+// Общий предок для всего, что дерётся — игрока и врагов (`Character Hierarchy.md`, «Три слоя»).
 // ASC, атрибуты, метки, зоны поражения и окно контра нужны любому бойцу одинаково: метка
 // и контр двусторонние по построению, а без диспетчера зон у врага не было бы
-// урона вовсе (`Combatant Hierarchy.md`, «AClanhallCombatantBase»). Комбо-дерево и парирование —
-// только гуманоидам, см. AClanhallHumanoidCombatant (`Combatant Hierarchy.md`, «Граница слоёв»).
+// урона вовсе (`Character Hierarchy.md`, «AClanhallCharacterBase»). Комбо-дерево и парирование —
+// только гуманоидам, см. AClanhallHumanoidBase (`Character Hierarchy.md`, «Граница слоёв»).
 
 #pragma once
 
@@ -10,7 +10,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
-#include "ClanhallCombatantBase.generated.h"
+#include "ClanhallCharacterBase.generated.h"
 
 class UAbilitySystemComponent;
 class UClanhallAttributeSet;
@@ -21,13 +21,13 @@ class UClanhallCombatStateComponent;
 class UGameplayAbility;
 
 /** Denied-фидбек: TryActivateAbility отказал именно по нехватке Charges (не по
- *  State.SkillCommitted/State.Stunned — `Combatant Hierarchy.md`, «Denied-фидбек»). Точка подключения для HUD
+ *  State.SkillCommitted/State.Stunned — `Character Hierarchy.md`, «Denied-фидбек»). Точка подключения для HUD
  *  (звук + вспышка WBP_ChargesPanel), сама реакция сюда не входит — тот же паттерн, что
  *  UClanhallCounterComponent::OnCounterConsumed. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallChargesDenied);
 
 UCLASS(abstract)
-class AClanhallCombatantBase : public ACharacter, public IAbilitySystemInterface
+class AClanhallCharacterBase : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -57,12 +57,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCombatStateComponent> CombatStateComponent;
 
-	/** Unit.Role.* — вешается на ASC в BeginPlay (`Combatant Hierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
+	/** Unit.Role.* — вешается на ASC в BeginPlay (`Character Hierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
 	 *  (актор не участвует в ролевой логике HUD/AI), так у игрока по умолчанию. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitySystem", meta = (Categories = "Unit.Role"))
 	FGameplayTag RoleTag;
 
-	/** Стартовые значения ресурсов (`combat_system.md`, «Ресурсы персонажа»; `Combatant Hierarchy.md`,
+	/** Стартовые значения ресурсов (`combat_system.md`, «Ресурсы персонажа»; `Character Hierarchy.md`,
 	 *  «Стартовые значения атрибутов на базе») — хардкод-плейсхолдеры прототипа,
 	 *  переопределяются per-class в defaults Blueprint-наследника (у Часового свои AP/HP/MP/Charges).
 	 *  Раньше жили только в AClanhallCharacter::BeginPlay —
@@ -132,7 +132,7 @@ protected:
 	float TurnDirection = 0.0f;
 
 public:
-	AClanhallCombatantBase();
+	AClanhallCharacterBase();
 
 	// ~begin IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -144,7 +144,7 @@ public:
 	FOnClanhallChargesDenied OnChargesDenied;
 
 	/** Читает AClanhallCharacter::BeginPlay и DoMove (кап хода спиной) и
-	 *  AClanhallHumanoidCombatant::PostInitializeComponents (множитель оружия). */
+	 *  AClanhallHumanoidBase::PostInitializeComponents (множитель оружия). */
 	float GetJogSpeed() const { return JogSpeed; }
 
 	/** Читает AClanhallCharacter::DoMove - кап скорости хода спиной и по задним диагоналям. */
@@ -171,11 +171,18 @@ public:
 	 *  превращается в угадайку. */
 	bool IsTurningInPlace() const { return bTurningInPlace; }
 
+	/** Предикат состояния бега вместо прямого чтения State.Sprinting с ASC. Живёт на базе,
+	 *  а не у игрока: тело - запрос тега с AbilitySystemComponent, а компонент здесь же.
+	 *  Читают ABP (переменная bSprinting), AClanhallCharacter::TickBodyTurn, DoMove и
+	 *  CancelSprint, а также Clanhall.Player.ShowCombatState. */
+	UFUNCTION(BlueprintPure, Category = "Combat|Movement")
+	bool IsSprinting() const;
+
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	/** Слушает UAbilitySystemComponent::AbilityFailedCallbacks и ретранслирует в OnChargesDenied,
-	 *  только когда причина отказа — Denied.Charges (`Combatant Hierarchy.md`, «Denied-фидбек»). */
+	 *  только когда причина отказа — Denied.Charges (`Character Hierarchy.md`, «Denied-фидбек»). */
 	void HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason);
 };

@@ -1,4 +1,4 @@
-#include "ClanhallCombatantBase.h"
+#include "ClanhallCharacterBase.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
@@ -6,8 +6,9 @@
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
-AClanhallCombatantBase::AClanhallCombatantBase()
+AClanhallCharacterBase::AClanhallCharacterBase()
 {
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
@@ -34,12 +35,12 @@ AClanhallCombatantBase::AClanhallCombatantBase()
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 }
 
-UAbilitySystemComponent* AClanhallCombatantBase::GetAbilitySystemComponent() const
+UAbilitySystemComponent* AClanhallCharacterBase::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
 }
 
-void AClanhallCombatantBase::BeginPlay()
+void AClanhallCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -71,16 +72,21 @@ void AClanhallCombatantBase::BeginPlay()
 			AbilitySystemComponent->AddLooseGameplayTag(RoleTag);
 		}
 
-		// Denied-фидбек (`Combatant Hierarchy.md`, «Denied-фидбек»): AbilityFailedCallbacks — обычный C++ мультикаст, не
+		// Denied-фидбек (`Character Hierarchy.md`, «Denied-фидбек»): AbilityFailedCallbacks — обычный C++ мультикаст, не
 		// BlueprintAssignable, поэтому ретранслируем в OnChargesDenied для Blueprint HUD.
-		AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &AClanhallCombatantBase::HandleAbilityFailed);
+		AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &AClanhallCharacterBase::HandleAbilityFailed);
 	}
 }
 
-void AClanhallCombatantBase::HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason)
+void AClanhallCharacterBase::HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason)
 {
 	if (FailureReason.HasTagExact(ClanhallGameplayTags::Denied_Charges.GetTag()))
 	{
 		OnChargesDenied.Broadcast();
 	}
+}
+
+bool AClanhallCharacterBase::IsSprinting() const
+{
+	return AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag());
 }

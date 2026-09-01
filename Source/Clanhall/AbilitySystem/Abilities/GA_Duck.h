@@ -10,7 +10,7 @@
 //
 // Капсулу опускает движковый Character->Crouch(), не SetCapsuleSize - движок сам разбирается
 // со смещением меша, коллизией и проверкой «есть ли место разогнуться». Требует
-// NavAgentProps.bCanCrouch == true (см. AClanhallCombatantBase, конструктор) - без него
+// NavAgentProps.bCanCrouch == true (см. AClanhallCharacterBase, конструктор) - без него
 // Crouch() молча ничего не делает.
 //
 // EndAbility безусловно поднимает капсулу (UnCrouch), а не только штатный путь после

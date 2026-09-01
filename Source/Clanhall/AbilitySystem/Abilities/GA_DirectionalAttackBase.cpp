@@ -4,7 +4,7 @@
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
-#include "ClanhallHumanoidCombatant.h"
+#include "ClanhallHumanoidBase.h"
 #include "Animation/AnimNotifyState_Hitbox.h"
 #include "Animation/AnimMontage.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
@@ -54,7 +54,7 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 
 	// Снимок ChargeIncome типа оружия — тот же довод, что у bChargeEligible выше: свап оружия
 	// мгновенный, взмах обязан разрешиться доходом оружия, с которым он начат.
-	const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(Avatar);
+	const AClanhallHumanoidBase* Character = Cast<AClanhallHumanoidBase>(Avatar);
 	const UWeaponTypeData* WeaponType = Character ? Character->GetWeaponType() : nullptr;
 	PendingChargeIncome = WeaponType ? WeaponType->ChargeIncome : ClanhallWeaponDefaults::ChargeIncome;
 

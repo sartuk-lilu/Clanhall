@@ -92,7 +92,7 @@ private:
 	const UAbilityData* GetAbilityData(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
 	/** Слот навыка — не поле UAbilityData, а динамический тег спека (Slot.*, см.
-	 *  ClanhallHumanoidCombatant::BeginPlay). Ищет спек по Handle и фильтрует его
+	 *  ClanhallHumanoidBase::BeginPlay). Ищет спек по Handle и фильтрует его
 	 *  GetDynamicSpecSourceTags() по корню Slot. Невалидный результат — баг гранта
 	 *  (слот не проставлен), не молчаливый fallback на что-либо ещё. Кулдауна слот больше не
 	 *  считает — только ключует ActiveSkillHandles и привязку ввода. */

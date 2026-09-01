@@ -6,7 +6,7 @@
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
-#include "ClanhallHumanoidCombatant.h"
+#include "ClanhallHumanoidBase.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Abilities/GameplayAbilityTypes.h"
@@ -138,7 +138,7 @@ void UClanhallComboComponent::OnComboWindowOpen()
 	LatestInWindow.Reset();
 
 	// Единственный сигнал для AI о том, что можно подавать
-	// направление в HandleAttackInput (`Combatant Hierarchy.md`, «AClanhallHumanoidBoss») — сама очерёдность решает AI/BT, компонент не подсказывает.
+	// направление в HandleAttackInput (`Character Hierarchy.md`, «AClanhallHumanoidBoss») — сама очерёдность решает AI/BT, компонент не подсказывает.
 	OnComboWindowOpened.Broadcast();
 }
 
@@ -204,7 +204,7 @@ void UClanhallComboComponent::OnComboWindowClose()
 
 bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, UAnimMontage* Montage)
 {
-	AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner());
+	AClanhallHumanoidBase* Character = Cast<AClanhallHumanoidBase>(GetOwner());
 	UAbilitySystemComponent* ASC = GetASC();
 	const UComboData* Data = GetComboData();
 	if (!Character || !ASC || !Data || !Montage)
@@ -450,13 +450,13 @@ void UClanhallComboComponent::OnStanceExit()
 
 const UComboData* UClanhallComboComponent::GetComboData() const
 {
-	const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner());
+	const AClanhallHumanoidBase* Character = Cast<AClanhallHumanoidBase>(GetOwner());
 	return Character ? Character->GetComboData() : nullptr;
 }
 
 int32 UClanhallComboComponent::GetMaxSeriesLength() const
 {
-	const AClanhallHumanoidCombatant* Character = Cast<AClanhallHumanoidCombatant>(GetOwner());
+	const AClanhallHumanoidBase* Character = Cast<AClanhallHumanoidBase>(GetOwner());
 	const UWeaponTypeData* WeaponType = Character ? Character->GetWeaponType() : nullptr;
 	// Старый GetClassRank() возвращал 0 при отсутствии владельца — новый так не может: 0
 	// означало бы «серия из нуля ударов», то есть боец не бьёт вообще.

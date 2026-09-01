@@ -1,7 +1,7 @@
 // Боевое состояние: вешает State.InCombat на ASC владельца, пока в радиусе есть живой
 // противник, и снимает с задержкой после того, как последний покинул радиус —
 // без задержки состояние мигало бы на границе (`combat_system.md`, «Боевое состояние»).
-// Стороне-нейтрален: создаётся в AClanhallCombatantBase, а не в AClanhallCharacter,
+// Стороне-нейтрален: создаётся в AClanhallCharacterBase, а не в AClanhallCharacter,
 // противнику он понадобится под A-life так же, как игроку. Геометрия поиска и гистерезис
 // EnterRadius/ExitRadius — по образцу UClanhallBossSensorComponent::UpdateTrackedUnits,
 // он уже решает ровно ту же задачу.

@@ -65,7 +65,7 @@ namespace ClanhallGameplayTags
 	// Слот принадлежит клавише, а не конкретному навыку (`ability_system.md`, «Слоты активных навыков») — общий для всех
 	// оружий, ключует UCharacterSheetData::Skills и живёт как динамический тег спека
 	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит
-	// (`Combatant Hierarchy.md`, «Ключ по слоту, а не по имени навыка»). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
+	// (`Character Hierarchy.md`, «Ключ по слоту, а не по имени навыка»). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
 	// отфильтровать слот среди прочих динамических тегов спека.
 	// Разведён из-под Ability (был Ability.Slot.*, `task_tag_roots.md`): слот про клавишу
 	// и тир, а не про идентичность навыка, и жил под чужим корнем — meta=(Categories="Ability")
@@ -166,7 +166,7 @@ namespace ClanhallGameplayTags
 	// запрашивает именно родителя, чтобы матчить оба подтипа боссов разом.
 	// Unit_Role (корень) — умбрелла-тег для «это вообще участник боя» без разбора подтипа:
 	// UClanhallCombatStateComponent матчит им любой Unit.Role.* разом, фракций в проекте нет
-	// (`combat_system.md`, «Боевое состояние»; `Combatant Hierarchy.md`).
+	// (`combat_system.md`, «Боевое состояние»; `Character Hierarchy.md`).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Mob);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Unit_Role_Boss);

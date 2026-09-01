@@ -1,7 +1,7 @@
-// Второй слой иерархии бойцов (`Combatant Hierarchy.md`, «Три слоя», «Граница слоёв») — те, кто дерётся на данных игрока: комбо-дерево WASD,
+// Второй слой иерархии бойцов (`Character Hierarchy.md`, «Три слоя», «Граница слоёв») — те, кто дерётся на данных игрока: комбо-дерево WASD,
 // парирование и активные навыки. Не для мобов/монстров — у
 // тех будут свои навыки и свои монтажи, их точка входа —
-// AClanhallCombatantBase напрямую.
+// AClanhallCharacterBase напрямую.
 //
 // Грант WASD-ударов и активок живёт здесь, а не в AClanhallCharacter: и игрок, и
 // AClanhallHumanoidBoss дерутся одним и тем же набором данных (UCharacterSheetData),
@@ -18,11 +18,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ClanhallCombatantBase.h"
+#include "ClanhallCharacterBase.h"
 #include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "ClanhallCombatTypes.h"
-#include "ClanhallHumanoidCombatant.generated.h"
+#include "ClanhallHumanoidBase.generated.h"
 
 class UClanhallComboComponent;
 class UClanhallParryComponent;
@@ -34,7 +34,7 @@ class AClanhallWeaponActor;
 class UGA_DirectionalAttackBase;
 
 UCLASS(abstract)
-class AClanhallHumanoidCombatant : public AClanhallCombatantBase
+class AClanhallHumanoidBase : public AClanhallCharacterBase
 {
 	GENERATED_BODY()
 
@@ -72,7 +72,7 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<AClanhallWeaponActor> SpawnedOffhand;
 
-	/** Не UPROPERTY (`Combatant Hierarchy.md`, «Грант в BeginPlay»): значение одинаково у всех китов — это
+	/** Не UPROPERTY (`Character Hierarchy.md`, «Грант в BeginPlay»): значение одинаково у всех китов — это
 	 *  плумбинг GAS, не контент класса. Не видно ни редактору, ни Blueprint — переопределить
 	 *  дефолт может только C++-наследник в своём конструкторе, если когда-то понадобится. */
 	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
@@ -87,12 +87,12 @@ protected:
 
 	/** Хэндлы активок по слоту (Slot.*), гранятся
 	 *  в BeginPlay из GetWeaponType()->Skills через два гейта владения — один цикл на любой
-	 *  класс, а не четыре именованных поля (`Combatant Hierarchy.md`, «Грант в BeginPlay»;
+	 *  класс, а не четыре именованных поля (`Character Hierarchy.md`, «Грант в BeginPlay»;
 	 *  `weapon_system.md`, «Владение оружием»). */
 	TMap<FGameplayTag, FGameplayAbilitySpecHandle> ActiveSkillHandles;
 
 public:
-	AClanhallHumanoidCombatant();
+	AClanhallHumanoidBase();
 
 	/** Тип оружия в руках: CurrentWeapon -> Type. nullptr на любом разрыве цепочки —
 	 *  вызывающий обязан иметь фолбэк, а не разыменовывать. */
@@ -126,7 +126,7 @@ public:
 	 *  нет записи) = невалидный хэндл, TryActivateAbility просто откажет. */
 	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const;
 
-	/** (`combat_system.md`, «Stagger — усталость»; `Combatant Hierarchy.md`, «Прототипный поиск противника»): есть ли у ПРОТИВНИКА этого бойца (см. FindPrototypeOpponent)
+	/** (`combat_system.md`, «Stagger — усталость»; `Character Hierarchy.md`, «Прототипный поиск противника»): есть ли у ПРОТИВНИКА этого бойца (см. FindPrototypeOpponent)
 	 *  навык с синергией на RequiredMark в GetWeaponType()->Skills. Читает UClanhallParryComponent в
 	 *  BeginPlay, чтобы решить, копится ли Stagger владельца вообще. Гейтами владения не
 	 *  фильтруется — см. комментарий у HasAbilityWithMarkSynergy. */
@@ -145,7 +145,7 @@ protected:
 	virtual void PostInitializeComponents() override;
 
 	/** Грант WASD-ударов из CharacterSheet и активок из GetWeaponType()->Skills, через два
-	 *  гейта владения — общий для игрока и AClanhallHumanoidBoss (`Combatant Hierarchy.md`,
+	 *  гейта владения — общий для игрока и AClanhallHumanoidBoss (`Character Hierarchy.md`,
 	 *  «Грант в BeginPlay»; `weapon_system.md`, «Владение оружием»). Спавнит и крепит акторы
 	 *  текущего оружия и оффхенда. */
 	virtual void BeginPlay() override;
@@ -157,11 +157,11 @@ private:
 	 *  если класс не задан — это законное состояние (оружие без визуала тестируется). */
 	AClanhallWeaponActor* SpawnAndAttachWeapon(TSubclassOf<AClanhallWeaponActor> WeaponClass);
 
-	/** Прототип 1v1: единственный ДРУГОЙ AClanhallHumanoidCombatant в мире. Полноценного
+	/** Прототип 1v1: единственный ДРУГОЙ AClanhallHumanoidBase в мире. Полноценного
 	 *  таргетинга (кто чей противник) в проекте ещё нет — AIController/BT тоже нет
-	 *  (`Combatant Hierarchy.md`, «Прототипный поиск противника»).
+	 *  (`Character Hierarchy.md`, «Прототипный поиск противника»).
 	 *  Заменить, когда одновременно появится больше одного противника. */
-	AClanhallHumanoidCombatant* FindPrototypeOpponent() const;
+	AClanhallHumanoidBase* FindPrototypeOpponent() const;
 
 	/** Есть ли у ЭТОГО бойца (не противника) в GetWeaponType()->Skills навык с синергией
 	 *  RequiredMark. Гейтами владения намеренно не фильтруется (`weapon_system.md`, «Владение

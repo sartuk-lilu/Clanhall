@@ -11,7 +11,7 @@
 #include "AbilitySystem/WeaponTypeData.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "ClanhallCombatTypes.h"
-#include "ClanhallHumanoidCombatant.h"
+#include "ClanhallHumanoidBase.h"
 #include "ClanhallCharacter.h"
 
 #include "AbilitySystemComponent.h"
@@ -288,16 +288,16 @@ static void HandleListStats(EDebugMsgKey Key)
 	PrintResult(Key, FString::Printf(TEXT("Valid stats: %s"), *FString::Join(Names, TEXT(", "))), FColor::Green);
 }
 
-static AClanhallHumanoidCombatant* ResolvePlayerCombatant(UWorld* World, EDebugMsgKey Key)
+static AClanhallHumanoidBase* ResolvePlayerHumanoid(UWorld* World, EDebugMsgKey Key)
 {
 	APawn* Pawn = ResolvePlayerPawn(World, Key);
-	AClanhallHumanoidCombatant* Combatant = Pawn ? Cast<AClanhallHumanoidCombatant>(Pawn) : nullptr;
-	if (!Combatant)
+	AClanhallHumanoidBase* Humanoid = Pawn ? Cast<AClanhallHumanoidBase>(Pawn) : nullptr;
+	if (!Humanoid)
 	{
-		PrintError(Key, TEXT("Player pawn is not an AClanhallHumanoidCombatant"));
+		PrintError(Key, TEXT("Player pawn is not an AClanhallHumanoidBase"));
 		return nullptr;
 	}
-	return Combatant;
+	return Humanoid;
 }
 
 static const TCHAR* InputModeToString(EClanhallInputMode Mode)
@@ -353,14 +353,14 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 		return;
 	}
 
-	AClanhallHumanoidCombatant* Combatant = ResolvePlayerCombatant(World, Key);
-	if (!Combatant)
+	AClanhallHumanoidBase* Humanoid = ResolvePlayerHumanoid(World, Key);
+	if (!Humanoid)
 	{
 		return;
 	}
 
 	// Цепочка неполна -> сказать явно, ГДЕ обрыв, а не просто "нет данных".
-	const UWeaponData* Weapon = Combatant->GetCurrentWeapon();
+	const UWeaponData* Weapon = Humanoid->GetCurrentWeapon();
 	if (!Weapon)
 	{
 		PrintError(Key, TEXT("Chain broken: no CurrentWeapon (empty CharacterSheet->Loadout?)"));
@@ -467,15 +467,15 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 		*Weapon->GetName(), *WeaponType->GetName(), WeaponType->SeriesLength, WeaponType->ChargeIncome);
 
 	// Множитель больше не про стойку - применяется при экипировке ко всем трём базовым
-	// скоростям разом (`weapon_system.md`; `AClanhallHumanoidCombatant::PostInitializeComponents`).
+	// скоростям разом (`weapon_system.md`; `AClanhallHumanoidBase::PostInitializeComponents`).
 	// Walk (кап хода спиной) не хранится отдельным полем движения - печатаем эффективное
 	// значение WalkSpeed * multiplier, оно совпадает с тем, что реально получается из
 	// (JogSpeed * multiplier) * (WalkSpeed / JogSpeed) в DoMove.
 	Message += FString::Printf(TEXT("WeaponSpeedMultiplier %.2f -> Jog %.0f   Walk(back cap) %.0f   Sprint %.0f\n"),
 		WeaponType->WeaponSpeedMultiplier,
-		Combatant->GetJogSpeed() * WeaponType->WeaponSpeedMultiplier,
-		Combatant->GetWalkSpeed() * WeaponType->WeaponSpeedMultiplier,
-		Combatant->GetSprintSpeed() * WeaponType->WeaponSpeedMultiplier);
+		Humanoid->GetJogSpeed() * WeaponType->WeaponSpeedMultiplier,
+		Humanoid->GetWalkSpeed() * WeaponType->WeaponSpeedMultiplier,
+		Humanoid->GetSprintSpeed() * WeaponType->WeaponSpeedMultiplier);
 
 	FString RequestedSequence;
 	for (const EClanhallAttackDirection Direction : Requested)
@@ -518,13 +518,13 @@ static void HandleShowCombatState(UWorld* World)
 	}
 
 	// InputMode/Sprinting - только у AClanhallCharacter (игрок), TurningInPlace - общий для
-	// любого AClanhallCombatantBase. Без них редакторная проверка локомоции превращается
+	// любого AClanhallCharacterBase. Без них редакторная проверка локомоции превращается
 	// в угадайку.
 	const AClanhallCharacter* Character = Cast<AClanhallCharacter>(Pawn);
 	const FString ModeStr = Character ? InputModeToString(Character->GetInputMode()) : TEXT("n/a");
 	const FString SprintingStr = Character ? (Character->IsSprinting() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");
-	const AClanhallCombatantBase* Combatant = Cast<AClanhallCombatantBase>(Pawn);
-	const FString TurningStr = Combatant ? (Combatant->IsTurningInPlace() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");
+	const AClanhallCharacterBase* CharacterBase = Cast<AClanhallCharacterBase>(Pawn);
+	const FString TurningStr = CharacterBase ? (CharacterBase->IsTurningInPlace() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");
 
 	const FString Message = FString::Printf(
 		TEXT("%s | enemies in radius: %d | exit timer: %.1fs | InputMode: %s | Sprinting: %s | TurningInPlace: %s"),
