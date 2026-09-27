@@ -5,7 +5,8 @@
 
 namespace
 {
-	// (`mark_system.md`, «Время жизни метки»): метка живёт 5 секунд с момента наложения.
+	// (`mark_system.md`, «Время жизни метки»): метка живёт 5 секунд с момента наложения,
+	// одинаково для обоих треков.
 	constexpr float MarkDurationSeconds = 5.0f;
 }
 
@@ -23,7 +24,7 @@ UAbilitySystemComponent* UClanhallMarkComponent::GetOwnerASC() const
 	return nullptr;
 }
 
-void UClanhallMarkComponent::ApplyMark(FGameplayTag NewMark, UAbilitySystemComponent* InSourceASC)
+void UClanhallMarkComponent::ApplyMark(EClanhallMarkTrack Track, FGameplayTag NewMark, UAbilitySystemComponent* InSourceASC)
 {
 	UAbilitySystemComponent* ASC = GetOwnerASC();
 	if (!ASC || !NewMark.IsValid())
@@ -31,45 +32,99 @@ void UClanhallMarkComponent::ApplyMark(FGameplayTag NewMark, UAbilitySystemCompo
 		return;
 	}
 
-	// Правило максимума: старая метка снимается перед накладыванием новой, без стека (`mark_system.md`, «Перезапись»).
-	ClearMark();
+	// Правило максимума: старая метка ЭТОГО трека снимается перед накладыванием новой, без
+	// стека (`mark_system.md`, «Перезапись»). Метка другого трека не трогается.
+	ClearMark(Track);
 
-	ActiveMarkEffectHandle = ClanhallGameplayEffects::ApplyTimedTag(ASC, NewMark, MarkDurationSeconds);
-	if (ActiveMarkEffectHandle.IsValid())
+	FMarkTrackState& State = Tracks[static_cast<uint8>(Track)];
+	State.ActiveMarkEffectHandle = ClanhallGameplayEffects::ApplyTimedTag(ASC, NewMark, MarkDurationSeconds);
+	if (State.ActiveMarkEffectHandle.IsValid())
 	{
-		CachedMarkTag = NewMark;
-		CurrentMarkSourceASC = InSourceASC;
+		State.CachedMarkTag = NewMark;
+		State.CurrentMarkSourceASC = InSourceASC;
 	}
 }
 
-void UClanhallMarkComponent::ClearMark()
+void UClanhallMarkComponent::ClearMark(EClanhallMarkTrack Track)
 {
+	FMarkTrackState& State = Tracks[static_cast<uint8>(Track)];
+
 	if (UAbilitySystemComponent* ASC = GetOwnerASC())
 	{
-		if (ActiveMarkEffectHandle.IsValid())
+		if (State.ActiveMarkEffectHandle.IsValid())
 		{
-			ASC->RemoveActiveGameplayEffect(ActiveMarkEffectHandle);
+			ASC->RemoveActiveGameplayEffect(State.ActiveMarkEffectHandle);
 		}
 	}
 
-	ActiveMarkEffectHandle.Invalidate();
-	CachedMarkTag = FGameplayTag();
-	CurrentMarkSourceASC = nullptr;
+	State.ActiveMarkEffectHandle.Invalidate();
+	State.CachedMarkTag = FGameplayTag();
+	State.CurrentMarkSourceASC = nullptr;
 }
 
-bool UClanhallMarkComponent::IsOwnMark(const UAbilitySystemComponent* QueryASC) const
+bool UClanhallMarkComponent::IsOwnMark(EClanhallMarkTrack Track, const UAbilitySystemComponent* QueryASC) const
 {
-	return GetCurrentMark().IsValid()
-		&& CurrentMarkSourceASC.IsValid()
-		&& CurrentMarkSourceASC.Get() == QueryASC;
+	const FMarkTrackState& State = Tracks[static_cast<uint8>(Track)];
+	return GetCurrentMark(Track).IsValid()
+		&& State.CurrentMarkSourceASC.IsValid()
+		&& State.CurrentMarkSourceASC.Get() == QueryASC;
 }
 
-FGameplayTag UClanhallMarkComponent::GetCurrentMark() const
+FGameplayTag UClanhallMarkComponent::GetCurrentMark(EClanhallMarkTrack Track) const
 {
+	const FMarkTrackState& State = Tracks[static_cast<uint8>(Track)];
 	const UAbilitySystemComponent* ASC = GetOwnerASC();
-	if (ASC && CachedMarkTag.IsValid() && ASC->HasMatchingGameplayTag(CachedMarkTag))
+	if (ASC && State.CachedMarkTag.IsValid() && ASC->HasMatchingGameplayTag(State.CachedMarkTag))
 	{
-		return CachedMarkTag;
+		return State.CachedMarkTag;
 	}
 	return FGameplayTag();
+}
+
+void UClanhallMarkComponent::ApplySelfBuff(TSubclassOf<UGameplayEffect> EffectClass)
+{
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC || !EffectClass)
+	{
+		return;
+	}
+
+	// Снятие по устаревшему/невалидному хендлу безопасно — не нужно отдельно проверять,
+	// истёк ли прежний бафф.
+	if (SelfBuffHandle.IsValid())
+	{
+		ASC->RemoveActiveGameplayEffect(SelfBuffHandle);
+	}
+
+	SelfBuffHandle = ClanhallGameplayEffects::ApplyEffect(ASC, ASC, EffectClass);
+}
+
+void UClanhallMarkComponent::ApplyDebuffFrom(UAbilitySystemComponent* SourceASC, TSubclassOf<UGameplayEffect> EffectClass)
+{
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC || !SourceASC || !EffectClass)
+	{
+		return;
+	}
+
+	// Протухшие ключи (создатель уничтожен) не мешают карте расти бесконечно — чистим их
+	// при каждой вставке, а не отдельным проходом по таймеру.
+	for (auto It = DebuffHandlesBySource.CreateIterator(); It; ++It)
+	{
+		if (!It->Key.IsValid())
+		{
+			It.RemoveCurrent();
+		}
+	}
+
+	const TWeakObjectPtr<UAbilitySystemComponent> SourceKey(SourceASC);
+	if (const FActiveGameplayEffectHandle* Existing = DebuffHandlesBySource.Find(SourceKey))
+	{
+		if (Existing->IsValid())
+		{
+			ASC->RemoveActiveGameplayEffect(*Existing);
+		}
+	}
+
+	DebuffHandlesBySource.Add(SourceKey, ClanhallGameplayEffects::ApplyEffect(SourceASC, ASC, EffectClass));
 }

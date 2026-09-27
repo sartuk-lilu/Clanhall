@@ -9,8 +9,6 @@
 #include "AbilitySystem/Fragments/WeaponFragments.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Fragments/ComboData.h"
-#include "AbilitySystem/Fragments/GameplayFragments.h"
-#include "AbilitySystem/ClanhallMarkTypes.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
 #include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
@@ -18,7 +16,6 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 
 AClanhallHumanoidBase::AClanhallHumanoidBase()
 {
@@ -42,11 +39,13 @@ void AClanhallHumanoidBase::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	// PostInitializeComponents отрабатывает у ВСЕХ акторов уровня до того, как хоть у одного
-	// стартует BeginPlay — в отличие от BeginPlay, где UClanhallParryComponent::BeginPlay уже
-	// читает GetWeaponType() через HasOpponentWithMarkSynergy раньше, чем выполнилось бы тело
-	// BeginPlay этого актора. Пустой Loadout — законное состояние, CurrentWeapon остаётся null,
-	// фолбэки в BeginPlay ниже отрабатывают как и раньше.
+	// PostInitializeComponents, а не BeginPlay — AActor::BeginPlay диспатчит BeginPlay
+	// компонентам раньше, чем выполнится тело переопределения BeginPlay этого актора; любой
+	// текущий или будущий компонент, которому CurrentWeapon нужен уже в своём BeginPlay, застал
+	// бы его null, поставь инициализацию туда. PostInitializeComponents для акторов, размещённых
+	// на уровне, отрабатывает у ВСЕХ акторов до того, как хоть у одного стартует BeginPlay.
+	// Пустой Loadout — законное состояние, CurrentWeapon остаётся null, фолбэки в BeginPlay ниже
+	// отрабатывают как и раньше.
 	CurrentWeapon = (CharacterSheet && CharacterSheet->Loadout.IsValidIndex(0))
 		? CharacterSheet->Loadout[0] : nullptr;
 
@@ -132,19 +131,14 @@ void AClanhallHumanoidBase::BeginPlay()
 				continue;
 			}
 
-			if (UWeaponTypeData::GetRequiredProficiencyRank(Skill.Key) == 0)
-			{
-				UE_LOG(LogClanhall, Warning, TEXT("%s: слот %s не опознан GetRequiredProficiencyRank — навык не грантится."), *GetName(), *Skill.Key.ToString());
-				continue;
-			}
-
 			// Тир закрыт — штатное состояние владения, не ошибка данных
 			// (`weapon_system.md`, «Владение оружием»): боец без ранга новым оружием бьёт
 			// и паррирует, но тратить заряды не на что. Verbose, не Warning — иначе лог
-			// заливается на каждом бойце без прокачки.
-			if (!WeaponType->IsSlotUnlocked(Skill.Key, CharacterSheet ? CharacterSheet->Perks : FGameplayTagContainer::EmptyContainer))
+			// заливается на каждом бойце без прокачки. Гейт по тиру навыка
+			// (UAbilityData::Tier), не по слоту панели, на который навык посажен.
+			if (!WeaponType->IsTierUnlocked(Skill.Value->Tier, CharacterSheet ? CharacterSheet->Perks : FGameplayTagContainer::EmptyContainer))
 			{
-				UE_LOG(LogClanhall, Verbose, TEXT("%s: слот %s закрыт рангом владения — навык не грантится."), *GetName(), *Skill.Key.ToString());
+				UE_LOG(LogClanhall, Verbose, TEXT("%s: слот %s закрыт тиром навыка %d — навык не грантится."), *GetName(), *Skill.Key.ToString(), Skill.Value->Tier);
 				++NumRejectedByRank;
 				continue;
 			}
@@ -288,55 +282,3 @@ FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetActiveSkillHandle(FGameplay
 	return ActiveSkillHandles.FindRef(AbilitySlotTag);
 }
 
-bool AClanhallHumanoidBase::HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const
-{
-	const AClanhallHumanoidBase* Opponent = FindPrototypeOpponent();
-	return Opponent && Opponent->HasAbilityWithMarkSynergy(RequiredMark);
-}
-
-AClanhallHumanoidBase* AClanhallHumanoidBase::FindPrototypeOpponent() const
-{
-	for (TActorIterator<AClanhallHumanoidBase> It(GetWorld()); It; ++It)
-	{
-		if (*It != this)
-		{
-			return *It;
-		}
-	}
-	return nullptr;
-}
-
-bool AClanhallHumanoidBase::HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const
-{
-	// Гейтами владения намеренно не фильтруется (`weapon_system.md`, «Владение оружием»):
-	// вопрос «есть ли чем обналичить Staggered» решает, копится ли шкала усталости у
-	// ПРОТИВНИКА этого бойца вообще (см. HasOpponentWithMarkSynergy) — фильтровать её рангом
-	// значило бы завязать чужую шкалу на прогрессию, что нигде не решено.
-	const UWeaponTypeData* WeaponType = GetWeaponType();
-	if (!WeaponType || !RequiredMark.IsValid())
-	{
-		return false;
-	}
-
-	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : WeaponType->Skills)
-	{
-		const UAbilityData* Data = Skill.Value;
-		const UMarkTriggerFragment* Trigger = Data ? Data->FindFragment<UMarkTriggerFragment>() : nullptr;
-		if (!Trigger)
-		{
-			continue;
-		}
-
-		for (const FMarkSynergy& Synergy : Trigger->Synergies)
-		{
-			// Тот же приём, что в GA_PhysicalSkill::ResolveMarkLogic: MatchesTag, а не == —
-			// корневой RequiredMark (родовой "Mark") матчит любую конкретную метку, в т.ч. Staggered.
-			if (Synergy.RequiredMark.IsValid() && RequiredMark.MatchesTag(Synergy.RequiredMark))
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}

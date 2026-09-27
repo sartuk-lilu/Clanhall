@@ -44,14 +44,6 @@ public:
 	UGE_ModifyCharges();
 };
 
-UCLASS()
-class CLANHALL_API UGE_ModifyStagger : public UGameplayEffect
-{
-	GENERATED_BODY()
-public:
-	UGE_ModifyStagger();
-};
-
 namespace ClanhallGameplayEffects
 {
 	/** Собирает FGameplayEffectSpec из EffectClass, выставляет его единственную SetByCaller-магнитуду
@@ -60,8 +52,9 @@ namespace ClanhallGameplayEffects
 	CLANHALL_API void ApplyModifyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass, float Magnitude);
 
 	/** Применяет произвольный GameplayEffect к TargetASC без SetByCaller — для эффектов синергии меток
-	 *  (FMarkSynergy::EffectOnTarget/EffectOnSelf), у которых магнитуда уже зашита в самом классе эффекта. */
-	CLANHALL_API void ApplyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass);
+	 *  (FMarkSynergy::EffectOnTarget/EffectOnSelf), у которых магнитуда уже зашита в самом классе эффекта.
+	 *  Возвращает handle применённого эффекта (невалиден, если применение не удалось или эффект Instant). */
+	CLANHALL_API FActiveGameplayEffectHandle ApplyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass);
 
 	/** Навешивает Tag на ASC на DurationSeconds (источник == цель). Используется для меток и
 	 *  временных состояний (State.Stunned и т.п.) — не для КД, которого в проекте не осталось.

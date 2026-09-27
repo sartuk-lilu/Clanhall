@@ -28,6 +28,16 @@ enum class EClanhallInputMode : uint8
 	Cast    UMETA(DisplayName = "Cast")
 };
 
+/** Трек метки (`mark_system.md`, «Концепция»): физический трек кладут и снимают только
+ *  физические активки, магический — только заклинания. Один боец несёт по одной метке
+ *  на каждый трек одновременно, независимо друг от друга. */
+UENUM(BlueprintType)
+enum class EClanhallMarkTrack : uint8
+{
+	Physical,
+	Magic
+};
+
 /** Направление защитного действия вне стойки (`combat_system.md`, «Отскок»). Смещение
  *  капсулы, не направление ввода - уводит тело от корпуса, а не от камеры (см.
  *  AClanhallCharacter::TriggerEvade). */

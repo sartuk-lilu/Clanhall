@@ -46,12 +46,6 @@ UGE_ModifyCharges::UGE_ModifyCharges()
 	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetChargesAttribute()));
 }
 
-UGE_ModifyStagger::UGE_ModifyStagger()
-{
-	DurationPolicy = EGameplayEffectDurationType::Instant;
-	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetStaggerAttribute()));
-}
-
 void ClanhallGameplayEffects::ApplyModifyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass, float Magnitude)
 {
 	if (!SourceASC || !TargetASC || !EffectClass)
@@ -70,21 +64,21 @@ void ClanhallGameplayEffects::ApplyModifyEffect(UAbilitySystemComponent* SourceA
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
-void ClanhallGameplayEffects::ApplyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass)
+FActiveGameplayEffectHandle ClanhallGameplayEffects::ApplyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass)
 {
 	if (!SourceASC || !TargetASC || !EffectClass)
 	{
-		return;
+		return FActiveGameplayEffectHandle();
 	}
 
 	const FGameplayEffectContextHandle ContextHandle = SourceASC->MakeEffectContext();
 	const FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(EffectClass, 1.0f, ContextHandle);
 	if (!SpecHandle.IsValid())
 	{
-		return;
+		return FActiveGameplayEffectHandle();
 	}
 
-	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+	return SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
 FActiveGameplayEffectHandle ClanhallGameplayEffects::ApplyTimedTagToTarget(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, FGameplayTag Tag, float DurationSeconds)

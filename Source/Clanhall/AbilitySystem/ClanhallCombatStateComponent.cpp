@@ -67,9 +67,8 @@ void UClanhallCombatStateComponent::UpdateTrackedEnemies()
 	UKismetSystemLibrary::SphereOverlapActors(this, OwnerLocation, EnterRadius, ObjectTypes, nullptr, ActorsToIgnore, Overlapping);
 
 	// Фракций в проекте нет — «противник» = любой другой боец, размеченный Unit.Role.*
-	// (`combat_system.md`, «Боевое состояние»). То же допущение, на котором стоят
-	// FindPrototypeOpponent и HasOpponentWithMarkSynergy (`Character Hierarchy.md`);
-	// заменяется вместе с ними, когда в сцене окажется больше двух бойцов.
+	// (`combat_system.md`, «Боевое состояние»). Прототипное допущение 1v1, заменяется
+	// полноценным таргетингом, когда в сцене окажется больше двух бойцов.
 	const FGameplayTag UnitRoleTag = ClanhallGameplayTags::Unit_Role.GetTag();
 
 	for (AActor* Candidate : Overlapping)

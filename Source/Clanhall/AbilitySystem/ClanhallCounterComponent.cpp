@@ -1,6 +1,5 @@
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
-#include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -47,21 +46,15 @@ void UClanhallCounterComponent::ConsumeCounter()
 		ASC->CancelAbilityHandle(CounteredHandle);
 
 #if !UE_BUILD_SHIPPING
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, заряды сгорели, +1 Stagger"));
+		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, заряды сгорели"));
 #endif
 	}
 
-	// (`combat_system.md`, «Stagger — усталость»): +1 усталости сбитому и хитстоп — переиспользуем
-	// UClanhallHitboxComponent::ApplyHitstop, ту же реализацию, что резолв клэша в TryParry.
-	// Синхронно, не через OnCounterConsumed — тот делегат для будущей реакции получателя (флинч/VFX),
-	// хитстоп должен ударить в тот же кадр, что и сам контр.
+	// Хитстоп сбитому — переиспользуем UClanhallHitboxComponent::ApplyHitstop, ту же реализацию,
+	// что резолв клэша в TryParry. Синхронно, не через OnCounterConsumed — тот делегат для будущей
+	// реакции получателя (флинч/VFX), хитстоп должен ударить в тот же кадр, что и сам контр.
 	if (AActor* Owner = GetOwner())
 	{
-		if (UClanhallParryComponent* OwnParry = Owner->FindComponentByClass<UClanhallParryComponent>())
-		{
-			OwnParry->AddStagger(1.0f);
-		}
-
 		if (UClanhallHitboxComponent* OwnHitbox = Owner->FindComponentByClass<UClanhallHitboxComponent>())
 		{
 			OwnHitbox->ApplyHitstop(OwnHitbox->HitstopDurationOnClash);

@@ -5,6 +5,7 @@
 
 #include "Engine/DataAsset.h"
 #include "Fragments/WeaponFragment.h"
+#include "GameplayTagContainer.h"
 #include "WeaponData.generated.h"
 
 class UWeaponTypeData;
@@ -35,6 +36,12 @@ public:
 	/** Надбавка к базе пробития типа. Тот же статус, что у DamageBonus — потребителя пока нет. */
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	float ArmorPenetrationBonus = 0.0f;
+
+	/** Тип урона этого экземпляра оружия (`weapon_system.md`, «Ассеты вместо `UClassKitData`»):
+	 *  тип урона — свойство конкретного клинка, а не направления удара или навыка. Потребитель
+	 *  (порог зоны DT) появится в P3a; сейчас несётся до резолва попадания и не используется. */
+	UPROPERTY(EditAnywhere, Category = "Weapon", meta = (Categories = "Damage.Type"))
+	FGameplayTag DamageType;
 
 	/** Сюда кладётся Offhand у оружий с левой рукой занятой. */
 	UPROPERTY(EditAnywhere, Instanced, Category = "Weapon")

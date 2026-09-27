@@ -54,8 +54,6 @@ static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
 		{ TEXT("MaxMP"),       UClanhallAttributeSet::GetMaxMPAttribute() },
 		{ TEXT("Charges"),     UClanhallAttributeSet::GetChargesAttribute() },
 		{ TEXT("MaxCharges"),  UClanhallAttributeSet::GetMaxChargesAttribute() },
-		{ TEXT("Stagger"),     UClanhallAttributeSet::GetStaggerAttribute() },
-		{ TEXT("MaxStagger"),  UClanhallAttributeSet::GetMaxStaggerAttribute() },
 	};
 	return Map;
 }
@@ -226,7 +224,7 @@ static void HandleShowStats(UWorld* World, bool bTargetEnemy)
 	}
 
 	const FString Message = FString::Printf(
-		TEXT("%s AP %s/%s · HP %s/%s · MP %s/%s · Charges %s/%s · Stagger %s/%s"),
+		TEXT("%s AP %s/%s · HP %s/%s · MP %s/%s · Charges %s/%s"),
 		bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetAPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxAPAttribute())),
@@ -235,9 +233,7 @@ static void HandleShowStats(UWorld* World, bool bTargetEnemy)
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxMPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetChargesAttribute())),
-		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxChargesAttribute())),
-		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetStaggerAttribute())),
-		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxStaggerAttribute())));
+		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxChargesAttribute())));
 
 	PrintResult(Key, Message, FColor::Cyan);
 }
@@ -249,8 +245,8 @@ static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTarg
 	if (Args.Num() < 1)
 	{
 		PrintError(Key, bTargetEnemy
-			? TEXT("Usage: Clanhall.Enemy.AddMark <TagName>")
-			: TEXT("Usage: Clanhall.Player.AddMark <TagName>"));
+			? TEXT("Usage: Clanhall.Enemy.AddMark <TagName> [Physical|Magic]")
+			: TEXT("Usage: Clanhall.Player.AddMark <TagName> [Physical|Magic]"));
 		return;
 	}
 
@@ -267,6 +263,22 @@ static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTarg
 		return;
 	}
 
+	// Необязательный второй аргумент — трек метки, регистронезависимо, по умолчанию Physical
+	// (`mark_system.md`, «Концепция»).
+	EClanhallMarkTrack Track = EClanhallMarkTrack::Physical;
+	if (Args.Num() >= 2)
+	{
+		if (Args[1].Equals(TEXT("Magic"), ESearchCase::IgnoreCase))
+		{
+			Track = EClanhallMarkTrack::Magic;
+		}
+		else if (!Args[1].Equals(TEXT("Physical"), ESearchCase::IgnoreCase))
+		{
+			PrintError(Key, FString::Printf(TEXT("Unknown mark track '%s' (expected Physical or Magic)"), *Args[1]));
+			return;
+		}
+	}
+
 	UClanhallMarkComponent* MarkComponent = TargetActor->FindComponentByClass<UClanhallMarkComponent>();
 	if (!MarkComponent)
 	{
@@ -274,8 +286,9 @@ static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTarg
 		return;
 	}
 
-	MarkComponent->ApplyMark(Tag);
-	PrintResult(Key, FString::Printf(TEXT("%s mark %s applied"), bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"), *Tag.ToString()));
+	MarkComponent->ApplyMark(Track, Tag);
+	PrintResult(Key, FString::Printf(TEXT("%s mark %s applied (%s track)"), bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"), *Tag.ToString(),
+		Track == EClanhallMarkTrack::Magic ? TEXT("Magic") : TEXT("Physical")));
 }
 
 static void HandleListStats(EDebugMsgKey Key)
@@ -570,7 +583,7 @@ static FAutoConsoleCommandWithWorldAndArgs CVarEnemyShowStats(
 
 static FAutoConsoleCommandWithWorldAndArgs CVarPlayerAddMark(
 	TEXT("Clanhall.Player.AddMark"),
-	TEXT("Apply a mark to the player via UClanhallMarkComponent. Usage: Clanhall.Player.AddMark <TagName>"),
+	TEXT("Apply a mark to the player via UClanhallMarkComponent. Usage: Clanhall.Player.AddMark <TagName> [Physical|Magic]"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandleAddMark(World, Args, /*bTargetEnemy=*/false);
@@ -578,7 +591,7 @@ static FAutoConsoleCommandWithWorldAndArgs CVarPlayerAddMark(
 
 static FAutoConsoleCommandWithWorldAndArgs CVarEnemyAddMark(
 	TEXT("Clanhall.Enemy.AddMark"),
-	TEXT("Apply a mark to the current target via UClanhallMarkComponent. Usage: Clanhall.Enemy.AddMark <TagName>"),
+	TEXT("Apply a mark to the current target via UClanhallMarkComponent. Usage: Clanhall.Enemy.AddMark <TagName> [Physical|Magic]"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandleAddMark(World, Args, /*bTargetEnemy=*/true);

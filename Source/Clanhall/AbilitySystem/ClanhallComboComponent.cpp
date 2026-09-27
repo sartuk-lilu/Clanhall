@@ -2,6 +2,7 @@
 #include "Clanhall.h"
 #include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/WeaponTypeData.h"
+#include "AbilitySystem/WeaponData.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
@@ -104,16 +105,16 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 
 void UClanhallComboComponent::TryStartSequence(EClanhallAttackDirection Direction)
 {
-	// (`combat_system.md`, «Stagger — усталость»): единственная точка, где реально СТАРТУЕТ новая серия —
-	// сброс счётчика отпарированных шагов здесь, безусловно и до попытки активации. Корректность
-	// не зависит от того, каким путём закончилась предыдущая серия (их несколько и станет больше):
-	// между сериями счётчик обязан быть нулём, а активация ниже может и провалиться — сброс от
-	// этого не должен зависеть, вреда простою нулём нет. Не дублировать в ResetCombo().
+	// Единственная точка, где реально СТАРТУЕТ новая серия — сброс счётчика отражённых шагов
+	// здесь, безусловно и до попытки активации. Корректность не зависит от того, каким путём
+	// закончилась предыдущая серия (их несколько и станет больше): между сериями счётчик обязан
+	// быть нулём, а активация ниже может и провалиться — сброс от этого не должен зависеть, вреда
+	// простою нулём нет. Не дублировать в ResetCombo().
 	if (AActor* Owner = GetOwner())
 	{
 		if (UClanhallParryComponent* OwnParry = Owner->FindComponentByClass<UClanhallParryComponent>())
 		{
-			OwnParry->ResetStaggerSeries();
+			OwnParry->ResetParriedSteps();
 		}
 	}
 
@@ -231,10 +232,14 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	// вызова. BaseDamage профиля идёт в EventMagnitude — GA больше не хранит RawDamage сам.
 	FGameplayEventData EventData;
 	EventData.EventMagnitude = Damage.BaseDamage;
-	if (Damage.DamageType.IsValid())
+
+	// Тип урона — свойство экземпляра оружия владельца, не профиля направления
+	// (`weapon_system.md`, «Ассеты вместо `UClassKitData`»). Задел: тип урона в InstigatorTags
+	// события, в расчёте пока не читается. Пустой тег (оружие без DamageType) — не кладём.
+	const UWeaponData* Weapon = Character->GetCurrentWeapon();
+	if (Weapon && Weapon->DamageType.IsValid())
 	{
-		// Задел: тип урона в InstigatorTags события, в расчёте пока не читается.
-		EventData.InstigatorTags.AddTag(Damage.DamageType);
+		EventData.InstigatorTags.AddTag(Weapon->DamageType);
 	}
 	// Способность по монтажу определяет режим резолва (контакт или мгновенный фолбэк).
 	EventData.OptionalObject = Montage;

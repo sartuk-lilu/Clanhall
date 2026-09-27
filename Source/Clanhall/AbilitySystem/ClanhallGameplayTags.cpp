@@ -16,7 +16,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Parrying, "State.Parrying", "Окно парирования физической серии открыто");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterWindow, "State.CounterWindow", "Окно контрнавыка против активного навыка врага открыто");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InStance, "State.InStance", "ЛКМ зажат — боевая стойка (WASD = направленные удары)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Оглушение после полного парирования серии");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Потеря управления на противнике, источник - эффект синергии (FMarkSynergy::EffectOnTarget); на игроке не применяется (invariants.md, «Разрешённые асимметрии»)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
@@ -41,7 +41,7 @@ namespace ClanhallGameplayTags
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Denied_Charges, "Denied.Charges", "CanActivateAbility отказал из-за нехватки Charges — причина для Denied-фидбека на HUD");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP/Charges/Stagger)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP/Charges)");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_ApplyMark, "Event.ApplyMark", "AnimNotify_ApplyMark отправляет этот GameplayEvent — GA_PhysicalSkill может слушать его для async-подтверждения хита");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_DirectionalAttack, "Event.DirectionalAttack", "Служебный тег для TriggerAbilityFromGameplayEvent — несёт BaseDamage (EventMagnitude) от UClanhallComboComponent к GA_DirectionalAttackBase, не гейтит выбор способности");
@@ -93,10 +93,10 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Grounded, "Mark.Grounded", "Семейство 6 (гравитация)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Slow, "Mark.Slow", "Семейство 7 (контроль): Slow / Pinned / Staggered");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Pinned, "Mark.Pinned", "Семейство 7 (контроль)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Staggered, "Mark.Staggered", "Семейство 7 (контроль)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Staggered, "Mark.Staggered", "Выведен из употребления (P1d: снос шкалы Stagger)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Distress, "Mark.Distress", "Семейство 8 (паника): Distress / Shake / Stunned");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Shake, "Mark.Shake", "Семейство 8 (паника)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Stunned, "Mark.Stunned", "Семейство 8 (паника) — не путать с State.Stunned");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Stunned, "Mark.Stunned", "Не назначен ни одному треку меток");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Shackles, "Mark.Shackles", "Семейство 9 (цепи): Shackles / Impaled / Feared");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Impaled, "Mark.Impaled", "Семейство 9 (цепи)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Feared, "Mark.Feared", "Семейство 9 (цепи)");

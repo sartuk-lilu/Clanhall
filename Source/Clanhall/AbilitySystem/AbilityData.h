@@ -55,6 +55,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.0"))
 	float ManaGain = 0.0f;
 
+	/** Тир навыка 1-4 (`weapon_system.md`, «Владение оружием»): гейтит грант через
+	 *  UWeaponTypeData::IsTierUnlocked, независимо от слота панели, на который навык посажен.
+	 *  ChargeCost — отдельное поле, тир не подставляет его автоматически. */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "1", ClampMax = "4"))
+	int32 Tier = 1;
+
 	/** Монтаж навыка. Слот — fullbody, для ВСЕХ активок без исключения: активка отыгрывается
 	 *  целым телом, разбиение «лёгкие на верх, тяжёлые целиком» отменено (`locomotion_structure.md`, «Слоты: создание и назначение»).
 	 *  Типовая ошибка — монтаж остался в DefaultSlot: логика работает, анимации не видно.

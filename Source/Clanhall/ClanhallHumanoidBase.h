@@ -126,22 +126,14 @@ public:
 	 *  нет записи) = невалидный хэндл, TryActivateAbility просто откажет. */
 	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const;
 
-	/** (`combat_system.md`, «Stagger — усталость»; `Character Hierarchy.md`, «Прототипный поиск противника»): есть ли у ПРОТИВНИКА этого бойца (см. FindPrototypeOpponent)
-	 *  навык с синергией на RequiredMark в GetWeaponType()->Skills. Читает UClanhallParryComponent в
-	 *  BeginPlay, чтобы решить, копится ли Stagger владельца вообще. Гейтами владения не
-	 *  фильтруется — см. комментарий у HasAbilityWithMarkSynergy. */
-	bool HasOpponentWithMarkSynergy(FGameplayTag RequiredMark) const;
-
 protected:
 	/** Выставляет CurrentWeapon из CharacterSheet->Loadout[0]. Не BeginPlay — ловушка:
-	 *  AActor::BeginPlay диспатчит BeginPlay компонентам (в т.ч. UClanhallParryComponent,
-	 *  который читает GetWeaponType() через HasOpponentWithMarkSynergy) раньше, чем выполняется
-	 *  тело переопределения BeginPlay этого актора. Поставь инициализацию туда — и на момент
-	 *  вызова ParryComponent CurrentWeapon ещё null: шкала Stagger молча решит, что
-	 *  обналичивать метку противнику нечем, и не будет копиться вовсе. Ни ошибки, ни варнинга.
-	 *  PostInitializeComponents для акторов, размещённых на уровне, отрабатывает у ВСЕХ
-	 *  акторов до того, как хоть у одного стартует BeginPlay — значит и чужой лист к этому
-	 *  моменту готов. Пустой Loadout — законное состояние, фолбэки работают как раньше. */
+	 *  AActor::BeginPlay диспатчит BeginPlay компонентам раньше, чем выполняется тело
+	 *  переопределения BeginPlay этого актора; любой компонент, которому CurrentWeapon нужен
+	 *  уже в своём BeginPlay, застал бы его null, поставь инициализацию туда. Ни ошибки, ни
+	 *  варнинга. PostInitializeComponents для акторов, размещённых на уровне, отрабатывает
+	 *  у ВСЕХ акторов до того, как хоть у одного стартует BeginPlay. Пустой Loadout — законное
+	 *  состояние, фолбэки работают как раньше. */
 	virtual void PostInitializeComponents() override;
 
 	/** Грант WASD-ударов из CharacterSheet и активок из GetWeaponType()->Skills, через два
@@ -157,14 +149,4 @@ private:
 	 *  если класс не задан — это законное состояние (оружие без визуала тестируется). */
 	AClanhallWeaponActor* SpawnAndAttachWeapon(TSubclassOf<AClanhallWeaponActor> WeaponClass);
 
-	/** Прототип 1v1: единственный ДРУГОЙ AClanhallHumanoidBase в мире. Полноценного
-	 *  таргетинга (кто чей противник) в проекте ещё нет — AIController/BT тоже нет
-	 *  (`Character Hierarchy.md`, «Прототипный поиск противника»).
-	 *  Заменить, когда одновременно появится больше одного противника. */
-	AClanhallHumanoidBase* FindPrototypeOpponent() const;
-
-	/** Есть ли у ЭТОГО бойца (не противника) в GetWeaponType()->Skills навык с синергией
-	 *  RequiredMark. Гейтами владения намеренно не фильтруется (`weapon_system.md`, «Владение
-	 *  оружием») — вопрос не «может ли применить», а «числится ли в наборе оружия вообще». */
-	bool HasAbilityWithMarkSynergy(FGameplayTag RequiredMark) const;
 };

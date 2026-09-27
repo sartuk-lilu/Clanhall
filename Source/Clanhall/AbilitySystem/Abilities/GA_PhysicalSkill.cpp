@@ -4,12 +4,15 @@
 #include "AbilitySystem/Fragments/GameplayFragments.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallMarkTypes.h"
+#include "ClanhallCombatTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
+#include "AbilitySystem/WeaponData.h"
+#include "ClanhallHumanoidBase.h"
 #include "Animation/AnimNotifyState_Hitbox.h"
 #include "Animation/AnimNotifyState_CounterWindow.h"
 #include "Animation/AnimMontage.h"
@@ -159,9 +162,15 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 		return;
 	}
 
+	// Владелец этой активки — для слота баффа EffectOnSelf (`mark_system.md`, «Слоты эффектов
+	// от активаций»), собственный UClanhallMarkComponent атакующего, не путать с TargetMarkComponent.
+	AActor* SourceAvatar = CurrentActorInfo ? CurrentActorInfo->AvatarActor.Get() : nullptr;
+
 	if (const UMarkTriggerFragment* Trigger = Data->FindFragment<UMarkTriggerFragment>())
 	{
-		const FGameplayTag CurrentMark = TargetMarkComponent->GetCurrentMark();
+		// Физическая активка читает и сжигает ТОЛЬКО физический трек — магический трек
+		// (заклинания) она не трогает ни в каком случае (`mark_system.md`, «Концепция»).
+		const FGameplayTag CurrentMark = TargetMarkComponent->GetCurrentMark(EClanhallMarkTrack::Physical);
 		if (CurrentMark.IsValid())
 		{
 			for (const FMarkSynergy& Synergy : Trigger->Synergies)
@@ -176,18 +185,30 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 				}
 
 				// (`mark_system.md`, «Активация синергии»): метка сгорает -> бафф на себя ИЛИ дебафф на цель, никогда оба.
-				TargetMarkComponent->ClearMark();
+				TargetMarkComponent->ClearMark(EClanhallMarkTrack::Physical);
 
 				if (Synergy.EffectOnTarget)
 				{
-					// Состояние на цель — на каждой задетой цели.
-					ClanhallGameplayEffects::ApplyEffect(SourceASC, TargetASC, Synergy.EffectOnTarget);
+					// Состояние на цель — на каждой задетой цели, через слот дебаффа ЭТОГО
+					// создателя на цели (`mark_system.md`, «Слоты эффектов от активаций»): новый
+					// дебафф того же атакующего снимает свой прежний, дебаффы других не трогает.
+					// TargetMarkComponent гарантирован не-null — единственный вызывающий,
+					// ResolveHitOn, находит его до вызова ResolveMarkLogic (см. ранний return выше).
+					TargetMarkComponent->ApplyDebuffFrom(SourceASC, Synergy.EffectOnTarget);
 				}
 				else if (Synergy.EffectOnSelf && !bSelfSynergySpent)
 				{
-					// Состояние на себя — один раз за применение, сколько бы целей ни задело:
-					// трёхкратно наложенный баф либо бессмыслен, либо стакается непредсказуемо.
-					ClanhallGameplayEffects::ApplyEffect(SourceASC, SourceASC, Synergy.EffectOnSelf);
+					// Состояние на себя — один раз за применение, сколько бы целей ни задело,
+					// через слот баффа атакующего (`mark_system.md`, «Слоты эффектов от активаций»).
+					if (UClanhallMarkComponent* SourceMarkComponent = SourceAvatar ? SourceAvatar->FindComponentByClass<UClanhallMarkComponent>() : nullptr)
+					{
+						SourceMarkComponent->ApplySelfBuff(Synergy.EffectOnSelf);
+					}
+					else
+					{
+						UE_LOG(LogClanhall, Warning, TEXT("ResolveMarkLogic: source has no UClanhallMarkComponent, applying %s without a buff slot"), *Synergy.EffectOnSelf->GetName());
+						ClanhallGameplayEffects::ApplyEffect(SourceASC, SourceASC, Synergy.EffectOnSelf);
+					}
 					bSelfSynergySpent = true;
 				}
 
@@ -203,7 +224,9 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 
 	if (const UMarkApplyFragment* MarkApply = Data->FindFragment<UMarkApplyFragment>())
 	{
-		TargetMarkComponent->ApplyMark(MarkApply->MarkTag, SourceASC);
+		// Порядок «сначала потребить, потом положить» (см. выше) сохранён: положить метку
+		// физического трека — последний шаг резолва, после того как прежняя уже могла сгореть.
+		TargetMarkComponent->ApplyMark(EClanhallMarkTrack::Physical, MarkApply->MarkTag, SourceASC);
 	}
 }
 
@@ -450,6 +473,12 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	{
 		return;
 	}
+
+	// Тип урона оружия в руке — донесён до резолва попадания, потребитель (порог зоны DT)
+	// появится в P3a (`weapon_system.md`, «Ассеты вместо `UClassKitData`»); пока не используется.
+	const AClanhallHumanoidBase* SourceCharacter = CurrentActorInfo ? Cast<AClanhallHumanoidBase>(CurrentActorInfo->AvatarActor.Get()) : nullptr;
+	const UWeaponData* SourceWeapon = SourceCharacter ? SourceCharacter->GetCurrentWeapon() : nullptr;
+	const FGameplayTag SourceWeaponDamageType = SourceWeapon ? SourceWeapon->DamageType : FGameplayTag();
 
 	IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
 	UAbilitySystemComponent* TargetASC = TargetInterface ? TargetInterface->GetAbilitySystemComponent() : nullptr;

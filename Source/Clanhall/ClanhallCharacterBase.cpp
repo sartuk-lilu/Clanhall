@@ -58,8 +58,6 @@ void AClanhallCharacterBase::BeginPlay()
 		AttributeSet->InitMP(DefaultMaxMP);
 		AttributeSet->InitMaxCharges(DefaultMaxCharges);
 		AttributeSet->InitCharges(DefaultMaxCharges);
-		AttributeSet->InitMaxStagger(DefaultMaxStagger);
-		AttributeSet->InitStagger(0.0f);
 	}
 
 	if (AbilitySystemComponent)

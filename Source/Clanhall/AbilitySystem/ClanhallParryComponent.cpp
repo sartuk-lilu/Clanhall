@@ -2,31 +2,13 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
-#include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
-#include "ClanhallHumanoidBase.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "Kismet/GameplayStatics.h"
-#include "Engine/World.h"
-#include "TimerManager.h"
 #include "Engine/Engine.h"
-
-void UClanhallParryComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// (`combat_system.md`, «Stagger — усталость»): гейт подсистемы, посчитан один раз на входе в бой.
-	// Прототип 1v1 — "противник" ищет AClanhallHumanoidBase::HasOpponentWithMarkSynergy,
-	// у которой пока нет полноценного таргетинга (см. её комментарий); пересчёт при смене
-	// оружия сознательно не делается.
-	if (const AClanhallHumanoidBase* Character = Cast<AClanhallHumanoidBase>(GetOwner()))
-	{
-		bStaggerGateOpen = Character->HasOpponentWithMarkSynergy(ClanhallGameplayTags::Mark_Staggered.GetTag());
-	}
-}
 
 void UClanhallParryComponent::ResetParry()
 {
@@ -86,15 +68,13 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 		TargetHitbox->SuppressHitboxes();
 	}
 
-	// (`combat_system.md`, «Stagger — усталость»): со второго отпарированного шага серии — первый идёт
-	// бесплатно (рвёт слив, перезапускает паузу, но шкалу не растит).
+	// Счётчик отражённых шагов текущей серии атакующего (нужен P2: раскрытие после чистого
+	// отражения всей серии).
 	++ParriedStepsThisSeries;
-	AddStagger(ParriedStepsThisSeries > 1 ? 1.0f : 0.0f);
 
 	if (UAbilitySystemComponent* OwnASC = GetASC())
 	{
-		// Парировавшему (цели) — заряд. Заряд платится за само действие, не зависит от AddStagger/гейта.
-		// Парирование даёт плоский +1 и оружием НЕ масштабируется (`economy_system.md`,
+		// Парировавшему (цели) — заряд. Парирование даёт плоский +1 и оружием НЕ масштабируется (`economy_system.md`,
 		// «Заряды: доход»). Масштабировать доход защищающегося его оружием значит «кинжалом
 		// парировать невыгодно» — то есть штраф на защиту, а защита это пол дохода. Нормируется
 		// только атакующий канал. Не заменять на ChargeIncome.
@@ -104,56 +84,6 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 	return true;
 }
 
-void UClanhallParryComponent::AddStagger(float Amount)
-{
-	// Без обналичивающего навыка у противника шкала не существует — no-op целиком,
-	// включая перезапуск таймеров распада (`combat_system.md`, «Stagger — усталость»).
-	if (!bStaggerGateOpen)
-	{
-		return;
-	}
-
-	// Любой вызов, включая AddStagger(0), прерывает текущий слив и сохраняет остаток —
-	// тот же FTimerHandle, что ниже перезапускает ScheduleStaggerDecay(). GetWorld() может
-	// вернуть null при разрушении мира (ConsumeCounter — один из вызывающих) — гард, не
-	// разыменование вслепую.
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(StaggerDecayTimer);
-	}
-
-	UAbilitySystemComponent* ASC = GetASC();
-	const UClanhallAttributeSet* Attributes = ASC ? ASC->GetSet<UClanhallAttributeSet>() : nullptr;
-	if (ASC && Attributes)
-	{
-		if (Amount > 0.0f)
-		{
-			ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), Amount);
-		}
-
-		// MaxStagger > 0 обязателен: невыставленный потолок (0) иначе даёт 0 >= 0 — истина на
-		// КАЖДОМ вызове, включая AddStagger(0) (первый отпарированный шаг серии), и метка
-		// Staggered вешалась бы мгновенно. Тот же случай, что уже разобран в
-		// OnStaggerDecayDelayElapsed — там своя копия проверки, здесь своя.
-		if (Attributes->GetMaxStagger() > 0.0f && Attributes->GetStagger() >= Attributes->GetMaxStagger())
-		{
-			// Потолок (`combat_system.md`, «Stagger — усталость»): сброс в 0 и метка Staggered владельцу —
-			// стан отсюда больше не выдаётся, State.Stunned выдаёт только обналичивающая синергия
-			// (`mark_system.md`, «Staggered — метка без навыка-источника»).
-			ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), -Attributes->GetStagger());
-
-			if (UClanhallMarkComponent* MarkComp = GetOwner() ? GetOwner()->FindComponentByClass<UClanhallMarkComponent>() : nullptr)
-			{
-				// Источник неизвестен на этом уровне (AddStagger несёт только Amount) — nullptr
-				// легален, IsOwnMark для Mark.Staggered потребителя пока не имеет.
-				MarkComp->ApplyMark(ClanhallGameplayTags::Mark_Staggered.GetTag(), nullptr);
-			}
-		}
-	}
-
-	ScheduleStaggerDecay();
-}
-
 UAbilitySystemComponent* UClanhallParryComponent::GetASC() const
 {
 	if (const IAbilitySystemInterface* Interface = Cast<IAbilitySystemInterface>(GetOwner()))
@@ -161,38 +91,4 @@ UAbilitySystemComponent* UClanhallParryComponent::GetASC() const
 		return Interface->GetAbilitySystemComponent();
 	}
 	return nullptr;
-}
-
-void UClanhallParryComponent::ScheduleStaggerDecay()
-{
-	GetWorld()->GetTimerManager().SetTimer(StaggerDecayTimer, this, &UClanhallParryComponent::OnStaggerDecayDelayElapsed, StaggerDecayDelay, false);
-}
-
-void UClanhallParryComponent::OnStaggerDecayDelayElapsed()
-{
-	// (`combat_system.md`, «Stagger — усталость»): скорость слива фиксирована, не длительность — интервал
-	// между тиками пересчитывается от ТЕКУЩЕГО потолка владельца (свой у каждого бойца и тира).
-	const UAbilitySystemComponent* ASC = GetASC();
-	const UClanhallAttributeSet* Attributes = ASC ? ASC->GetSet<UClanhallAttributeSet>() : nullptr;
-	const float MaxStagger = Attributes ? Attributes->GetMaxStagger() : 0.0f;
-	if (MaxStagger <= 0.0f)
-	{
-		return;
-	}
-
-	const float TickInterval = StaggerDrainDuration / MaxStagger;
-	GetWorld()->GetTimerManager().SetTimer(StaggerDecayTimer, this, &UClanhallParryComponent::DecayStaggerStep, TickInterval, true);
-}
-
-void UClanhallParryComponent::DecayStaggerStep()
-{
-	UAbilitySystemComponent* ASC = GetASC();
-	const UClanhallAttributeSet* Attributes = ASC ? ASC->GetSet<UClanhallAttributeSet>() : nullptr;
-	if (!ASC || !Attributes || Attributes->GetStagger() <= 0.0f)
-	{
-		GetWorld()->GetTimerManager().ClearTimer(StaggerDecayTimer);
-		return;
-	}
-
-	ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyStagger::StaticClass(), -1.0f);
 }

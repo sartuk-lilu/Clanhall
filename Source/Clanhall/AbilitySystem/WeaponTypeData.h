@@ -100,13 +100,9 @@ public:
 		return nullptr;
 	}
 
-	/** Ранг владения, открывающий этот слот: Q/E -> 1, R/F -> 2, Z/X -> 3, C/V -> 4.
-	 *  0 — слот не опознан (`weapon_system.md`, «Владение оружием»). Правило едино для всех
-	 *  оружий, поэтому живёт в коде, а не дублируется на каждом ассете. */
-	static int32 GetRequiredProficiencyRank(FGameplayTag SlotTag);
-
-	/** Открыт ли тир этого слота при данном наборе перков листа. Ранг вне границ
-	 *  ProficiencyTagsByRank (недозаполненный ассет — законное состояние, не повод для краша)
-	 *  считается закрытым. */
-	bool IsSlotUnlocked(FGameplayTag SlotTag, const FGameplayTagContainer& Perks) const;
+	/** Открыт ли тир навыка (`UAbilityData::Tier`, 1-4) при данном наборе перков листа —
+	 *  гейт больше не привязан к слоту панели, на который навык посажен (`weapon_system.md`,
+	 *  «Владение оружием»). Tier вне границ ProficiencyTagsByRank (недозаполненный ассет —
+	 *  законное состояние, не повод для краша) считается закрытым. */
+	bool IsTierUnlocked(int32 Tier, const FGameplayTagContainer& Perks) const;
 };

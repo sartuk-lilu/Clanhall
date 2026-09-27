@@ -12,14 +12,15 @@
 
 #include "Engine/DataAsset.h"
 #include "ClanhallCombatTypes.h"
-#include "GameplayTagContainer.h"
 #include "ComboData.generated.h"
 
 class UAnimMontage;
 class UAnimSequence;
 
-/** Базовый урон и тип на направление — направление задаётся именем поля-владельца в UComboData,
- *  в самой структуре не хранится. */
+/** Базовый урон на направление — направление задаётся именем поля-владельца в UComboData,
+ *  в самой структуре не хранится. Тип урона переехал на экземпляр оружия (`UWeaponData`,
+ *  `weapon_system.md`, «Ассеты вместо `UClassKitData`»): он свойство конкретного клинка,
+ *  а не направления удара. */
 USTRUCT(BlueprintType)
 struct FDirectionalDamage
 {
@@ -27,10 +28,6 @@ struct FDirectionalDamage
 
 	UPROPERTY(EditAnywhere, Category = "Combo")
 	float BaseDamage = 10.0f;
-
-	/** Заглушка: тег типа урона. В расчёте пока НЕ используется — задел. */
-	UPROPERTY(EditAnywhere, Category = "Combo", meta = (Categories = "Damage.Type"))
-	FGameplayTag DamageType;
 };
 
 /** Набор опенеров из боевой стойки — все 4 направления валидны (повтора направления тут нет,

@@ -1,4 +1,4 @@
-// Базовые ресурсы персонажа: AP, HP, MP, Charges, Stagger.
+// Базовые ресурсы персонажа: AP, HP, MP, Charges.
 // Канон: (`combat_system.md`, «Ресурсы персонажа»).
 
 #pragma once
@@ -64,17 +64,6 @@ public:
 	FGameplayAttributeData MaxCharges;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxCharges);
 
-	// --- Stagger: усталость от парирования (`combat_system.md`, «Stagger — усталость»). Копится владельцу
-	// зоны на каждом отпарированном шаге, распадается таймером на UClanhallParryComponent
-	// после паузы без парирований; на потолке — сброс в 0 + State.Stunned владельцу. ---
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Stagger, Category = "Clanhall|Stagger")
-	FGameplayAttributeData Stagger;
-	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, Stagger);
-
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxStagger, Category = "Clanhall|Stagger")
-	FGameplayAttributeData MaxStagger;
-	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxStagger);
-
 protected:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
@@ -96,12 +85,8 @@ protected:
 	void OnRep_Charges(const FGameplayAttributeData& OldValue);
 	UFUNCTION()
 	void OnRep_MaxCharges(const FGameplayAttributeData& OldValue);
-	UFUNCTION()
-	void OnRep_Stagger(const FGameplayAttributeData& OldValue);
-	UFUNCTION()
-	void OnRep_MaxStagger(const FGameplayAttributeData& OldValue);
 
 private:
-	/** Держит AP/HP/MP/Charges в [0, Max] и Stagger в [0, MaxStagger] при любом источнике изменения. */
+	/** Держит AP/HP/MP/Charges в [0, Max] при любом источнике изменения. */
 	void ClampAttribute(const FGameplayAttribute& Attribute, float& NewValue) const;
 };

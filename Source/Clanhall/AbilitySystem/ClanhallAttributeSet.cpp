@@ -39,10 +39,6 @@ void UClanhallAttributeSet::ClampAttribute(const FGameplayAttribute& Attribute, 
 		// `combat_system.md`, «Charges — Очки Активных Навыков».
 		NewValue = FMath::Clamp(NewValue, 0.0f, 16.0f);
 	}
-	else if (Attribute == GetStaggerAttribute())
-	{
-		NewValue = FMath::Clamp(NewValue, 0.0f, MaxStagger.GetCurrentValue());
-	}
 }
 
 void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -74,10 +70,6 @@ void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCa
 	{
 		SetMaxCharges(FMath::Clamp(GetMaxCharges(), 0.0f, 16.0f));
 	}
-	else if (ChangedAttribute == GetStaggerAttribute())
-	{
-		SetStagger(FMath::Clamp(GetStagger(), 0.0f, GetMaxStagger()));
-	}
 }
 
 void UClanhallAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -92,8 +84,6 @@ void UClanhallAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxMP, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, Charges, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxCharges, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, Stagger, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxStagger, COND_None, REPNOTIFY_Always);
 }
 
 void UClanhallAttributeSet::OnRep_AP(const FGameplayAttributeData& OldValue)
@@ -134,14 +124,4 @@ void UClanhallAttributeSet::OnRep_Charges(const FGameplayAttributeData& OldValue
 void UClanhallAttributeSet::OnRep_MaxCharges(const FGameplayAttributeData& OldValue)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, MaxCharges, OldValue);
-}
-
-void UClanhallAttributeSet::OnRep_Stagger(const FGameplayAttributeData& OldValue)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, Stagger, OldValue);
-}
-
-void UClanhallAttributeSet::OnRep_MaxStagger(const FGameplayAttributeData& OldValue)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, MaxStagger, OldValue);
 }

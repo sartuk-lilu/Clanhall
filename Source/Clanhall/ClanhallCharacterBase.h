@@ -67,9 +67,7 @@ protected:
 	 *  переопределяются per-class в defaults Blueprint-наследника (у Часового свои AP/HP/MP/Charges).
 	 *  Раньше жили только в AClanhallCharacter::BeginPlay —
 	 *  экземпляр без этого пути (AClanhallHumanoidBoss, пустой конструктор) оставался с нулевыми
-	 *  атрибутами: MaxStagger=0 клампил Stagger в [0,0], и GetStagger()>=GetMaxStagger() было
-	 *  истиной уже на первом клэше — босс станился с одного парирования вместо положенных четырёх
-	 *  (`combat_system.md`, «Stagger — усталость»). */
+	 *  атрибутами. */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxAP = 300.0f;
 
@@ -84,11 +82,6 @@ protected:
 	 *  недоступен. Потолок 16 — UClanhallAttributeSet::ClampAttribute. */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxCharges = 6.0f;
-
-	/** (`combat_system.md`, «Stagger — усталость»): потолок усталости парирования, плейсхолдер — подбирается
-	 *  плейтестом (Часовой/Страж получат свой). */
-	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
-	float DefaultMaxStagger = 4.0f;
 
 	/** Скорость обычной ходьбы (страйф, вперёд, передние диагонали) - общая локомоция, не
 	 *  привилегия стойки: доворот корпуса по камере теперь работает везде (`locomotion_structure.md`).
