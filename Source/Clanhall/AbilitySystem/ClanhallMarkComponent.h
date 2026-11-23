@@ -88,8 +88,11 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
-	/** Ассет метки держит не эта структура (она не UPROPERTY), а его владельцы - UAbilityData
-	 *  тестового набора; ассеты данных в бою не выгружаются. */
+	/** Сильные ссылки на ассеты положенных меток: FPlacedMark не UPROPERTY и GC его не видит, а
+	 *  метку, положенную отладкой (AddMark), не держит ни один приём. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMarkData>> HeldMarkAssets;
+
 	struct FPlacedMark
 	{
 		TObjectPtr<UMarkData> Mark;

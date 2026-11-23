@@ -75,6 +75,8 @@ bool UClanhallMarkComponent::PlaceMark(UMarkData* Mark, FGameplayTag SourceSchoo
 		return false;
 	}
 
+	HeldMarkAssets.AddUnique(Mark);
+
 	const double Time = Now();
 	FPlacedMark Fresh;
 	Fresh.Mark = Mark;
