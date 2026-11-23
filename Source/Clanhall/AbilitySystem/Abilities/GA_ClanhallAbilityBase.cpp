@@ -13,8 +13,8 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	// до EndAbility) блокирует вторую активку — «начатую активку нельзя оборвать» (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 
-	// Оглушение (успешный контрнавык — ClanhallCounterComponent) блокирует новые физдействия.
-	// Тег симметричен (вешается и на игрока, и на противника), блокировка тоже.
+	// Оглушение (State.Stunned — эффект синергии меток, FMarkSynergy::EffectOnTarget) блокирует
+	// новые физдействия. Контрнавык стана не выдаёт (`CounterAbility.md`, «Наказание сбитого»).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());
 }
 
