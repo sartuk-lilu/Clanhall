@@ -67,7 +67,6 @@ bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* Sou
 	if (APRemoved > 0.0f)
 	{
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, TargetASC, UGE_ModifyAP::StaticClass(), -APRemoved);
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyAP::StaticClass(), APRemoved * 0.5f);
 	}
 
 	if (Overflow > 0.0f)
