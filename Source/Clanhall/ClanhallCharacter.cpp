@@ -171,7 +171,7 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(LaunchAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLaunchPressed);
 		EnhancedInputComponent->BindAction(CastAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnCastPressed);
 
-		// Пробел: прыжок / рывок, решает сам обработчик (`CombatSystem.md`).
+		// Пробел: уклонение «Пробел + направление» (`CombatSystem.md`, «Уклонение»); прыжок - своя клавиша.
 		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSpacePressed);
 		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnJumpPressed);
 		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnJumpReleased);
