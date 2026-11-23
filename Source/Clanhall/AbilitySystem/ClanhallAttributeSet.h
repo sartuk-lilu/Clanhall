@@ -1,5 +1,5 @@
 // Базовые ресурсы персонажа: AP, HP, MP, Charges.
-// Канон: (`combat_system.md`, «Ресурсы персонажа»).
+// Канон: (`CombatSystem.md`, «Ресурсы персонажа»).
 
 #pragma once
 
@@ -42,7 +42,7 @@ public:
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxHP);
 
 	// --- MP (Mana Points): восполняется подтверждённым попаданием физической активки, раз за
-	// применение (UAbilityData::ManaGain, `ability_system.md`, «Физические активные навыки») —
+	// применение (UAbilityData::ManaGain, `AbilitySystem.md`, «Физические активные навыки») —
 	// WASD-удары маны не дают ---
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MP, Category = "Clanhall|MP")
 	FGameplayAttributeData MP;
@@ -55,7 +55,7 @@ public:
 	// --- Charges: ресурс активных навыков (Q/E=2, R/F=4, Z/X=6, C/V=8) — единственный гейт
 	// применения, кулдауна в проекте не осталось нигде. MaxCharges клампится на 16 — число
 	// ячеек сетки 4×4 в WBP_ChargesPanel, техническая граница отрисовки
-	// (`combat_system.md`, «Charges — Очки Активных Навыков»). ---
+	// (`CombatSystem.md`, «Charges — Очки Активных Навыков»). ---
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Charges, Category = "Clanhall|Charges")
 	FGameplayAttributeData Charges;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, Charges);

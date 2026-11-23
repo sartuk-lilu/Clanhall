@@ -1,5 +1,5 @@
-// Базовый класс для 4 направленных WASD-ударов. Канон: (`combat_system.md`, «Направления атаки (WASD)»).
-// Активация идёт только через UClanhallComboComponent (`Combat Stance and WASD Attacks.md` —
+// Базовый класс для 4 направленных WASD-ударов. Канон: (`CombatSystem.md`, «Направления атаки (WASD)»).
+// Активация идёт только через UClanhallComboComponent (`CombatStanceAndWASDAttacks.md` —
 // валидатор комбо гейтит вызов активации, формулы урона/Charges ниже не тронуты).
 // Величина урона (BaseDamage профиля по направлению шага) приходит в
 // TriggerEventData->EventMagnitude — компонент резолвит её из UComboData::FindDamageByDirection
@@ -14,7 +14,7 @@
 //   - Мгновенный фолбэк (монтажа нет ИЛИ на нём не расставлена зона): резолв сферой
 //     FindMeleeTarget/TraceRange/TraceRadius прямо на активации, как до перехода на контактный
 //     резолв. Это то, что сохраняет инвариант «дерево комбо тестируется до нарезки анимаций»
-//     (`Combat Stance and WASD Attacks.md`).
+//     (`CombatStanceAndWASDAttacks.md`).
 
 #pragma once
 
@@ -52,7 +52,7 @@ private:
 
 	/** Общая часть контактного и фолбэк-путей: урон + Charges (ресурс, раз за взмах, со второго
 	 *  удара серии) + debug. Мана сюда больше не входит — переехала на физактивки
-	 *  (`ability_system.md`, «Физические активные навыки», GA_PhysicalSkill::ResolveHitOn). */
+	 *  (`AbilitySystem.md`, «Физические активные навыки», GA_PhysicalSkill::ResolveHitOn). */
 	void ResolveHitOn(AActor* Target);
 
 	/** +1 Charge уже начислен за этот взмах. InstancingPolicy == InstancedPerExecution —
@@ -64,12 +64,12 @@ private:
 	 *  из ResolveHitOn: на контактном пути (async, через Event.Hitbox.Hit) StepCount к моменту
 	 *  резолва уже увеличен на этот шаг, а на мгновенном фолбэке (синхронно внутри ActivateStep)
 	 *  ещё нет — прямое чтение дало бы разные пороги в зависимости от режима резолва одного и
-	 *  того же удара (`combat_system.md`, «Ресурсы персонажа»: доход начиная со второго удара серии). */
+	 *  того же удара (`CombatSystem.md`, «Ресурсы персонажа»: доход начиная со второго удара серии). */
 	bool bChargeEligible = false;
 
 	/** ChargeIncome типа оружия, снятый в ActivateAbility. Снимок, а не чтение на контакте:
 	 *  свап оружия мгновенный, и взмах, начатый мечом, обязан разрешиться доходом меча,
 	 *  а не двуруча, который успели достать за время замаха. Тот же довод, что у bChargeEligible
-	 *  (`economy_system.md`, «Заряды: доход»). */
+	 *  (`EconomySystem.md`, «Заряды: доход»). */
 	int32 PendingChargeIncome = ClanhallWeaponDefaults::ChargeIncome;
 };

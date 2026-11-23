@@ -58,14 +58,14 @@ void UClanhallComboComponent::HandleAttackInput(EClanhallAttackDirection Directi
 
 	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag()))
 	{
-		// Лок-аут после ухода/рывка/приседа (`combat_system.md`) - та же причина,
+		// Лок-аут после ухода/рывка/приседа (`CombatSystem.md`) - та же причина,
 		// что у State.ComboRecovery выше: хвост защиты ещё доигрывает, новый удар не начинается.
 		return;
 	}
 
 	if (ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
-		// Активка в фазе коммита — начатую активку нельзя оборвать (`combat_system.md`, «Боевая стойка и переключение режимов»).
+		// Активка в фазе коммита — начатую активку нельзя оборвать (`CombatSystem.md`, «Боевая стойка и переключение режимов»).
 		// Отбрасываем ввод здесь же, до ActivateStep и его ForceEndHitboxes(), иначе WASD сразу
 		// после Q обрывал бы активке окно контакта, хоть заряды уже потрачены.
 		return;
@@ -139,7 +139,7 @@ void UClanhallComboComponent::OnComboWindowOpen()
 	LatestInWindow.Reset();
 
 	// Единственный сигнал для AI о том, что можно подавать
-	// направление в HandleAttackInput (`Character Hierarchy.md`, «AClanhallHumanoidBoss») — сама очерёдность решает AI/BT, компонент не подсказывает.
+	// направление в HandleAttackInput (`CharacterHierarchy.md`, «AClanhallHumanoidBoss») — сама очерёдность решает AI/BT, компонент не подсказывает.
 	OnComboWindowOpened.Broadcast();
 }
 
@@ -166,7 +166,7 @@ void UClanhallComboComponent::OnComboWindowClose()
 	const EClanhallAttackDirection Direction = LatestInWindow.GetValue();
 	LatestInWindow.Reset();
 
-	// Потолок серии — UWeaponTypeData::SeriesLength (`economy_system.md`, «Длина серии»).
+	// Потолок серии — UWeaponTypeData::SeriesLength (`EconomySystem.md`, «Длина серии»).
 	// Запрещено, даже если слот перехода занят.
 	if (StepCount >= GetMaxSeriesLength())
 	{
@@ -218,7 +218,7 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	// прилетит уже НОВОЙ способности и оборвёт её до открытия собственной зоны.
 	ForceEndHitboxes();
 
-	// (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»): новый шаг — снимаем подавление зон прошлого шага (если
+	// (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): новый шаг — снимаем подавление зон прошлого шага (если
 	// прошлый шаг был отпарирован/пропустил удар). "До конца текущего шага" истекает ровно тут.
 	if (UClanhallHitboxComponent* HitboxComp = Character->FindComponentByClass<UClanhallHitboxComponent>())
 	{
@@ -234,7 +234,7 @@ bool UClanhallComboComponent::ActivateStep(EClanhallAttackDirection Direction, U
 	EventData.EventMagnitude = Damage.BaseDamage;
 
 	// Тип урона — свойство экземпляра оружия владельца, не профиля направления
-	// (`weapon_system.md`, «Ассеты вместо `UClassKitData`»). Задел: тип урона в InstigatorTags
+	// (`WeaponSystem.md`, «Ассеты вместо `UClassKitData`»). Задел: тип урона в InstigatorTags
 	// события, в расчёте пока не читается. Пустой тег (оружие без DamageType) — не кладём.
 	const UWeaponData* Weapon = Character->GetCurrentWeapon();
 	if (Weapon && Weapon->DamageType.IsValid())
@@ -444,7 +444,7 @@ void UClanhallComboComponent::OnStanceExit()
 {
 	if (StepCount > 0)
 	{
-		// Монтаж не режем: удар коммитится и доигрывает (`combat_system.md`).
+		// Монтаж не режем: удар коммитится и доигрывает (`CombatSystem.md`).
 		// Зону тоже не трогаем - она принадлежит живому монтажу и закроется своим NotifyEnd.
 		bClosingAfterStanceExit = true;
 		return;

@@ -16,7 +16,7 @@ UGA_Dodge::UGA_Dodge()
 
 	// ActivationBlockedTags блокирует ЛЮБУЮ активацию, пока хвост восстановления доигрывает -
 	// тег защищает сам класс уход/рывок/присед от спама, общий для всех трёх
-	// (`combat_system.md`).
+	// (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag());
 }
 
@@ -33,7 +33,7 @@ bool UGA_Dodge::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		return false;
 	}
 
-	// Удар коммитится (`combat_system.md`) - живой удар-монтаж блокирует любой уход. Предикат
+	// Удар коммитится (`CombatSystem.md`) - живой удар-монтаж блокирует любой уход. Предикат
 	// точный: окно чтения серии находится ВНУТРИ удар-монтажа, поэтому «серия активна» и есть
 	// «удар живой». Хвост Recovery уже не серия - убежать во время него законно, тег
 	// State.ComboRecovery гасит атаки, а не побег.
@@ -70,9 +70,9 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 	const bool bChargedDash = (Direction == EClanhallEvadeDirection::ForwardDash) && bInCombat;
 
 	// Цена - только у рывка вперёд в бою, списывается тем же механизмом, что в
-	// UGA_PhysicalSkill: на активации и безвозвратно (`economy_system.md`, «Почему кулдаунов нет»).
+	// UGA_PhysicalSkill: на активации и безвозвратно (`EconomySystem.md`, «Почему кулдаунов нет»).
 	// Боковой уход не стоит зарядов никогда; рывок вне боя цену не проверяет вовсе - не «цена
-	// ноль», а «шага списания нет» (`combat_system.md`, «Боевое состояние»).
+	// ноль», а «шага списания нет» (`CombatSystem.md`, «Боевое состояние»).
 	if (bChargedDash && LongDashChargeCost > 0)
 	{
 		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
@@ -103,7 +103,7 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 		Distance = SideDodgeDistance;
 		TravelMontage = SideDodgeLeftMontage;
 		// Корпус в страйфе развёрнут по камере, на бегу - по движению, поэтому направление
-		// ухода берётся от корпуса, а не от камеры и не от вектора ввода (`combat_system.md`):
+		// ухода берётся от корпуса, а не от камеры и не от вектора ввода (`CombatSystem.md`):
 		// в страйфе, чтобы уйти влево, вектор ввода потребовал бы сначала поехать влево - то
 		// есть занять плохую позицию, прежде чем получить право из неё уйти.
 		WorldDirection = -Character->GetActorRightVector();
@@ -135,7 +135,7 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 
 	const FVector TargetLocation = Character->GetActorLocation() + WorldDirection * Distance;
 
-	// Корпус на уходе не доворачивается - смещение и только (`combat_system.md`). Кадров
+	// Корпус на уходе не доворачивается - смещение и только (`CombatSystem.md`). Кадров
 	// неуязвимости нет: перемещение капсулы Root Motion Source'ом, тем же способом, что рывок
 	// в UGA_PhysicalSkill/UDashFragment - не LaunchCharacter и не телепорт SetActorLocation,
 	// иначе свип противника прошёл бы сквозь то место, где игрока уже нет, но коллизия ещё есть.

@@ -65,14 +65,14 @@ void UGA_DirectionalAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle
 	{
 		// У шага нет монтажа или на монтаже не расставлены зоны — резолвим мгновенно сферой.
 		// Это осознанный фолбэк, а не деградация: он и есть то, что позволяет проверять дерево
-		// комбо до нарезки анимаций (`Combat Stance and WASD Attacks.md`).
+		// комбо до нарезки анимаций (`CombatStanceAndWASDAttacks.md`).
 		ResolveHitOn(FindMeleeTarget(Avatar));
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
 	// Контактный путь: EndAbility НЕ вызывается здесь — ждём Event.Hitbox.Hit/Closed.
-	// Попутный эффект (`combat_system.md`, «Боевая стойка и переключение режимов»): если зону так и не открыли (отпустили ЛКМ в фазе
+	// Попутный эффект (`CombatSystem.md`, «Боевая стойка и переключение режимов»): если зону так и не открыли (отпустили ЛКМ в фазе
 	// замаха -> OnStanceExit -> ForceEndHitboxes -> Event.Hitbox.Closed без единого
 	// Event.Hitbox.Hit), способность заканчивается без единого ResolveHitOn — «прерванный удар
 	// не засчитывается» становится правдой в коде, а не только в доке.
@@ -118,10 +118,10 @@ void UGA_DirectionalAttackBase::ResolveHitOn(AActor* Target)
 	if (ResolveStandardDamage(SourceASC, TargetASC, PendingBaseDamage))
 	{
 		// Мана с WASD-ударов не капает — она переехала на подтверждённое попадание
-		// физической активки (`ability_system.md`, «Физические активные навыки»).
+		// физической активки (`AbilitySystem.md`, «Физические активные навыки»).
 
 		// Charges — доход начиная со ВТОРОГО удара серии (bChargeEligible, снятый в
-		// ActivateAbility), раз за взмах, сколько бы целей ни задело (`combat_system.md`, «Ресурсы персонажа»).
+		// ActivateAbility), раз за взмах, сколько бы целей ни задело (`CombatSystem.md`, «Ресурсы персонажа»).
 		// Доход теперь не +1, а ChargeIncome типа оружия (PendingChargeIncome, снятый в ActivateAbility).
 		// Симметрично для игрока и врага — ResolveHitOn общий, проверок на роль нет.
 		if (!bChargeApplied && bChargeEligible)

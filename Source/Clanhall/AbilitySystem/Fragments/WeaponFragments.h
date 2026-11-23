@@ -19,7 +19,7 @@ class CLANHALL_API UWeaponOffhandFragment : public UWeaponFragment
 	GENERATED_BODY()
 public:
 	/** Класс актора в левой руке: щит, второй клинок. Тот же критерий, что у основной руки
-	 *  (`weapon_system.md`, «Оружие как актор») — сокет и трансформ несёт сам актор. */
+	 *  (`WeaponSystem.md`, «Оружие как актор») — сокет и трансформ несёт сам актор. */
 	UPROPERTY(EditAnywhere, Category = "Offhand")
 	TSubclassOf<AClanhallWeaponActor> OffhandClass;
 };

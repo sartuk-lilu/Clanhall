@@ -1,8 +1,8 @@
-// Общий предок для всего, что дерётся — игрока и врагов (`Character Hierarchy.md`, «Три слоя»).
+// Общий предок для всего, что дерётся — игрока и врагов (`CharacterHierarchy.md`, «Три слоя»).
 // ASC, атрибуты, метки, зоны поражения и окно контра нужны любому бойцу одинаково: метка
 // и контр двусторонние по построению, а без диспетчера зон у врага не было бы
-// урона вовсе (`Character Hierarchy.md`, «AClanhallCharacterBase»). Комбо-дерево и парирование —
-// только гуманоидам, см. AClanhallHumanoidBase (`Character Hierarchy.md`, «Граница слоёв»).
+// урона вовсе (`CharacterHierarchy.md`, «AClanhallCharacterBase»). Комбо-дерево и парирование —
+// только гуманоидам, см. AClanhallHumanoidBase (`CharacterHierarchy.md`, «Граница слоёв»).
 
 #pragma once
 
@@ -21,7 +21,7 @@ class UClanhallCombatStateComponent;
 class UGameplayAbility;
 
 /** Denied-фидбек: TryActivateAbility отказал именно по нехватке Charges (не по
- *  State.SkillCommitted/State.Stunned — `Character Hierarchy.md`, «Denied-фидбек»). Точка подключения для HUD
+ *  State.SkillCommitted/State.Stunned — `CharacterHierarchy.md`, «Denied-фидбек»). Точка подключения для HUD
  *  (звук + вспышка WBP_ChargesPanel), сама реакция сюда не входит — тот же паттерн, что
  *  UClanhallCounterComponent::OnCounterConsumed. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallChargesDenied);
@@ -41,7 +41,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallMarkComponent> MarkComponent;
 
-	/** Диспетчер активных зон поражения (`Animation Setup.md`, «Диспетчер зон поражения»). Собственной геометрии не имеет —
+	/** Диспетчер активных зон поражения (`AnimationSetup.md`, «Диспетчер зон поражения»). Собственной геометрии не имеет —
 	 *  форма и роль каждой зоны приходят из AnimNotifyState_Hitbox на монтаже. Имя сабобъекта
 	 *  намеренно осталось прежним ("WeaponTraceComponent") — перенесено символ в символ из
 	 *  AClanhallCharacter, переименование рвёт BP-данные игрока. */
@@ -53,16 +53,16 @@ protected:
 	TObjectPtr<UClanhallCounterComponent> CounterComponent;
 
 	/** State.InCombat — стороне-нейтральный, нужен и монстру под A-life так же, как игроку
-	 *  (`combat_system.md`, «Боевое состояние»). */
+	 *  (`CombatSystem.md`, «Боевое состояние»). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCombatStateComponent> CombatStateComponent;
 
-	/** Unit.Role.* — вешается на ASC в BeginPlay (`Character Hierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
+	/** Unit.Role.* — вешается на ASC в BeginPlay (`CharacterHierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
 	 *  (актор не участвует в ролевой логике HUD/AI), так у игрока по умолчанию. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitySystem", meta = (Categories = "Unit.Role"))
 	FGameplayTag RoleTag;
 
-	/** Стартовые значения ресурсов (`combat_system.md`, «Ресурсы персонажа»; `Character Hierarchy.md`,
+	/** Стартовые значения ресурсов (`CombatSystem.md`, «Ресурсы персонажа»; `CharacterHierarchy.md`,
 	 *  «Стартовые значения атрибутов на базе») — хардкод-плейсхолдеры прототипа,
 	 *  переопределяются per-class в defaults Blueprint-наследника (у Часового свои AP/HP/MP/Charges).
 	 *  Раньше жили только в AClanhallCharacter::BeginPlay —
@@ -77,37 +77,37 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxMP = 200.0f;
 
-	/** (`combat_system.md`, «Ресурсы персонажа»): базовый банк — 6 (было 4), не косметическая
+	/** (`CombatSystem.md`, «Ресурсы персонажа»): базовый банк — 6 (было 4), не косметическая
 	 *  правка — при базе 4 ранг 3 открывает Z/X ценой 6 при банке 4, навык физически
 	 *  недоступен. Потолок 16 — UClanhallAttributeSet::ClampAttribute. */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxCharges = 6.0f;
 
 	/** Скорость обычной ходьбы (страйф, вперёд, передние диагонали) - общая локомоция, не
-	 *  привилегия стойки: доворот корпуса по камере теперь работает везде (`locomotion_structure.md`).
+	 *  привилегия стойки: доворот корпуса по камере теперь работает везде (`LocomotionStructure.md`).
 	 *  Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float JogSpeed = 500.0f;
 
-	/** Кап скорости хода спиной и по задним диагоналям (`locomotion_structure.md`) - отступать
+	/** Кап скорости хода спиной и по задним диагоналям (`LocomotionStructure.md`) - отступать
 	 *  лицом к врагу это уступка. Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float WalkSpeed = 200.0f;
 
-	/** Бег (Shift) - во все стороны, корпус развёрнут по движению (`combat_system.md`).
+	/** Бег (Shift) - во все стороны, корпус развёрнут по движению (`CombatSystem.md`).
 	 *  Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float SprintSpeed = 900.0f;
 
 	/** Угол между камерой и корпусом (градусы), после которого стоящий боец начинает доворот
-	 *  (`locomotion_structure.md`). Ниже порога корпус не вращается вовсе - визуально за камерой
+	 *  (`LocomotionStructure.md`). Ниже порога корпус не вращается вовсе - визуально за камерой
 	 *  тянется только верх, это работа ABP. Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float TurnThreshold = 60.0f;
 
 	/** Угол, на котором начавшийся доворот считается завершённым. Меньше TurnThreshold -
 	 *  гистерезис нужен, иначе на границе порога доворот дёргается "начал — тут же перестал"
-	 *  каждый кадр (`locomotion_structure.md`). Плейсхолдер. */
+	 *  каждый кадр (`LocomotionStructure.md`). Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float TurnSettleAngle = 10.0f;
 
@@ -116,7 +116,7 @@ protected:
 	float TurnRate = 300.0f;
 
 	/** Играть ли подшаг (ABP) — взводится, когда угол между камерой и корпусом уходит за
-	 *  TurnThreshold, снимается на TurnSettleAngle или на бегу (`locomotion_structure.md`). */
+	 *  TurnThreshold, снимается на TurnSettleAngle или на бегу (`LocomotionStructure.md`). */
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	bool bTurningInPlace = false;
 
@@ -157,7 +157,7 @@ public:
 	float GetTurnRate() const { return TurnRate; }
 
 	/** Сбрасывает состояние доворота для ABP - вызывается на бегу и на выходе из живого поворота
-	 *  (`locomotion_structure.md`). */
+	 *  (`LocomotionStructure.md`). */
 	void ResetTurnInPlace() { bTurningInPlace = false; TurnDirection = 0.0f; }
 
 	/** Читает Clanhall.Player.ShowCombatState - редакторная проверка локомоции без bTurningInPlace
@@ -176,6 +176,6 @@ protected:
 
 private:
 	/** Слушает UAbilitySystemComponent::AbilityFailedCallbacks и ретранслирует в OnChargesDenied,
-	 *  только когда причина отказа — Denied.Charges (`Character Hierarchy.md`, «Denied-фидбек»). */
+	 *  только когда причина отказа — Denied.Charges (`CharacterHierarchy.md`, «Denied-фидбек»). */
 	void HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason);
 };

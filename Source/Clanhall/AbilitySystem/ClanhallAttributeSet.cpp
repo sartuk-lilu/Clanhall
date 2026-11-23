@@ -36,7 +36,7 @@ void UClanhallAttributeSet::ClampAttribute(const FGameplayAttribute& Attribute, 
 	{
 		// Потолок = число ячеек сетки 4×4 в WBP_ChargesPanel: техническая граница отрисовки,
 		// не баланс. Дизайнерское значение банка живёт в данных бойца (DefaultMaxCharges) и в
-		// `combat_system.md`, «Charges — Очки Активных Навыков».
+		// `CombatSystem.md`, «Charges — Очки Активных Навыков».
 		NewValue = FMath::Clamp(NewValue, 0.0f, 16.0f);
 	}
 }

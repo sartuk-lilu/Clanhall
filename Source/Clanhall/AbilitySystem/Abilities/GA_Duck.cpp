@@ -13,7 +13,7 @@ UGA_Duck::UGA_Duck()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
 	// Общий с уходом/рывком тег хвоста восстановления - защищает класс действий от спама
-	// (`combat_system.md`).
+	// (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag());
 }
 
@@ -30,7 +30,7 @@ bool UGA_Duck::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const
 		return false;
 	}
 
-	// Удар коммитится (`combat_system.md`) - живой удар-монтаж блокирует присед, тот же
+	// Удар коммитится (`CombatSystem.md`) - живой удар-монтаж блокирует присед, тот же
 	// предикат, что у UGA_Dodge::CanActivateAbility.
 	if (const UClanhallComboComponent* Combo = Avatar->FindComponentByClass<UClanhallComboComponent>())
 	{
@@ -72,7 +72,7 @@ void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FG
 void UGA_Duck::OnWindupFinished()
 {
 	// Задержка отыграна - теперь капсула обязана попасть в замах: опускаем её ровно на
-	// DuckWindowDuration (`combat_system.md`: присед - окно, а не удержание).
+	// DuckWindowDuration (`CombatSystem.md`: присед - окно, а не удержание).
 	if (ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo()))
 	{
 		Character->Crouch();

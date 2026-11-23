@@ -264,7 +264,7 @@ static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTarg
 	}
 
 	// Необязательный второй аргумент — трек метки, регистронезависимо, по умолчанию Physical
-	// (`mark_system.md`, «Концепция»).
+	// (`MarksSystem.md`, «Концепция»).
 	EClanhallMarkTrack Track = EClanhallMarkTrack::Physical;
 	if (Args.Num() >= 2)
 	{
@@ -354,7 +354,7 @@ static float GetMontagePlayLength(const UAnimMontage* Montage)
 }
 
 // Разбор направлений, резолв цепочки CurrentWeapon -> Type -> ComboData и печать
-// инварианта экономики оружия (`economy_system.md`, «Инвариант экономики оружия»). Своей
+// инварианта экономики оружия (`EconomySystem.md`, «Инвариант экономики оружия»). Своей
 // логики поверх систем не пишем — только чтение UWeaponTypeData/UComboData и вывод.
 static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 {
@@ -470,7 +470,7 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 	}
 	const float DurationWithRecovery = DurationWithoutRecovery + RecoveryDuration;
 
-	// Доход начиная со ВТОРОГО удара серии (`economy_system.md`, «Заряды: доход») — раз за
+	// Доход начиная со ВТОРОГО удара серии (`EconomySystem.md`, «Заряды: доход») — раз за
 	// взмах, шагов - 1 взмахов с доходом.
 	const int32 Income = WeaponType->ChargeIncome * FMath::Max(0, Resolved.Num() - 1);
 	const float IncomePerSecNoRecovery = DurationWithoutRecovery > 0.0f ? Income / DurationWithoutRecovery : 0.0f;
@@ -480,7 +480,7 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 		*Weapon->GetName(), *WeaponType->GetName(), WeaponType->SeriesLength, WeaponType->ChargeIncome);
 
 	// Множитель больше не про стойку - применяется при экипировке ко всем трём базовым
-	// скоростям разом (`weapon_system.md`; `AClanhallHumanoidBase::PostInitializeComponents`).
+	// скоростям разом (`WeaponSystem.md`; `AClanhallHumanoidBase::PostInitializeComponents`).
 	// Walk (кап хода спиной) не хранится отдельным полем движения - печатаем эффективное
 	// значение WalkSpeed * multiplier, оно совпадает с тем, что реально получается из
 	// (JogSpeed * multiplier) * (WalkSpeed / JogSpeed) в DoMove.
@@ -512,7 +512,7 @@ static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
 
 // Читает UClanhallCombatStateComponent на игроке: без этой команды граница боя невидима,
 // а от неё зависит цена дальнего отскока и работоспособность вне-боевого лечения
-// (`combat_system.md`, «Боевое состояние»).
+// (`CombatSystem.md`, «Боевое состояние»).
 static void HandleShowCombatState(UWorld* World)
 {
 	const EDebugMsgKey Key = EDebugMsgKey::PlayerShowCombatState;

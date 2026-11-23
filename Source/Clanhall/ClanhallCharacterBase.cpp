@@ -16,10 +16,10 @@ AClanhallCharacterBase::AClanhallCharacterBase()
 
 	AttributeSet = CreateDefaultSubobject<UClanhallAttributeSet>(TEXT("AttributeSet"));
 
-	// Метка бойца — независимый трек (`mark_system.md`, «Получение метки от врага»), двусторонняя по построению.
+	// Метка бойца — независимый трек (`MarksSystem.md`, «Получение метки от врага»), двусторонняя по построению.
 	MarkComponent = CreateDefaultSubobject<UClanhallMarkComponent>(TEXT("MarkComponent"));
 
-	// Диспетчер зон поражения вместо жёстко зашитого weapon trace (`Animation Setup.md`, «Диспетчер зон поражения»).
+	// Диспетчер зон поражения вместо жёстко зашитого weapon trace (`AnimationSetup.md`, «Диспетчер зон поражения»).
 	// Имя сабобъекта сохранено символ в символ при переносе из AClanhallCharacter —
 	// смена строки рвёт переопределения в BP-наследнике игрока. Класс переименован, имя — нет.
 	HitboxComponent = CreateDefaultSubobject<UClanhallHitboxComponent>(TEXT("WeaponTraceComponent"));
@@ -27,10 +27,10 @@ AClanhallCharacterBase::AClanhallCharacterBase()
 	// Симметричный компонент окна контрнавыка, тот же класс на враге.
 	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
 
-	// State.InCombat — стороне-нейтрален, как парирование и WASD-серия (`combat_system.md`, «Боевое состояние»).
+	// State.InCombat — стороне-нейтрален, как парирование и WASD-серия (`CombatSystem.md`, «Боевое состояние»).
 	CombatStateComponent = CreateDefaultSubobject<UClanhallCombatStateComponent>(TEXT("CombatStateComponent"));
 
-	// Без этого Crouch() молча ничего не делает (`combat_system.md`) - UGA_Duck опускает
+	// Без этого Crouch() молча ничего не делает (`CombatSystem.md`) - UGA_Duck опускает
 	// капсулу движковым Crouch(), не SetCapsuleSize.
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 }
@@ -46,7 +46,7 @@ void AClanhallCharacterBase::BeginPlay()
 
 	if (AttributeSet)
 	{
-		// Хардкод стартовых значений — плейсхолдеры прототипа (`combat_system.md`, «Ресурсы персонажа»);
+		// Хардкод стартовых значений — плейсхолдеры прототипа (`CombatSystem.md`, «Ресурсы персонажа»);
 		// DataAsset/GameplayEffect для инициализации атрибутов появится позже вместе с остальной
 		// системой данных. Здесь, а не в AClanhallCharacter — нужно ЛЮБОМУ бойцу, включая AI без
 		// собственного BeginPlay-пути.
@@ -70,7 +70,7 @@ void AClanhallCharacterBase::BeginPlay()
 			AbilitySystemComponent->AddLooseGameplayTag(RoleTag);
 		}
 
-		// Denied-фидбек (`Character Hierarchy.md`, «Denied-фидбек»): AbilityFailedCallbacks — обычный C++ мультикаст, не
+		// Denied-фидбек (`CharacterHierarchy.md`, «Denied-фидбек»): AbilityFailedCallbacks — обычный C++ мультикаст, не
 		// BlueprintAssignable, поэтому ретранслируем в OnChargesDenied для Blueprint HUD.
 		AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &AClanhallCharacterBase::HandleAbilityFailed);
 	}

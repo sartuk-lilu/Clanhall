@@ -5,7 +5,7 @@
 
 /** Окно приёма следующего WASD-ввода для чейна комбо (начало ~70% монтажа, конец ровно на
  *  предпоследнем кадре, ставит разработчик на монтаже удара). Begin/End зовут
- *  OnComboWindowOpen/Close на UClanhallComboComponent владельца. Канон: `Combat Stance and WASD Attacks.md`. */
+ *  OnComboWindowOpen/Close на UClanhallComboComponent владельца. Канон: `CombatStanceAndWASDAttacks.md`. */
 UCLASS(const, hidecategories=Object, collapsecategories, meta=(DisplayName="Combo Window"))
 class CLANHALL_API UAnimNotifyState_ComboWindow : public UAnimNotifyState
 {

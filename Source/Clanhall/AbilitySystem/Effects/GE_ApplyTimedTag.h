@@ -4,7 +4,7 @@
 // вызывающий код: DynamicGrantedTags для тега, SetByCaller для длительности.
 // Используется UClanhallMarkComponent (метки, фикс. 5 сек) и UClanhallComboComponent
 // (State.ComboRecovery, по длине анимации). КД навыков в проекте не осталось нигде
-// (`economy_system.md`, «Почему кулдаунов нет») — этот эффект для них больше не применяется.
+// (`EconomySystem.md`, «Почему кулдаунов нет») — этот эффект для них больше не применяется.
 
 #pragma once
 

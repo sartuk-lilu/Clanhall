@@ -1,18 +1,18 @@
-// Единственный источник истины для чейна WASD-ударов (`Combat Stance and WASD Attacks.md`). Ворота ввода, не буфер:
+// Единственный источник истины для чейна WASD-ударов (`CombatStanceAndWASDAttacks.md`). Ворота ввода, не буфер:
 // до открытия окна чтения ввод отбрасывается целиком, ничего не копится; в открытом окне действует
 // "последнее нажатие решает". Сам решает, когда активировать GA_DirectionalAttack_* (инверсия
 // потока — активация идёт через этот валидатор, невалидный ввод не доходит до урона/MP) и
 // сам проигрывает монтаж конкретного шага — GA_DirectionalAttackBase собственного монтажа больше
-// не играет. Живёт на AClanhallHumanoidBase (игрок и AI-боец, `Character Hierarchy.md`, «Граница слоёв»).
+// не играет. Живёт на AClanhallHumanoidBase (игрок и AI-боец, `CharacterHierarchy.md`, «Граница слоёв»).
 //
-// Резолв данных (`Combat Stance and WASD Attacks.md`): модель пар, не путей. Ход определяется только
+// Резолв данных (`CombatStanceAndWASDAttacks.md`): модель пар, не путей. Ход определяется только
 // парой «предыдущее направление -> новое» (UComboData::FindOpenerMontage/FindTransitionMontage) —
 // история серии до предыдущего шага не участвует, LastDirection хранит только последний шаг.
 // Урон берётся из UComboData::FindDamageByDirection (4 именованных поля профиля) по направлению
 // шага и передаётся в GA_DirectionalAttackBase через FGameplayEventData
 // (TriggerAbilityFromGameplayEvent) — Handle-активация сохраняется, тег события служебный.
 // Потолок длины серии — поле ассета, UWeaponTypeData::SeriesLength, и принадлежит оружию, а не
-// бойцу (`economy_system.md`, «Длина серии»).
+// бойцу (`EconomySystem.md`, «Длина серии»).
 //
 // State.ComboRecovery (уточнение намерения): блокирует НОВЫЕ атаки (WASD и физактивки Q/E/R/F —
 // см. UGA_ClanhallAbilityBase) и вход в стойку (UGA_CombatStance) ровно на время проигрывания
@@ -35,7 +35,7 @@ class UAnimMontage;
 class UAnimInstance;
 class AActor;
 
-/** Единственное расширение публичного API под AI-водителя (`Character Hierarchy.md`, «AClanhallHumanoidBoss»).
+/** Единственное расширение публичного API под AI-водителя (`CharacterHierarchy.md`, «AClanhallHumanoidBoss»).
  *  Открытие/закрытие окна чтения — момент, когда AI обязан подать направление в
  *  HandleAttackInput; вне окна ввод отбрасывается так же, как и у игрока (ворота, не буфер). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FClanhallOnComboWindowOpened);
@@ -50,7 +50,7 @@ public:
 	/** Единственный публичный сигнал для AI/BT о том, что окно
 	 *  чтения ввода открылось/закрылось — по нему водитель узнаёт момент подать направление
 	 *  в HandleAttackInput. Решений компонент не принимает и не подсказывает — какое именно
-	 *  направление подать, решает вызывающий (BT/исполнитель, `Character Hierarchy.md`, «AClanhallHumanoidBoss»). */
+	 *  направление подать, решает вызывающий (BT/исполнитель, `CharacterHierarchy.md`, «AClanhallHumanoidBoss»). */
 	UPROPERTY(BlueprintAssignable, Category = "Combo")
 	FClanhallOnComboWindowOpened OnComboWindowOpened;
 
@@ -62,7 +62,7 @@ public:
 	 *  второй не заводим. Решает: опенер, запись в окне чтения (продолжение) или мусор вне
 	 *  окна — сама активирует направленный удар, когда решение валидно. BlueprintCallable —
 	 *  единственный способ прогнать серию боссу до появления BT-исполнителя
-	 *  (`Character Hierarchy.md`, «AClanhallHumanoidBoss»): временный отладочный вызов кнопкой/консолью. */
+	 *  (`CharacterHierarchy.md`, «AClanhallHumanoidBoss»): временный отладочный вызов кнопкой/консолью. */
 	UFUNCTION(BlueprintCallable, Category = "Combo")
 	void HandleAttackInput(EClanhallAttackDirection Direction);
 
@@ -71,17 +71,17 @@ public:
 	void OnComboWindowClose();
 
 	/** Зовётся из обработчика отпуска ЛКМ - работает в любой фазе, вне ворот. Удар коммитится
-	 *  (`combat_system.md`): живой монтаж больше не режется, доигрывает
+	 *  (`CombatSystem.md`): живой монтаж больше не режется, доигрывает
 	 *  целиком, серия только помечается закрывающейся. */
 	void OnStanceExit();
 
 	/** Внешнее прерывание серии чужим монтажом (активка Q/E/R/F в общей slot-группе,
-	 *  `Combat Stance and WASD Attacks.md`). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
+	 *  `CombatStanceAndWASDAttacks.md`). БЕЗ Recovery-анимации и БЕЗ State.ComboRecovery:
 	 *  чужой монтаж уже занимает слот, Recovery дрался бы с ним за него; наказания за прерывание
 	 *  нет — тот же принцип, что у невалидного продолжения. Зовётся ДО Montage_Play активки. */
 	void CancelSequenceForExternalMontage();
 
-	/** Публичный запрос состояния серии для AI (`Character Hierarchy.md`, «AClanhallHumanoidBoss») — активна,
+	/** Публичный запрос состояния серии для AI (`CharacterHierarchy.md`, «AClanhallHumanoidBoss») — активна,
 	 *  текущая длина и потолок по GetMaxSeriesLength(). Ничего из этого не решает за вызывающего:
 	 *  сравнивать со StepCount/потолком и выбирать следующее направление — дело водителя. */
 	bool IsSequenceActive() const { return StepCount > 0; }
@@ -104,7 +104,7 @@ private:
 	TWeakObjectPtr<UAnimMontage> LastPlayedMontage;
 
 	/** Серия закрывается: игрок вышел из стойки, пока удар-монтаж ещё живой. Монтаж доигрывает
-	 *  целиком (`combat_system.md`: удар коммитится), но продолжения не будет - новый ввод
+	 *  целиком (`CombatSystem.md`: удар коммитится), но продолжения не будет - новый ввод
 	 *  отбрасывается, а окно чтения на закрытии уходит в Recovery, как будто ввода не было. */
 	bool bClosingAfterStanceExit = false;
 
@@ -124,7 +124,7 @@ private:
 	void PlayMontage(UAnimMontage* Montage);
 	void ResetCombo();
 
-	/** Страховка от залипшей зоны поражения (`Combat Stance and WASD Attacks.md`): комбо-компонент
+	/** Страховка от залипшей зоны поражения (`CombatStanceAndWASDAttacks.md`): комбо-компонент
 	 *  владеет жизненным циклом удар-монтажа, поэтому страховка идёт сюда, а не в GA (тот
 	 *  InstancedPerExecution и заканчивается синхронно до начала монтажа). Закрывает ВСЕ зоны
 	 *  без разбора (UClanhallHitboxComponent::EndAllHitboxes) — двойной вызов безвреден. */

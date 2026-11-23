@@ -1,6 +1,6 @@
-// Чем этим оружием можно драться (`weapon_system.md`, «Тип оружия ↔ экземпляр»). Бывший
+// Чем этим оружием можно драться (`WeaponSystem.md`, «Тип оружия ↔ экземпляр»). Бывший
 // UClassKitData: ComboData переезжает сюда без изменений, доход и потолок серии — прежде
-// свойства класса/ранга — стали полями типа оружия (`economy_system.md`, «Заряды: доход»,
+// свойства класса/ранга — стали полями типа оружия (`EconomySystem.md`, «Заряды: доход»,
 // «Длина серии»). Header-only, по образцу UAbilityData.
 //
 // Дефолты SeriesLength/ChargeIncome ниже совпадают с фолбэком на отсутствие данных
@@ -45,12 +45,12 @@ public:
 	int32 SeriesLength = ClanhallWeaponDefaults::SeriesLength;
 
 	/** Доход в Charges за подтверждённый WASD-удар, начиная со второго в серии
-	 *  (`economy_system.md`, «Заряды: доход»). Дефолт совпадает с ClanhallWeaponDefaults::ChargeIncome. */
+	 *  (`EconomySystem.md`, «Заряды: доход»). Дефолт совпадает с ClanhallWeaponDefaults::ChargeIncome. */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "1"))
 	int32 ChargeIncome = ClanhallWeaponDefaults::ChargeIncome;
 
 	/** Множитель к базовым скоростям бойца (JogSpeed/WalkSpeed/SprintSpeed), не см/с -
-	 *  абсолютное число непереносимо между бойцами с разной базой (`weapon_system.md`,
+	 *  абсолютное число непереносимо между бойцами с разной базой (`WeaponSystem.md`,
 	 *  «Оружие как актор»). Применяется при экипировке ко всем трём разом
 	 *  (`AClanhallHumanoidBase::PostInitializeComponents`), не только в стойке - тяжёлое
 	 *  оружие медленное всегда, а не в момент боевого контакта. 1.0 - как обычно, тяжёлое -
@@ -67,21 +67,21 @@ public:
 	TArray<TObjectPtr<UWeaponFragment>> Fragments;
 
 	/** Активные навыки. Ключ — Slot.* (Q/E/R/F и далее по канону восьми
-	 *  слотов, `ability_system.md`, «Слоты активных навыков»; `Character Hierarchy.md`,
+	 *  слотов, `AbilitySystem.md`, «Слоты активных навыков»; `CharacterHierarchy.md`,
 	 *  «Ключ по слоту, а не по имени навыка»), а не имя скилла: слот один и тот же для всех оружий,
 	 *  а именованные поля-на-скилл зашивали бы имя класса в поле, которое обязано
 	 *  обслужить все классы, и их пришлось бы переписывать на восемь.
-	 *  Миграция с Cooldown.Slot.* (`combat_system.md`, «Боевая стойка и переключение режимов») завершена в коде —
+	 *  Миграция с Cooldown.Slot.* (`CombatSystem.md`, «Боевая стойка и переключение режимов») завершена в коде —
 	 *  старых тегов больше не существует. Существующие ассеты, если ключи ещё не перенесены
 	 *  вручную в редакторе, ссылаются на несуществующий тег — грант молча не срабатывает.
 	 *  Переехало с UCharacterSheetData: набор активок принадлежит оружию, а не персонажу
-	 *  (`ability_system.md`, «Физические активные навыки»). */
+	 *  (`AbilitySystem.md`, «Физические активные навыки»). */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Slot"))
 	TMap<FGameplayTag, TObjectPtr<UAbilityData>> Skills;
 
 	/** Теги владения этим типом оружия по рангам: индекс 0 — ранг 1, индекс 3 — ранг 4.
 	 *  Массив, а не сборка тега из имени в рантайме: строковая сборка ломается молча при первом
-	 *  переименовании, а теги в проекте залочены именно от этого (`weapon_system.md`,
+	 *  переименовании, а теги в проекте залочены именно от этого (`WeaponSystem.md`,
 	 *  «Владение оружием»). */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Perk.Proficiency"))
 	TArray<FGameplayTag> ProficiencyTagsByRank;
@@ -101,7 +101,7 @@ public:
 	}
 
 	/** Открыт ли тир навыка (`UAbilityData::Tier`, 1-4) при данном наборе перков листа —
-	 *  гейт больше не привязан к слоту панели, на который навык посажен (`weapon_system.md`,
+	 *  гейт больше не привязан к слоту панели, на который навык посажен (`WeaponSystem.md`,
 	 *  «Владение оружием»). Tier вне границ ProficiencyTagsByRank (недозаполненный ассет —
 	 *  законное состояние, не повод для краша) считается закрытым. */
 	bool IsTierUnlocked(int32 Tier, const FGameplayTagContainer& Perks) const;

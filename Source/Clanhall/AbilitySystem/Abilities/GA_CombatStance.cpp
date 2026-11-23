@@ -29,7 +29,7 @@ void UGA_CombatStance::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 	}
 
 	// Бег вообще не должен пережить вход в стойку - скорость стойки обязана победить скорость
-	// бега (`combat_system.md`).
+	// бега (`CombatSystem.md`).
 	Character->CancelSprint();
 
 	// Вход в стойку на бегу/движении гасит разгон - дальше игрок бьёт по правилам стойки

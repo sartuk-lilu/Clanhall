@@ -134,14 +134,14 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 	}
 
 	// Единственный гейт применения активки — Charges. Кулдауна в проекте не осталось нигде
-	// (`combat_system.md`, «Ресурсы персонажа»; `economy_system.md`, «Почему кулдаунов нет»).
+	// (`CombatSystem.md`, «Ресурсы персонажа»; `EconomySystem.md`, «Почему кулдаунов нет»).
 	const float EffectiveCost = static_cast<float>(Data->ChargeCost);
 	if (EffectiveCost > 0.0f)
 	{
 		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
 		if (!Attributes || Attributes->GetCharges() < EffectiveCost)
 		{
-			// Причина отказа — специально для Denied-фидбека на HUD (`DataAsset and Fragments.md`, «Denied-фидбек (только делегат)»):
+			// Причина отказа — специально для Denied-фидбека на HUD (`DataAssetAndFragments.md`, «Denied-фидбек (только делегат)»):
 			// отдельный тег, не спутать с отказом по State.SkillCommitted/State.Stunned,
 			// которые отсеиваются Super::CanActivateAbility ещё до этой точки.
 			if (OptionalRelevantTags)
@@ -162,14 +162,14 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 		return;
 	}
 
-	// Владелец этой активки — для слота баффа EffectOnSelf (`mark_system.md`, «Слоты эффектов
+	// Владелец этой активки — для слота баффа EffectOnSelf (`MarksSystem.md`, «Слоты эффектов
 	// от активаций»), собственный UClanhallMarkComponent атакующего, не путать с TargetMarkComponent.
 	AActor* SourceAvatar = CurrentActorInfo ? CurrentActorInfo->AvatarActor.Get() : nullptr;
 
 	if (const UMarkTriggerFragment* Trigger = Data->FindFragment<UMarkTriggerFragment>())
 	{
 		// Физическая активка читает и сжигает ТОЛЬКО физический трек — магический трек
-		// (заклинания) она не трогает ни в каком случае (`mark_system.md`, «Концепция»).
+		// (заклинания) она не трогает ни в каком случае (`MarksSystem.md`, «Концепция»).
 		const FGameplayTag CurrentMark = TargetMarkComponent->GetCurrentMark(EClanhallMarkTrack::Physical);
 		if (CurrentMark.IsValid())
 		{
@@ -178,19 +178,19 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 				// MatchesTag, а не ==: RequiredMark задаёт КРУПНОСТЬ записи. Конкретный тег
 				// (Mark.BrokenGuard) матчит только себя; корневой Mark матчит любую метку — так
 				// выражается «активирует независимо от типа метки» (Knight Retribution,
-				// `physical_abilities.md`). Тот же приём, что у CounteredBy в контрнавыке.
+				// `PhysicalAbilities.md`). Тот же приём, что у CounteredBy в контрнавыке.
 				if (!Synergy.RequiredMark.IsValid() || !CurrentMark.MatchesTag(Synergy.RequiredMark))
 				{
 					continue;
 				}
 
-				// (`mark_system.md`, «Активация синергии»): метка сгорает -> бафф на себя ИЛИ дебафф на цель, никогда оба.
+				// (`MarksSystem.md`, «Активация синергии»): метка сгорает -> бафф на себя ИЛИ дебафф на цель, никогда оба.
 				TargetMarkComponent->ClearMark(EClanhallMarkTrack::Physical);
 
 				if (Synergy.EffectOnTarget)
 				{
 					// Состояние на цель — на каждой задетой цели, через слот дебаффа ЭТОГО
-					// создателя на цели (`mark_system.md`, «Слоты эффектов от активаций»): новый
+					// создателя на цели (`MarksSystem.md`, «Слоты эффектов от активаций»): новый
 					// дебафф того же атакующего снимает свой прежний, дебаффы других не трогает.
 					// TargetMarkComponent гарантирован не-null — единственный вызывающий,
 					// ResolveHitOn, находит его до вызова ResolveMarkLogic (см. ранний return выше).
@@ -199,7 +199,7 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 				else if (Synergy.EffectOnSelf && !bSelfSynergySpent)
 				{
 					// Состояние на себя — один раз за применение, сколько бы целей ни задело,
-					// через слот баффа атакующего (`mark_system.md`, «Слоты эффектов от активаций»).
+					// через слот баффа атакующего (`MarksSystem.md`, «Слоты эффектов от активаций»).
 					if (UClanhallMarkComponent* SourceMarkComponent = SourceAvatar ? SourceAvatar->FindComponentByClass<UClanhallMarkComponent>() : nullptr)
 					{
 						SourceMarkComponent->ApplySelfBuff(Synergy.EffectOnSelf);
@@ -213,10 +213,10 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 				}
 
 				// Синергия зарядов не платит (FMarkSynergy::ChargeGain удалён вместе с правилом
-				// о генерации зарядов синергией, `mark_system.md`, «Активация синергии»). Заряды — валюта темпа: единственные источники
-				// дохода — подтверждённый WASD-удар и парирование (`combat_system.md`, «Ресурсы персонажа»), оба
+				// о генерации зарядов синергией, `MarksSystem.md`, «Активация синергии»). Заряды — валюта темпа: единственные источники
+				// дохода — подтверждённый WASD-удар и парирование (`CombatSystem.md`, «Ресурсы персонажа»), оба
 				// дают ровно +1 и не масштабируются размером толпы. Награда за мультицель
-				// живёт в уроне и метках (левая колонка, `mark_system.md`, «Мультицель: ресурс vs состояние»), не в зарядах.
+				// живёт в уроне и метках (левая колонка, `MarksSystem.md`, «Мультицель: ресурс vs состояние»), не в зарядах.
 				break;
 			}
 		}
@@ -242,7 +242,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		return;
 	}
 
-	// (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»): новая активка — снимаем подавление зон прошлого шага/промаха,
+	// (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): новая активка — снимаем подавление зон прошлого шага/промаха,
 	// независимо от того, есть ли у навыка каст-монтаж (фолбэк-путь тоже открывает зону сферой).
 	if (UClanhallHitboxComponent* HitboxComp = Avatar->FindComponentByClass<UClanhallHitboxComponent>())
 	{
@@ -286,7 +286,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		}
 	}
 
-	// Рывок — данные навыка, не свойство клипа (`Animation Setup.md`, «Перемещение навыка — данные, не свойство клипа»).
+	// Рывок — данные навыка, не свойство клипа (`AnimationSetup.md`, «Перемещение навыка — данные, не свойство клипа»).
 	// Запускается ПОСЛЕ списания ресурсов и ПОСЛЕ Montage_Play, ДО ветвления на контактный/
 	// фолбэк путь — обязан работать на обоих путях.
 	StartDashIfNeeded(Data, Avatar, MontagePlayLength);
@@ -297,7 +297,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// режима резолва урона: длительность отыгрыша анимации не зависит от того, размечены ли на
 	// монтаже зоны контакта. Обе строки стоят до ветвления по bResolveOnContact ниже, иначе навык
 	// с назначенным, но ещё не размеченным монтажом заканчивался бы мгновенно, и WASD-удар
-	// обрывал бы его анимацию на любом кадре (`Animation Setup.md`, «Способность ждёт позднейший из двух терминаторов»).
+	// обрывал бы его анимацию на любом кадре (`AnimationSetup.md`, «Способность ждёт позднейший из двух терминаторов»).
 	if (bMontageStarted)
 	{
 		SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
@@ -390,7 +390,7 @@ void UGA_PhysicalSkill::StartDashIfNeeded(const UAbilityData* Data, AActor* Avat
 	// Грубая проверка, не точная: код не знает, где именно в монтаже кончается фаза движения
 	// (у Shield Charge — кадр 13 из 33), точную границу держит разметчик. Но самый заметный
 	// случай — рывок длиннее самого монтажа целиком — она ловит: без варна причина
-	// «проскальзывания по земле» после конца анимации неочевидна (`Animation Setup.md`, «Перемещение навыка — данные, не свойство клипа»).
+	// «проскальзывания по земле» после конца анимации неочевидна (`AnimationSetup.md`, «Перемещение навыка — данные, не свойство клипа»).
 	if (MontagePlayLength > 0.0f && Dash->Duration > MontagePlayLength)
 	{
 		UE_LOG(LogClanhall, Warning, TEXT("StartDashIfNeeded: %s dash Duration %.2f exceeds cast montage length %.2f — character will keep sliding after the animation ends"),
@@ -475,7 +475,7 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	}
 
 	// Тип урона оружия в руке — донесён до резолва попадания, потребитель (порог зоны DT)
-	// появится в P3a (`weapon_system.md`, «Ассеты вместо `UClassKitData`»); пока не используется.
+	// появится в P3a (`WeaponSystem.md`, «Ассеты вместо `UClassKitData`»); пока не используется.
 	const AClanhallHumanoidBase* SourceCharacter = CurrentActorInfo ? Cast<AClanhallHumanoidBase>(CurrentActorInfo->AvatarActor.Get()) : nullptr;
 	const UWeaponData* SourceWeapon = SourceCharacter ? SourceCharacter->GetCurrentWeapon() : nullptr;
 	const FGameplayTag SourceWeaponDamageType = SourceWeapon ? SourceWeapon->DamageType : FGameplayTag();

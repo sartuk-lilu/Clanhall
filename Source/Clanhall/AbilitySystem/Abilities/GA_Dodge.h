@@ -1,4 +1,4 @@
-// Уход/рывок - Q/E/Пробел вне стойки (`combat_system.md`). Наследуется от UGameplayAbility
+// Уход/рывок - Q/E/Пробел вне стойки (`CombatSystem.md`). Наследуется от UGameplayAbility
 // напрямую, не от UGA_ClanhallAbilityBase: тот существует ради урона и поиска цели (FindMeleeTarget,
 // ResolveStandardDamage), а уход не наносит урона вообще, и его
 // ActivationRequiredTags(State.InStance) уходу прямо противопоказан - уход возможен только
@@ -61,7 +61,7 @@ protected:
 
 	/** Цена рывка вперёд - единственная платная форма ухода, и только в бою. Списывается тем же
 	 *  механизмом, что в UGA_PhysicalSkill: на активации и безвозвратно
-	 *  (`economy_system.md`, «Почему кулдаунов нет»). Плейсхолдер. */
+	 *  (`EconomySystem.md`, «Почему кулдаунов нет»). Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
 	int32 LongDashChargeCost = 1;
 
@@ -80,7 +80,7 @@ protected:
 
 	/** Хвост восстановления - общий для всех трёх форм. Длительность State.EvadeRecovery равна
 	 *  ровно его GetPlayLength(), вешается только если монтаж реально стартовал
-	 *  (`combat_system.md`). nullptr - законное состояние: лока тогда нет вовсе,
+	 *  (`CombatSystem.md`). nullptr - законное состояние: лока тогда нет вовсе,
 	 *  невидимого лока в системе не бывает ни при каких условиях. */
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge|Animation")
 	TObjectPtr<UAnimMontage> EvadeRecoveryMontage;

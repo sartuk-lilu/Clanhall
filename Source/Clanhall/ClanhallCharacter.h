@@ -65,7 +65,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
-	// --- Боевая стойка (`combat_system.md`): ЛКМ зажат = стойка, WASD = удары вместо движения ---
+	// --- Боевая стойка (`CombatSystem.md`): ЛКМ зажат = стойка, WASD = удары вместо движения ---
 
 	/** ЛКМ — вход/выход из боевой стойки */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
@@ -122,7 +122,7 @@ protected:
 
 	FGameplayAbilitySpecHandle DuckAbilityHandle;
 
-	// --- Shift: бег (`combat_system.md`) ---
+	// --- Shift: бег (`CombatSystem.md`) ---
 
 	/** Shift - бег в режиме защиты (ничего не зажато). В режиме атаки не делает ничего:
 	 *  стойка статична. */
@@ -136,14 +136,14 @@ protected:
 	 *  перепроверяет флаг и запускает бег сам. */
 	bool bSprintKeyHeld = false;
 
-	// --- Пробел: прыжок / рывок (`combat_system.md`) ---
+	// --- Пробел: прыжок / рывок (`CombatSystem.md`) ---
 
 	/** Пробел - в режиме защиты: прыжок, либо (с зажатым Shift) длинный рывок вперёд.
 	 *  В режиме атаки не делает ничего - защиты в стойке нет. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* SpaceAction;
 
-	// --- Ctrl: присед (`combat_system.md`) ---
+	// --- Ctrl: присед (`CombatSystem.md`) ---
 
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* DuckAction;
@@ -158,8 +158,8 @@ protected:
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	/** Initializes the ASC actor info and grants starting attribute values (hardcoded placeholders, see combat_system.md).
-	 *  Здесь же выставляется ротация и базовая скорость общей локомоции (`locomotion_structure.md`) -
+	/** Initializes the ASC actor info and grants starting attribute values (hardcoded placeholders, see CombatSystem.md).
+	 *  Здесь же выставляется ротация и базовая скорость общей локомоции (`LocomotionStructure.md`) -
 	 *  один раз, не в конструкторе: TurnRate это UPROPERTY, в конструкторе ещё не перезаписан
 	 *  значением из BP. */
 	virtual void BeginPlay() override;
@@ -181,7 +181,7 @@ protected:
 	/** ЛКМ нажат — активировать GA_CombatStance */
 	void OnStancePressed();
 
-	/** ЛКМ отпущен - CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `combat_system.md`) */
+	/** ЛКМ отпущен - CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `CombatSystem.md`) */
 	void OnStanceReleased();
 
 	void OnAttackOverhead();
@@ -199,14 +199,14 @@ protected:
 	void OnActiveSkillF();
 
 	/** Shift нажат - в режиме защиты запускает бег. В режиме атаки не делает ничего:
-	 *  стойка статична, бежать можно только отпустив ЛКМ (`combat_system.md`). */
+	 *  стойка статична, бежать можно только отпустив ЛКМ (`CombatSystem.md`). */
 	void OnSprintPressed();
 
 	/** Shift отпущен - гасит бег, если он был активен. */
 	void OnSprintReleased();
 
 	/** Пробел нажат. В режиме защиты: на бегу - длинный рывок вперёд (TriggerEvade), иначе
-	 *  прыжок. В режиме атаки не делает ничего - защиты в стойке нет (`combat_system.md`). */
+	 *  прыжок. В режиме атаки не делает ничего - защиты в стойке нет (`CombatSystem.md`). */
 	void OnSpacePressed();
 
 	/** Пробел отпущен - StopJumping(). */
@@ -220,7 +220,7 @@ protected:
 
 	/** Считает YawDelta между камерой и корпусом и по нему включает/выключает движковый
 	 *  bUseControllerDesiredRotation (доворот) на CharacterMovementComponent. Доворот - общее
-	 *  правило локомоции, не привилегия стойки (`locomotion_structure.md`). На бегу ротацией
+	 *  правило локомоции, не привилегия стойки (`LocomotionStructure.md`). На бегу ротацией
 	 *  заведует bOrientRotationToMovement, сюда тик не заходит. Стоя - по гистерезису
 	 *  TurnThreshold/TurnSettleAngle, со взводом bTurningInPlace для ABP (подшаг); двигаясь
 	 *  (не в стойке, не бегом) доворот идёт постоянно, без порога. */
@@ -237,7 +237,7 @@ public:
 	EClanhallInputMode GetInputMode() const;
 
 	/** Активирует DodgeAbilityHandle событием, с направлением в EventMagnitude - см.
-	 *  UGA_Dodge::ActivateAbility (`combat_system.md`). */
+	 *  UGA_Dodge::ActivateAbility (`CombatSystem.md`). */
 	void TriggerEvade(EClanhallEvadeDirection Direction);
 
 	/** Handles move inputs from either controls or UI interfaces */

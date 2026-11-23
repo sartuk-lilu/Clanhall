@@ -1,4 +1,4 @@
-// Присед - Ctrl вне стойки (`combat_system.md`). Наследуется от UGameplayAbility напрямую, той
+// Присед - Ctrl вне стойки (`CombatSystem.md`). Наследуется от UGameplayAbility напрямую, той
 // же причиной, что UGA_Dodge: не наносит урона, ActivationRequiredTags(State.InStance) на
 // UGA_ClanhallAbilityBase присед вне стойки прямо противопоказан.
 //

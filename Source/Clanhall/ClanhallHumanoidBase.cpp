@@ -19,7 +19,7 @@
 
 AClanhallHumanoidBase::AClanhallHumanoidBase()
 {
-	// (`Combat Stance and WASD Attacks.md`): ворота ввода + владелец активации WASD-ударов.
+	// (`CombatStanceAndWASDAttacks.md`): ворота ввода + владелец активации WASD-ударов.
 	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
 
@@ -28,7 +28,7 @@ AClanhallHumanoidBase::AClanhallHumanoidBase()
 	// AClanhallCharacter, из-за чего у пустого конструктора Boss они оставались nullptr, и
 	// GiveAbility грантовал WASD-удары с null-классом — серии у босса не было вообще. Не
 	// UPROPERTY намеренно — значение одинаково у всех китов, это плумбинг GAS, не контент класса
-	// (`Character Hierarchy.md`, «Грант в BeginPlay»).
+	// (`CharacterHierarchy.md`, «Грант в BeginPlay»).
 	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
 	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
 	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
@@ -50,7 +50,7 @@ void AClanhallHumanoidBase::PostInitializeComponents()
 		? CharacterSheet->Loadout[0] : nullptr;
 
 	// Множитель скорости оружия применяется при экипировке ко всем трём базовым скоростям
-	// разом (`weapon_system.md`) - не в момент входа в стойку, тяжёлое оружие медленное
+	// разом (`WeaponSystem.md`) - не в момент входа в стойку, тяжёлое оружие медленное
 	// всегда. Считаем от базового JogSpeed бойца, не от текущего MaxWalkSpeed:
 	// повторный вызов при будущем свапе оружия иначе умножил бы второй раз.
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
@@ -68,7 +68,7 @@ void AClanhallHumanoidBase::BeginPlay()
 		return;
 	}
 
-	// Отсутствие данных не должно ломать бой (`weapon_system.md`, «Шаблон и живой лист») — боец
+	// Отсутствие данных не должно ломать бой (`WeaponSystem.md`, «Шаблон и живой лист») — боец
 	// без листа дерётся на фолбэках, а не встаёт с нулевым доходом. Один варнинг на бойца,
 	// здесь и только здесь: варнить в местах чтения означало бы залить лог на каждом ударе.
 	if (!CurrentWeapon || !CurrentWeapon->Type)
@@ -79,7 +79,7 @@ void AClanhallHumanoidBase::BeginPlay()
 	}
 
 	// Спавн и крепление визуала текущего оружия и оффхенда, если он есть у экземпляра
-	// (`weapon_system.md`, «Оружие как актор»). Свапа в этом задании нет — акторы ставятся
+	// (`WeaponSystem.md`, «Оружие как актор»). Свапа в этом задании нет — акторы ставятся
 	// один раз здесь.
 	if (CurrentWeapon)
 	{
@@ -91,7 +91,7 @@ void AClanhallHumanoidBase::BeginPlay()
 		}
 	}
 
-	// Грант способностей 4 направлений WASD-удара (`combat_system.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»). Классы дефолтно
+	// Грант способностей 4 направлений WASD-удара (`CombatSystem.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»). Классы дефолтно
 	// заполнены соответствующим C++ GA (см. конструктор), BP-наследник может переопределить.
 	AttackOverheadHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackOverheadClass,   1, INDEX_NONE, this));
 	AttackRightSlashHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackRightSlashClass, 1, INDEX_NONE, this));
@@ -99,7 +99,7 @@ void AClanhallHumanoidBase::BeginPlay()
 	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 	// Один класс GA_PhysicalSkill гранится по числу записей в
-	// GetWeaponType()->Skills (`Character Hierarchy.md`, «Грант в BeginPlay»; `weapon_system.md`,
+	// GetWeaponType()->Skills (`CharacterHierarchy.md`, «Грант в BeginPlay»; `WeaponSystem.md`,
 	// «Владение оружием») — набор активок принадлежит оружию, не листу. Каждая запись проходит
 	// два гейта владения: открыт ли тир слота рангом (CharacterSheet->Perks) и выучен ли сам
 	// навык (CharacterSheet->LearnedSkills). Тот же цикл обслуживает и игрока,
@@ -132,7 +132,7 @@ void AClanhallHumanoidBase::BeginPlay()
 			}
 
 			// Тир закрыт — штатное состояние владения, не ошибка данных
-			// (`weapon_system.md`, «Владение оружием»): боец без ранга новым оружием бьёт
+			// (`WeaponSystem.md`, «Владение оружием»): боец без ранга новым оружием бьёт
 			// и паррирует, но тратить заряды не на что. Verbose, не Warning — иначе лог
 			// заливается на каждом бойце без прокачки. Гейт по тиру навыка
 			// (UAbilityData::Tier), не по слоту панели, на который навык посажен.
@@ -159,7 +159,7 @@ void AClanhallHumanoidBase::BeginPlay()
 			}
 
 			// Слот доносится до способности штатным путём GAS — динамическим тегом спека
-			// (не полем в UAbilityData, `Character Hierarchy.md`, «Ключ по слоту, а не по имени навыка»): один и тот же
+			// (не полем в UAbilityData, `CharacterHierarchy.md`, «Ключ по слоту, а не по имени навыка»): один и тот же
 			// UAbilityData может лежать сразу в двух китах, слот же принадлежит гранту.
 			FGameplayAbilitySpec Spec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value);
 			Spec.GetDynamicSpecSourceTags().AddTag(Skill.Key);
@@ -196,7 +196,7 @@ AClanhallWeaponActor* AClanhallHumanoidBase::SpawnAndAttachWeapon(TSubclassOf<AC
 {
 	if (!WeaponClass)
 	{
-		// Законное состояние, не ошибка — оружие без визуала тестируется (`weapon_system.md`,
+		// Законное состояние, не ошибка — оружие без визуала тестируется (`WeaponSystem.md`,
 		// «Оружие как актор»). Verbose, не Warning, но не молчит: иначе "меча нет" ищется
 		// глазами так же долго, как и "меч торчит из живота".
 		UE_LOG(LogClanhall, Verbose, TEXT("%s: WeaponClass не задан — оружие без визуала."), *GetName());

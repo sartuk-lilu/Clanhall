@@ -16,7 +16,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Parrying, "State.Parrying", "Окно парирования физической серии открыто");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterWindow, "State.CounterWindow", "Окно контрнавыка против активного навыка врага открыто");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InStance, "State.InStance", "ЛКМ зажат — боевая стойка (WASD = направленные удары)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Потеря управления на противнике, источник - эффект синергии (FMarkSynergy::EffectOnTarget); на игроке не применяется (invariants.md, «Разрешённые асимметрии»)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Потеря управления на противнике, источник - эффект синергии (FMarkSynergy::EffectOnTarget); на игроке не применяется (Invariants.md, «Разрешённые асимметрии»)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
@@ -30,7 +30,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_D, "Attack.Direction.D", "Владелец сейчас бьёт Right Slash (D) — висит на время замаха");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot, "Slot", "Корень слотов активок — фильтр динамических тегов спека в GA_PhysicalSkill::GetAbilitySlotTag");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_Q, "Slot.Q", "Слот Q — общий для всех оружий (ability_system.md, «Слоты активных навыков»)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_Q, "Slot.Q", "Слот Q — общий для всех оружий (AbilitySystem.md, «Слоты активных навыков»)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_E, "Slot.E", "Слот E — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_R, "Slot.R", "Слот R — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_F, "Slot.F", "Слот F — общий для всех оружий");
@@ -72,7 +72,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Humanoid, "Unit.Role.Boss.Humanoid", "«Псевдоигрок»: навыки из пула игрока, есть AP/MP/Charges, игрок учится у него навыкам");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Monster, "Unit.Role.Boss.Monster", "Босс-монстр: уникальные атаки, без MP и без AP, ничему не учит; рамка HP-центричная");
 
-	// Стрелки в `mark_system.md`, «Типы меток» — тематические семейства (группировка по стихии/типу),
+	// Стрелки в `MarksSystem.md`, «Типы меток» — тематические семейства (группировка по стихии/типу),
 	// НЕ механические цепочки прогрессии. Механика всегда парная: метка → активация (правка 1.6).
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_Bleeding, "Mark.Bleeding", "Семейство 1 (кровь): Bleeding / Open Wound / Disrupted");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Mark_OpenWound, "Mark.OpenWound", "Семейство 1 (кровь)");

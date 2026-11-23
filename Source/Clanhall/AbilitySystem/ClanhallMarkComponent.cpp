@@ -5,7 +5,7 @@
 
 namespace
 {
-	// (`mark_system.md`, «Время жизни метки»): метка живёт 5 секунд с момента наложения,
+	// (`MarksSystem.md`, «Время жизни метки»): метка живёт 5 секунд с момента наложения,
 	// одинаково для обоих треков.
 	constexpr float MarkDurationSeconds = 5.0f;
 }
@@ -33,7 +33,7 @@ void UClanhallMarkComponent::ApplyMark(EClanhallMarkTrack Track, FGameplayTag Ne
 	}
 
 	// Правило максимума: старая метка ЭТОГО трека снимается перед накладыванием новой, без
-	// стека (`mark_system.md`, «Перезапись»). Метка другого трека не трогается.
+	// стека (`MarksSystem.md`, «Перезапись»). Метка другого трека не трогается.
 	ClearMark(Track);
 
 	FMarkTrackState& State = Tracks[static_cast<uint8>(Track)];

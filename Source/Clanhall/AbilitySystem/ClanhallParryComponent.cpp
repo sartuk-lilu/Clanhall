@@ -62,7 +62,7 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 
 	// Подавление — на цели (парировавшем): контакт пришёлся по ней, её собственная зона (если
 	// вот-вот откроется — окно парирования всегда закрывается раньше её Hitbox-нотифая) гасится
-	// так же, как при обычном пропущенном ударе (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»).
+	// так же, как при обычном пропущенном ударе (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»).
 	if (UClanhallHitboxComponent* TargetHitbox = HitTarget->FindComponentByClass<UClanhallHitboxComponent>())
 	{
 		TargetHitbox->SuppressHitboxes();
@@ -74,7 +74,7 @@ bool UClanhallParryComponent::TryParry(AActor* HitTarget, EClanhallAttackDirecti
 
 	if (UAbilitySystemComponent* OwnASC = GetASC())
 	{
-		// Парировавшему (цели) — заряд. Парирование даёт плоский +1 и оружием НЕ масштабируется (`economy_system.md`,
+		// Парировавшему (цели) — заряд. Парирование даёт плоский +1 и оружием НЕ масштабируется (`EconomySystem.md`,
 		// «Заряды: доход»). Масштабировать доход защищающегося его оружием значит «кинжалом
 		// парировать невыгодно» — то есть штраф на защиту, а защита это пол дохода. Нормируется
 		// только атакующий канал. Не заменять на ChargeIncome.

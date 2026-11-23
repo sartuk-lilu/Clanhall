@@ -22,7 +22,7 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 
 	// E2.4: активка в фазе коммита (State.SkillCommitted, висит на UGA_PhysicalSkill от активации
 	// до Event.Hitbox.Closed) блокирует и вторую активку, и WASD-способности — «начатую активку
-	// нельзя оборвать» (`combat_system.md`, «Боевая стойка и переключение режимов»). Выход из стойки тег не трогает: тот идёт через
+	// нельзя оборвать» (`CombatSystem.md`, «Боевая стойка и переключение режимов»). Выход из стойки тег не трогает: тот идёт через
 	// CancelAbilityHandle на способности стойки, не через TryActivateAbility.
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 
@@ -90,7 +90,7 @@ bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* Sou
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, TargetASC, UGE_ModifyHP::StaticClass(), -Overflow);
 	}
 
-	// Подавление зоны цели (`combat_system.md`, «Сквозной принцип: контакт сбивает зону получателя»)
+	// Подавление зоны цели (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»)
 	// и хитстоп бьющему переехали на сам контакт (UClanhallHitboxComponent::TickHitbox, цикл по
 	// PendingHits) — эта функция их больше
 	// не делает. Здесь урон мог обнулиться (DT поглотил всё), а контакт при этом уже случился;

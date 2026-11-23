@@ -50,7 +50,7 @@ public:
 	void ResetParriedSteps() { ParriedStepsThisSeries = 0; }
 
 	/** Зовётся из UClanhallHitboxComponent::CheckAndHandleParry на ЗОНЕ АТАКУЮЩЕГО (владельца
-	 *  этого компонента) — только для зон с bParryable == true (`ability_system.md`, «Контрнавык»: активки
+	 *  этого компонента) — только для зон с bParryable == true (`AbilitySystem.md`, «Контрнавык»: активки
 	 *  в клэше не участвуют). HitTarget — актор, которого задела ЭТА зона, уже проверен
 	 *  вызывающим на State.Parrying; MyDirection — направление СВОЕГО удара. Успех — MyDirection
 	 *  обратно направлению, которое HitTarget повесил на СЕБЯ тегом Attack.Direction.*
