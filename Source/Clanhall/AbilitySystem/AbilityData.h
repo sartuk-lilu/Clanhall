@@ -1,5 +1,5 @@
 // Центральный паттерн проекта (CLAUDE.md: "Главный паттерн: DataAsset + Fragments").
-// Заголовок — поля физического навыка (ManaGain, CounterTag), Fragments —
+// Заголовок — поля физического навыка (идентичность, длина в долях, монтаж), Fragments —
 // только то, что нужно конкретной. Логика GameplayAbility
 // не меняется при правке этого ассета — меняется только сам DataAsset (`Architecture.md`, «Почему Fragments»).
 // Гейт применения — перезарядка приёма (`EconomySystem.md`); в коде её пока нет, приходит в P5.
@@ -40,16 +40,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (Categories = "Ability"))
 	FGameplayTagContainer CounteredBy;
 
-	/** Мана за подтверждённое попадание, раз за применение независимо от числа задетых целей
-	 *  (`AbilitySystem.md`, «Физические активные навыки»). Курс нелинеен по тиру: Q/E=4, R/F=10, Z/X=18, C/V=28. 0 законен —
-	 *  утилите можно не давать маны независимо от тира. */
-	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.0"))
-	float ManaGain = 0.0f;
+	/** Длина приёма в долях такта (`AbilitySystem.md`, «Приёмы оружия»): не всякий приём - одна
+	 *  доля. Длину задают данные, а не клип: каст-монтаж подгоняется под неё play rate'ом, а без
+	 *  монтажа приём держит State.SkillCommitted ровно столько же. */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.25"))
+	float DurationBeats = 2.0f;
 
 	/** Монтаж навыка. Слот — fullbody, для ВСЕХ активок без исключения: активка отыгрывается
 	 *  целым телом, разбиение «лёгкие на верх, тяжёлые целиком» отменено (`LocomotionStructure.md`, «Слоты: создание и назначение»).
 	 *  Типовая ошибка — монтаж остался в DefaultSlot: логика работает, анимации не видно.
-	 *  nullptr законен: механика навыка работает без монтажа, резолв уходит в мгновенный фолбэк. */
+	 *  nullptr законен: механика навыка работает без монтажа, резолв уходит в мгновенный фолбэк.
+	 *  Play rate монтажа считается из DurationBeats - длина клипа на длину приёма не влияет. */
 	UPROPERTY(EditAnywhere, Category = "Ability")
 	TObjectPtr<UAnimMontage> CastMontage;
 

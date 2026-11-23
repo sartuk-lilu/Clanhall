@@ -16,6 +16,8 @@
 #include "Animation/AnimNotifyState_CounterWindow.h"
 #include "Animation/AnimMontage.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Abilities/Tasks/AbilityTask_WaitDelay.h"
+#include "ClanhallCombatSettings.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Animation/AnimInstance.h"
@@ -228,6 +230,10 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// тела защищающегося, состояние защищающегося проверяется в момент касания.
 	AActor* Target = FindMeleeTarget(Avatar);
 
+	// Длина приёма - данные, а не клип (`AbilitySystem.md`, «Приёмы оружия»): монтаж подгоняется
+	// под DurationBeats play rate'ом, нотифаи сохраняют пропорции разметки.
+	const float DurationSeconds = ClanhallBeats::ToSeconds(Data->DurationBeats);
+
 	// Монтаж запускаем ДО подписки на Event.Hitbox.*.
 	UAnimInstance* AnimInst = nullptr;
 	float MontagePlayLength = 0.0f;
@@ -238,7 +244,9 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr;
 			if (AnimInst)
 			{
-				MontagePlayLength = AnimInst->Montage_Play(Data->CastMontage);
+				const float ClipLength = Data->CastMontage->GetPlayLength();
+				const float PlayRate = (ClipLength > 0.0f && DurationSeconds > 0.0f) ? ClipLength / DurationSeconds : 1.0f;
+				MontagePlayLength = AnimInst->Montage_Play(Data->CastMontage, PlayRate);
 			}
 		}
 	}
@@ -271,8 +279,8 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	{
 		// Резолв урона сферой — два случая с разной причиной и разным временем жизни способности:
 		// (1) !bMontageStarted — монтажа нет, либо Montage_Play не смог его стартовать
-		//     (несовместимый скелет, невалидный слот): отыгрывать нечего, терминатором служит сам
-		//     этот мгновенный резолв.
+		//     (несовместимый скелет, невалидный слот): урон резолвится сразу, а терминатор -
+		//     истечение DurationBeats (OnDurationElapsed).
 		// (2) bMontageStarted && !bResolveOnContact — монтаж есть и играет, но на нём не расставлен
 		//     AnimNotifyState_Hitbox: тег и делегат для этого случая уже поставлены выше,
 		//     терминатор придёт из OnCastMontageEnded — здесь его не трогаем.
@@ -281,14 +289,21 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			UE_LOG(LogClanhall, Warning, TEXT("ActivateAbility: Montage_Play failed to start %s for %s, falling back to instant resolve"),
 				Data->CastMontage ? *Data->CastMontage->GetName() : TEXT("null"), *Avatar->GetName());
 		}
-		ResolveHitOn(Target);
-
-		// Монтажа нет — отыгрывать нечего, способность заканчивается в этом же кадре. Подписка
-		// на Event.Hitbox.Hit при неразмеченных зонах бессмысленна — урон уже отрезолвлен сферой
-		// выше, независимо от того, какой из двух случаев сработал.
+		// Монтажа нет — приём всё равно длится DurationBeats: тег коммита вешается до резолва, чтобы
+		// весь приём, включая кадр попадания, был закрыт для второго действия. Подписка на
+		// Event.Hitbox.Hit при неразмеченных зонах бессмысленна — урон отрезолвлен сферой ниже.
 		if (!bMontageStarted)
 		{
-			EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+			SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+		}
+
+		ResolveHitOn(Target);
+
+		if (!bMontageStarted)
+		{
+			UAbilityTask_WaitDelay* DurationTask = UAbilityTask_WaitDelay::WaitDelay(this, DurationSeconds);
+			DurationTask->OnFinish.AddDynamic(this, &UGA_PhysicalSkill::OnDurationElapsed);
+			DurationTask->ReadyForActivation();
 		}
 		return;
 	}
@@ -313,6 +328,11 @@ void UGA_PhysicalSkill::OnHitboxHitReceived(FGameplayEventData Payload)
 void UGA_PhysicalSkill::OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	// Срабатывает и на нормальном завершении, и на прерывании монтажа.
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+}
+
+void UGA_PhysicalSkill::OnDurationElapsed()
+{
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 }
 
@@ -372,7 +392,7 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	else
 	{
 		// Утилитарный навык без урона — попадание подтверждено самим фактом найденной цели,
-		// иначе метки и мана у таких навыков никогда бы не срабатывали.
+		// иначе метки у таких навыков никогда бы не срабатывали.
 		bConfirmedHit = (TargetASC != nullptr);
 	}
 
@@ -401,13 +421,6 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 		{
 			ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
 		}
-	}
-
-	// Мана — раз за применение, сколько бы целей ни задело.
-	if (!bManaApplied && Data->ManaGain > 0.0f)
-	{
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyMP::StaticClass(), Data->ManaGain);
-		bManaApplied = true;
 	}
 
 #if !UE_BUILD_SHIPPING

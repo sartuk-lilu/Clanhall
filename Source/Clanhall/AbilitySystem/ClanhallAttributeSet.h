@@ -41,8 +41,8 @@ public:
 	FGameplayAttributeData MaxHP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxHP);
 
-	// --- MP (Mana Points): восполняется подтверждённым попаданием физической активки, раз за
-	// применение (UAbilityData::ManaGain) ---
+	// --- MP (Mana Points): шкала заклинаний, с физических приёмов не приходит
+	// (`EconomySystem.md`, «Мана») ---
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MP, Category = "Clanhall|MP")
 	FGameplayAttributeData MP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MP);

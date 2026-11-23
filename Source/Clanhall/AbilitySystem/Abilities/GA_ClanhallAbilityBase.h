@@ -35,7 +35,7 @@ protected:
 	/** (`CombatSystem.md`, «AP — Armor Points»): снимает AP цели, переполнение (урон больше
 	 *  остатка AP) идёт прямиком в HP. Атакующему AP не возвращается: его восстанавливает только
 	 *  кристалл (`EconomySystem.md`, «Кристалл»). Возвращает true, если урон
-	 *  был нанесён — это и есть "confirmed hit", который гейтит метки/синергии/ManaGain
+	 *  был нанесён — это и есть "confirmed hit", который гейтит метки и синергии
 	 *  у активок (GA_PhysicalSkill). */
 	bool ResolveStandardDamage(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, float RawDamage) const;
 };

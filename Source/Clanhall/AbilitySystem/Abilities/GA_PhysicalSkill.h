@@ -1,6 +1,6 @@
 // Один навык-класс для всех физических активных способностей (Q/E/R/F/..., `DataAssetAndFragments.md`, «Один класс на все активки»).
 // Канон CLAUDE.md: "Логика абилки не меняется при правке данных — меняется только DataAsset".
-// Конкретное содержание (урон/метка/синергия/мана) приходит из UAbilityData,
+// Конкретное содержание (урон/метка/синергия/длина) приходит из UAbilityData,
 // который привязывается к каждому гранту через FGameplayAbilitySpec::SourceObject —
 // то есть один и тот же класс граннтится 4 раза (Shield Slam/Power Strike/Shield Charge/
 // Retribution), и каждый раз с другим SourceObject.
@@ -64,6 +64,11 @@ protected:
 	 *  срабатывает и на нормальном завершении, и на прерывании монтажа. */
 	void OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
+	/** Терминатор способности без монтажа: истекло DurationBeats. Без него приём без анимации
+	 *  заканчивался бы в кадре активации, а механика обязана занимать то же время, что с ней. */
+	UFUNCTION()
+	void OnDurationElapsed();
+
 private:
 	/** SourceObject ищется через Handle, а не GetCurrentSourceObject() — у InstancedPerExecution
 	 *  абилки на момент CanActivateAbility ещё нет персистентного инстанса (см. движок,
@@ -79,15 +84,12 @@ private:
 
 	void ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent);
 
-	/** Общая часть контактного и фолбэк-путей: урон + метки/синергия + мана + debug.
+	/** Общая часть контактного и фолбэк-путей: урон + метки/синергия + debug.
 	 *  Вызывается ОДИН раз на каждую задетую цель. */
 	void ResolveHitOn(AActor* Target);
 
 	/** Баф на себя из синергии (EffectOnSelf) уже применён за это применение навыка. */
 	bool bSelfSynergySpent = false;
-
-	/** Мана уже начислена за это применение: раз за применение, сколько бы целей ни задело. */
-	bool bManaApplied = false;
 
 	/** Каст-монтаж, который эта активка реально запустила (0, если Montage_Play не стартовал).
 	 *  Ключ идентичности для уборки залипших зон в EndAbility: сносим только своё, потому что
