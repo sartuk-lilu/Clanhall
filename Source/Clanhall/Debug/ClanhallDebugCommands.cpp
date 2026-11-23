@@ -7,6 +7,7 @@
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
+#include "ClanhallCombatTypes.h"
 #include "ClanhallCharacterBase.h"
 
 #include "AbilitySystemComponent.h"
