@@ -30,4 +30,14 @@ public:
 	/** Доводка посадки в руке. Подгоняется глазами в Blueprint оружия. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	FTransform AttachRelativeTransform;
+
+	/** Сокет на теле носителя - ножны на боку, кинжал на бедре (`WeaponSystem.md`, «Свап оружия»):
+	 *  оружие носится на теле и уходит туда, когда не в руках. Пусто - крепление в корень меша
+	 *  с варном, как у руки. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FName HolsterSocketName;
+
+	/** Доводка посадки на теле. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FTransform HolsterRelativeTransform;
 };

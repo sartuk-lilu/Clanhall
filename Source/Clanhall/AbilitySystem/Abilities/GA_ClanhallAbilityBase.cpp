@@ -13,6 +13,9 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	// до EndAbility) блокирует вторую активку — «начатую активку нельзя оборвать» (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 
+	// Смена оружия с оружием в руках стоит долю на уборку (`WeaponSystem.md`, «Свап оружия»).
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
+
 	// Оглушение (State.Stunned — эффект синергии меток, FMarkSynergy::EffectOnTarget) блокирует
 	// новые физдействия. Контрнавык стана не выдаёт (`CounterAbility.md`, «Наказание сбитого»).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());

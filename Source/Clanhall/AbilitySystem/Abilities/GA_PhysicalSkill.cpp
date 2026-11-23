@@ -238,6 +238,14 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		Cooldowns->StartCooldown(Data->CounterTag, Data->CooldownBeats);
 	}
 
+	// Приём выхватывает выбранное оружие и бьёт одним движением - лишней доли нет
+	// (`WeaponSystem.md`, «Свап оружия»). Время приёма этого оружия - для ножен.
+	if (AClanhallHumanoidBase* Humanoid = Cast<AClanhallHumanoidBase>(Avatar))
+	{
+		bDrawnByThisSkill = Humanoid->DrawSelectedWeapon();
+		Humanoid->NotifySkillStarted();
+	}
+
 	// (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): новая активка — снимаем подавление зон прошлого шага/промаха,
 	// независимо от того, есть ли у навыка каст-монтаж (фолбэк-путь тоже открывает зону сферой).
 	if (UClanhallHitboxComponent* HitboxComp = Avatar->FindComponentByClass<UClanhallHitboxComponent>())
@@ -376,6 +384,12 @@ void UGA_PhysicalSkill::EndAbility(const FGameplayAbilitySpecHandle Handle, cons
 	if (UAbilitySystemComponent* SourceASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr)
 	{
 		SourceASC->RemoveLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	}
+
+	// После приёма оружие остаётся в руках и само уходит на тело через несколько долей без дела.
+	if (AClanhallHumanoidBase* Humanoid = ActorInfo ? Cast<AClanhallHumanoidBase>(ActorInfo->AvatarActor.Get()) : nullptr)
+	{
+		Humanoid->NotifySkillEnded();
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);

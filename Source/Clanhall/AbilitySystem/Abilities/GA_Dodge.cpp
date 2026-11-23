@@ -20,6 +20,7 @@ UGA_Dodge::UGA_Dodge()
 	// Начатый приём доигрывает целиком (`CombatSystem.md`) - уход посреди него закрыт. Тот же
 	// тег, которым активка блокирует вторую активку (UGA_ClanhallAbilityBase).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
 }
 
 void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

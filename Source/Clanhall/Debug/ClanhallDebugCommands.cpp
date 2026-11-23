@@ -39,6 +39,7 @@ enum class EDebugMsgKey : int32
 	EnemyUseSkill,
 	PlayerShowCooldowns,
 	EnemyShowCooldowns,
+	EnemySelectWeapon,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -369,6 +370,27 @@ static void HandleEnemyUseSkill(UWorld* World, const TArray<FString>& Args)
 		bActivated ? FColor::Green : FColor::Red);
 }
 
+// Противник оружие не убирает - смена стоит ему ту же долю (`WeaponSystem.md`, «Свап оружия»).
+static void HandleEnemySelectWeapon(UWorld* World, const TArray<FString>& Args)
+{
+	const EDebugMsgKey Key = EDebugMsgKey::EnemySelectWeapon;
+	if (Args.Num() < 1)
+	{
+		PrintError(Key, TEXT("Usage: Clanhall.Enemy.SelectWeapon <LoadoutIndex>"));
+		return;
+	}
+	AClanhallHumanoidBase* Enemy = Cast<AClanhallHumanoidBase>(ResolveTargetActor(World, Key));
+	if (!Enemy)
+	{
+		PrintError(Key, TEXT("Current target is not an AClanhallHumanoidBase"));
+		return;
+	}
+	const int32 Index = FCString::Atoi(*Args[0]);
+	const bool bSelected = Enemy->SelectWeapon(Index);
+	PrintResult(Key, FString::Printf(TEXT("[Enemy] select weapon %d: %s"), Index, bSelected ? TEXT("ok") : TEXT("refused")),
+		bSelected ? FColor::Green : FColor::Red);
+}
+
 static void HandleShowCooldowns(UWorld* World, bool bTargetEnemy)
 {
 	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemyShowCooldowns : EDebugMsgKey::PlayerShowCooldowns;
@@ -463,6 +485,14 @@ static FAutoConsoleCommandWithWorldAndArgs CVarEnemyUseSkill(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandleEnemyUseSkill(World, Args);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemySelectWeapon(
+	TEXT("Clanhall.Enemy.SelectWeapon"),
+	TEXT("Select a loadout weapon on the current target. Usage: Clanhall.Enemy.SelectWeapon <LoadoutIndex>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandleEnemySelectWeapon(World, Args);
 	}));
 
 static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowCooldowns(

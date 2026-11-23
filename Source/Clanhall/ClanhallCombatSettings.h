@@ -26,6 +26,19 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Beats", meta = (ClampMin = "0.05", Units = "s"))
 	float BeatSeconds = 0.5f;
 
+	/** Цена смены оружия, когда в руках было оружие (`WeaponSystem.md`, «Свап оружия»): одна доля. */
+	UPROPERTY(config, EditAnywhere, Category = "Weapons", meta = (ClampMin = "0.0"))
+	float WeaponSwapBeats = 1.0f;
+
+	/** Сколько долей без приёма оружие остаётся в руках, прежде чем уйти на тело. Плейсхолдер. */
+	UPROPERTY(config, EditAnywhere, Category = "Weapons", meta = (ClampMin = "0.0"))
+	float AutoHolsterBeats = 6.0f;
+
+	/** Окно двойного нажатия клавиши оружия (как «11» в песочнице - парные мечи), секунды:
+	 *  это свойство ввода, а не боевого времени. */
+	UPROPERTY(config, EditAnywhere, Category = "Weapons", meta = (ClampMin = "0.05", Units = "s"))
+	float WeaponDoubleTapSeconds = 0.3f;
+
 	static const UClanhallCombatSettings& Get() { return *GetDefault<UClanhallCombatSettings>(); }
 };
 

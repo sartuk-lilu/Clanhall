@@ -79,7 +79,7 @@ private:
 	 *  ClanhallHumanoidBase::BeginPlay). Ищет спек по Handle и фильтрует его
 	 *  GetDynamicSpecSourceTags() по корню Slot. Невалидный результат — баг гранта
 	 *  (слот не проставлен), не молчаливый fallback на что-либо ещё. Кулдауна слот больше не
-	 *  считает — только ключует ActiveSkillHandles и привязку ввода. */
+	 *  считает — только ключует SkillHandlesByWeaponType и привязку ввода. */
 	FGameplayTag GetAbilitySlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
 	void ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent);
@@ -95,6 +95,10 @@ private:
 	 *  Ключ идентичности для уборки залипших зон в EndAbility: сносим только своё, потому что
 	 *  EndAbility приходит асинхронно и владельцем зон к тому моменту может быть уже кто-то другой. */
 	TWeakObjectPtr<UAnimMontage> PlayedCastMontage;
+
+	/** Приём выхватил выбранное оружие с тела (`WeaponSystem.md`, «Свап оружия»): у длинного
+	 *  меча такое выхватывание и есть удар из ножен. */
+	bool bDrawnByThisSkill = false;
 
 	/** Цели, по которым логика метки за это применение уже отработала. Урон идёт на КАЖДЫЙ
 	 *  контакт (два хитбокса на монтаже = два урона), а метка/синергия — один раз

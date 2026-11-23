@@ -19,6 +19,7 @@
 #include "AbilitySystem/Abilities/GA_Duck.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
+#include "ClanhallCombatSettings.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Engine/Engine.h"
 
@@ -146,6 +147,16 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnSlotPressed, SlotInput.Slot);
 			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnSlotReleased, SlotInput.Slot);
 			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnSlotReleased, SlotInput.Slot);
+		}
+
+		for (int32 Index = 0; Index < WeaponInputs.Num(); ++Index)
+		{
+			if (!WeaponInputs[Index].Action)
+			{
+				UE_LOG(LogClanhall, Warning, TEXT("'%s': запись WeaponInputs[%d] без Action - клавиша оружия не привязана."), *GetNameSafe(this), Index);
+				continue;
+			}
+			EnhancedInputComponent->BindAction(WeaponInputs[Index].Action.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnWeaponKeyPressed, Index);
 		}
 
 		EnhancedInputComponent->BindAction(LaunchAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLaunchPressed);
@@ -429,6 +440,36 @@ void AClanhallCharacter::OnLaunchPressed()
 		return;
 	}
 	AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(SelectedSlot));
+}
+
+void AClanhallCharacter::OnWeaponKeyPressed(int32 WeaponInputIndex)
+{
+	if (!WeaponInputs.IsValidIndex(WeaponInputIndex))
+	{
+		return;
+	}
+	const FClanhallWeaponInput& Input = WeaponInputs[WeaponInputIndex];
+	const double Now = GetWorld()->GetTimeSeconds();
+
+	// Двойное нажатие той же клавиши (как «11» в песочнице - парные мечи) - DoubleTapLoadoutIndex.
+	const bool bDoubleTap = Input.DoubleTapLoadoutIndex >= 0
+		&& LastWeaponInputIndex == WeaponInputIndex
+		&& Now - LastWeaponInputTime <= UClanhallCombatSettings::Get().WeaponDoubleTapSeconds;
+
+	LastWeaponInputIndex = WeaponInputIndex;
+	LastWeaponInputTime = Now;
+
+	SelectWeapon(bDoubleTap ? Input.DoubleTapLoadoutIndex : Input.LoadoutIndex);
+}
+
+void AClanhallCharacter::ApplyWeaponSpeed()
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (!Movement)
+	{
+		return;
+	}
+	Movement->MaxWalkSpeed = (IsSprinting() ? GetSprintSpeed() : GetJogSpeed()) * GetWeaponSpeedMultiplier();
 }
 
 void AClanhallCharacter::OnCastPressed()

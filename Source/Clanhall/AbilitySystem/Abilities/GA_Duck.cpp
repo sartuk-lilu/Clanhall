@@ -18,6 +18,7 @@ UGA_Duck::UGA_Duck()
 	// Начатый приём доигрывает целиком (`CombatSystem.md`) - присед посреди него закрыт, тот же
 	// тег, что у UGA_Dodge.
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
 }
 
 void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

@@ -36,6 +36,24 @@ struct FClanhallSlotInput
 	FGameplayTag Slot;
 };
 
+/** Клавиша оружия (как в песочнице симулятора: 1-4 - лоадаут, двойное 1 - парные мечи).
+ *  Двойное нажатие той же клавиши в окне WeaponDoubleTapSeconds выбирает DoubleTapLoadoutIndex,
+ *  если он валиден; -1 - двойного нажатия нет. */
+USTRUCT(BlueprintType)
+struct FClanhallWeaponInput
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> Action;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (ClampMin = "0"))
+	int32 LoadoutIndex = 0;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (ClampMin = "-1"))
+	int32 DoubleTapLoadoutIndex = -1;
+};
+
 /**
  *  A simple player-controllable third person character
  *  Implements a controllable orbiting camera
@@ -92,6 +110,14 @@ protected:
 	/** ПКМ - произнести слог выбранного слота. В P5 ничего не делает: магия - P6. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	TObjectPtr<UInputAction> CastAction;
+
+	/** Клавиши оружия: убрать то, что в руках, и выбрать новое (`WeaponSystem.md`, «Свап оружия»). */
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	TArray<FClanhallWeaponInput> WeaponInputs;
+
+	/** Индекс в WeaponInputs и время последнего нажатия клавиши оружия - для двойного нажатия. */
+	int32 LastWeaponInputIndex = INDEX_NONE;
+	double LastWeaponInputTime = -1.0;
 
 	/** Зажатые сейчас слоты в порядке нажатия; выбран последний. */
 	TArray<FGameplayTag> HeldSlots;
@@ -172,6 +198,12 @@ protected:
 
 	/** ПКМ - слог; в P5 только Verbose-лог. */
 	void OnCastPressed();
+
+	/** Клавиша оружия нажата - выбор оружия лоадаута, двойное нажатие - DoubleTapLoadoutIndex. */
+	void OnWeaponKeyPressed(int32 WeaponInputIndex);
+
+	/** Скорость при смене оружия - с учётом бега: на бегу база - SprintSpeed. */
+	virtual void ApplyWeaponSpeed() override;
 
 	void SetSelectedSlot(FGameplayTag NewSlot);
 

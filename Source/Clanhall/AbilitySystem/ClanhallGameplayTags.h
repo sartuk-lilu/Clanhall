@@ -40,6 +40,9 @@ namespace ClanhallGameplayTags
 	// Активка в фазе коммита: живёт от активации до конца каст-монтажа. Пока висит — нельзя
 	// запустить вторую активку, уйти или присесть: начатый приём доигрывает целиком (`CombatSystem.md`).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_SkillCommitted);
+	// Смена оружия, когда в руках было оружие (`WeaponSystem.md`, «Свап оружия»): одна доля на
+	// уборку. Пока висит - приёмы, уклонение и присед закрыты. Вешает AClanhallHumanoidBase::SelectWeapon.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_WeaponSwap);
 	// Вешает и снимает UClanhallCombatStateComponent, пока в радиусе есть живой противник
 	// (`CombatSystem.md`, «Боевое состояние»). Снятие идёт с задержкой — не в момент, когда
 	// последний противник покинул радиус.
