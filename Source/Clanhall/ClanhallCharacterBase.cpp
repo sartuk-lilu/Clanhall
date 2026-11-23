@@ -27,7 +27,7 @@ AClanhallCharacterBase::AClanhallCharacterBase()
 	// Симметричный компонент окна контрнавыка, тот же класс на враге.
 	CounterComponent = CreateDefaultSubobject<UClanhallCounterComponent>(TEXT("CounterComponent"));
 
-	// State.InCombat — стороне-нейтрален, как парирование и WASD-серия (`CombatSystem.md`, «Боевое состояние»).
+	// State.InCombat — стороне-нейтрален (`CombatSystem.md`, «Боевое состояние»).
 	CombatStateComponent = CreateDefaultSubobject<UClanhallCombatStateComponent>(TEXT("CombatStateComponent"));
 
 	// Без этого Crouch() молча ничего не делает (`CombatSystem.md`) - UGA_Duck опускает

@@ -14,16 +14,8 @@
 //                            NotifyEnd   → EndHitbox(this)
 // Пара Begin/End связывается по указателю на нотифай (Source), а не по хендлу: UAnimNotifyState —
 // разделяемый const-объект, хендл конкретного проигрывания на нём храниться не может.
-// Страховка: UClanhallComboComponent::ForceEndHitboxes() зовёт EndAllHitboxes() на прерванном
-// удар-монтаже (чейн/OnStanceExit) — на случай, если NotifyEnd не успел прийти.
-//
-// Клэш парирования (`AbilitySystem.md`, «Контрнавык»): проверяется только у зон с bParryable == true.
-// WASD-удары парируемы по умолчанию (дефолт Desc воспроизводит прежнее захардкоженное крепление),
-// активки Q/E/R/F ставят bParryable = false — протухшее CurrentDirection последнего WASD-удара до
-// проверки парирования не доходит вовсе, т.к. проверка для таких зон не вызывается.
-//
-// SetCurrentDirection() должен быть вызван до BeginHitbox() из GA_DirectionalAttackBase::ActivateAbility
-// — читается только зонами с bParryable == true.
+// Страховка: UGA_PhysicalSkill::EndAbility зовёт EndHitboxesFromMontage() — на случай, если
+// NotifyEnd не успел прийти.
 //
 // Помимо OnHitboxHit (BlueprintAssignable, для VFX/SFX) компонент шлёт GameplayEvent'ы
 // живой способности — Event.Hitbox.Hit на каждую задетую цель, Event.Hitbox.Closed один раз при
@@ -33,12 +25,9 @@
 
 #include "Components/ActorComponent.h"
 #include "Engine/TimerHandle.h"
-#include "ClanhallCombatTypes.h"
 #include "ClanhallHitboxTypes.h"
 #include "ClanhallHitboxComponent.generated.h"
 
-class USoundBase;
-class UClanhallParryComponent;
 class USkeletalMeshComponent;
 class UAnimMontage;
 
@@ -51,10 +40,6 @@ class CLANHALL_API UClanhallHitboxComponent : public UActorComponent
 
 public:
 	UClanhallHitboxComponent();
-
-	/** Звук столкновения оружий при успешном парировании (опционально). */
-	UPROPERTY(EditAnywhere, Category="VFX")
-	TObjectPtr<USoundBase> ClashSound;
 
 	/** Рисовать активные зоны в мире. Нужно при разметке монтажей: «не дотянулся — не попал»
 	 *  должно быть видно глазом, а не выясняться по логам. */
@@ -69,41 +54,34 @@ public:
 	/** Закрыть все зоны, открытые этим Source. */
 	void EndHitbox(const UObject* Source);
 
-	/** Закрыть все зоны без разбора. Страховка от залипания при прерывании монтажа —
-	 *  зовётся из UClanhallComboComponent. */
+	/** Закрыть все зоны без разбора. Страховка от залипания — зовётся из SuppressHitboxes. */
 	void EndAllHitboxes();
 
 	/** Закрыть только те зоны, чей Source-нотифай принадлежит указанному монтажу. Уборка за
 	 *  съеденным NotifyEnd (Branching Point), зовётся из EndAbility активки. Точечно, а не
 	 *  EndAllHitboxes(): EndAbility приходит асинхронно (может прилететь из OnDashFinished много
-	 *  позже конца монтажа), и к этому моменту зоны может владеть уже следующий шаг комбо. */
+	 *  позже конца монтажа), и к этому моменту зоной может владеть уже следующее действие. */
 	void EndHitboxesFromMontage(const UAnimMontage* Montage);
 
 	bool IsAnyHitboxActive() const { return ActiveHitboxes.Num() > 0; }
 
-	/** Установить направление текущего WASD-удара — вызывается из GA_DirectionalAttackBase до
-	 *  открытия зоны. Читается ТОЛЬКО зонами с bParryable == true. */
-	void SetCurrentDirection(EClanhallAttackDirection Dir);
-
-	/** (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): по владельцу пришёл любой контакт (клэш или пропущенный
-	 *  урон) — зоны глушатся до конца текущего шага. Закрывает уже открытые зоны (как
+	/** (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): по владельцу пришёл
+	 *  контакт — зоны глушатся до конца текущего действия. Закрывает уже открытые зоны (как
 	 *  EndAllHitboxes) и взводит флаг, из-за которого BeginHitbox() дальше не открывает новые.
-	 *  Если открытых зон не было (типичный случай для клэша — своя зона ещё не успела
-	 *  открыться), Event.Hitbox.Closed шлётся здесь явно: у UGA_DirectionalAttackBase на
-	 *  контактном пути терминатора по концу монтажа нет вовсе, только этот ивент — без него
-	 *  способность не заканчивается никогда (`DataAssetAndFragments.md`, «Терминатор способности»). На
+	 *  Если открытых зон не было (своя зона ещё не успела открыться), Event.Hitbox.Closed шлётся
+	 *  здесь явно — подписчик, который ждёт конца фазы контакта, получит его в любом случае. На
 	 *  State.SkillCommitted это не влияет: его единственная точка снятия — UGA_PhysicalSkill::EndAbility. */
 	void SuppressHitboxes();
 
-	/** Снимает подавление — зовётся на СЛЕДУЮЩЕМ шаге/активации владельца
-	 *  (UClanhallComboComponent::ActivateStep, UGA_PhysicalSkill::ActivateAbility). */
+	/** Снимает подавление — зовётся на следующей активации владельца
+	 *  (UGA_PhysicalSkill::ActivateAbility). */
 	void ResetSuppression() { bHitboxesSuppressed = false; }
 
 	bool IsSuppressed() const { return bHitboxesSuppressed; }
 
-	/** (`Parrying.md`, «Кредит клэша»): кратковременно замедляет текущий проигрываемый монтаж
-	 *  владельца — вызывается у того, ЧЬЯ зона нанесла контакт (не у обоих, не у получившего).
-	 *  Play rate восстанавливается таймером через Duration секунд. Duration <= 0 — no-op. */
+	/** Кратковременно замедляет текущий проигрываемый монтаж владельца — вызывается у того, ЧЬЯ
+	 *  зона нанесла контакт, и у того, чей контрнавык сработал. Play rate восстанавливается
+	 *  таймером через Duration секунд. Duration <= 0 — no-op. */
 	void ApplyHitstop(float Duration);
 
 	/** Скорость проигрывания монтажа на время хитстопа. */
@@ -114,14 +92,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Hitbox|Hitstop")
 	float HitstopDurationOnDamage = 0.1f;
 
-	/** Длительность хитстопа при клэше (~5-8 кадров @ 30fps). Держать ≤ 5 кадров (0.166с) —
-	 *  на игроке хитстоп сдвигает вправо его собственное освобождение, а у босса нет
-	 *  симметричного сдвига; при 8+ кадрах цепочка парирований по расчёту перестаёт сходиться
-	 *  (`Parrying.md`, «Кредит клэша»). */
+	/** Хитстоп при срабатывании контра (UClanhallCounterComponent). Имя поля историческое и не
+	 *  меняется: переименование сбросило бы значения, выставленные в Blueprint. */
 	UPROPERTY(EditDefaultsOnly, Category = "Hitbox|Hitstop")
 	float HitstopDurationOnClash = 0.166f;
 
-	/** Обычный хит (не парирование). HitboxHandle позволяет подписчику отличить свою зону от
+	/** Обычный хит. HitboxHandle позволяет подписчику отличить свою зону от
 	 *  чужой — нужно способности, ждущей своё окно контакта (Event.Hitbox.Hit несёт тот же
 	 *  хендл в EventMagnitude). */
 	UPROPERTY(BlueprintAssignable, Category = "Hitbox")
@@ -151,7 +127,6 @@ private:
 
 	TArray<FActiveHitbox> ActiveHitboxes;
 	int32 NextHitboxHandle = 1;
-	EClanhallAttackDirection CurrentDirection = EClanhallAttackDirection::Overhead;
 
 	/** (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): взведено — BeginHitbox() отказывает, до сброса на
 	 *  следующем шаге/активации владельца. */
@@ -162,10 +137,6 @@ private:
 	FTimerHandle HitstopRestoreHandle;
 
 	void TickHitbox(FActiveHitbox& Box, USkeletalMeshComponent* Mesh);
-
-	/** Проверяет, является ли хит парированием. Если да — вызывает TryParry на ParryComponent.
-	 *  Возвращает true, если парирование обработано (следующий шаг OnHitboxHit не нужен). */
-	bool CheckAndHandleParry(AActor* HitActor, FVector ImpactPoint);
 
 	/** Фаза контакта окончена: закрылась последняя зона. Шлётся ОДИН раз на переходе
 	 *  «были зоны -> зон не осталось». Слать на каждый вызов End* нельзя: вызов по пустому

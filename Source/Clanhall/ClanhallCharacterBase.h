@@ -1,7 +1,7 @@
 // Общий предок для всего, что дерётся — игрока и врагов (`CharacterHierarchy.md`, «Три слоя»).
 // ASC, атрибуты, метки, зоны поражения и окно контра нужны любому бойцу одинаково: метка
 // и контр двусторонние по построению, а без диспетчера зон у врага не было бы
-// урона вовсе (`CharacterHierarchy.md`, «AClanhallCharacterBase»). Комбо-дерево и парирование —
+// урона вовсе (`CharacterHierarchy.md`, «AClanhallCharacterBase»). Лист персонажа и приёмы оружия —
 // только гуманоидам, см. AClanhallHumanoidBase (`CharacterHierarchy.md`, «Граница слоёв»).
 
 #pragma once

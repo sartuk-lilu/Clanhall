@@ -48,11 +48,6 @@ FString UAnimNotifyState_Hitbox::GetNotifyName_Implementation() const
 		break;
 	}
 
-	if (!Hitbox.bParryable)
-	{
-		return FString::Printf(TEXT("Hitbox [%s, no clash]"), *ShapeName);
-	}
-
 	return FString::Printf(TEXT("Hitbox [%s]"), *ShapeName);
 }
 
@@ -105,8 +100,8 @@ void UAnimNotifyState_Hitbox::DrawInEditor(FPrimitiveDrawInterface* PDI, USkelet
 		return;   // кости нет — молчим: вьюпорт зовёт это каждый кадр, лог бы залило
 	}
 
-	// Тот же код цвета, что у рантайм-дебага: cyan — зона участвует в клэше, orange — нет.
-	const FLinearColor Color = Hitbox.bParryable ? FLinearColor(0.f, 1.f, 1.f) : FLinearColor(1.f, 0.5f, 0.f);
+	// Тот же цвет, что у рантайм-дебага (UClanhallHitboxComponent::TickHitbox).
+	const FLinearColor Color(1.f, 0.5f, 0.f);
 
 	const FMatrix Basis = FQuatRotationTranslationMatrix(Rotation, Location);
 	const FVector X = Basis.GetScaledAxis(EAxis::X);

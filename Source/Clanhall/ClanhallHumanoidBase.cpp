@@ -1,7 +1,6 @@
 #include "ClanhallHumanoidBase.h"
 #include "Clanhall.h"
 #include "AbilitySystemComponent.h"
-#include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/CharacterSheetData.h"
 #include "AbilitySystem/WeaponData.h"
 #include "AbilitySystem/WeaponTypeData.h"
@@ -16,7 +15,6 @@
 
 AClanhallHumanoidBase::AClanhallHumanoidBase()
 {
-	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
 }
 
 void AClanhallHumanoidBase::PostInitializeComponents()

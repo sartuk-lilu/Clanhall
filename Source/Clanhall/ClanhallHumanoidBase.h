@@ -17,7 +17,6 @@
 #include "GameplayTagContainer.h"
 #include "ClanhallHumanoidBase.generated.h"
 
-class UClanhallParryComponent;
 class UCharacterSheetData;
 class UWeaponTypeData;
 class UWeaponData;
@@ -29,11 +28,6 @@ class AClanhallHumanoidBase : public AClanhallCharacterBase
 	GENERATED_BODY()
 
 protected:
-	/** Флаг bStepParried, TryParry(). Стороне-нейтрален (`Parrying.md`, «`UClanhallParryComponent`») —
-	 *  работает одинаково у игрока и у AI. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallParryComponent> ParryComponent;
-
 	/** Лист персонажа одним ассетом (`WeaponSystem.md`, «Ассеты вместо `UClassKitData`») — оружие и
 	 *  карта активных навыков по слоту (Slot.*) вместо шести отдельных полей.
 	 *  Назначается в Blueprint-наследнике (и игрока, и AClanhallHumanoidBoss — один и тот

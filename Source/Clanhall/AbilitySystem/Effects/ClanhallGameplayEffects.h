@@ -61,7 +61,6 @@ namespace ClanhallGameplayEffects
 	 *  Возвращает handle, чтобы вызывающий мог снять эффект досрочно. */
 	CLANHALL_API FActiveGameplayEffectHandle ApplyTimedTag(UAbilitySystemComponent* ASC, FGameplayTag Tag, float DurationSeconds);
 
-	/** Навешивает Tag на TargetASC от имени SourceASC. Нужно когда источник и цель — разные акторы
-	 *  (например, AI открывает окно парирования на игроке). */
+	/** Навешивает Tag на TargetASC от имени SourceASC. Нужно когда источник и цель — разные акторы. */
 	CLANHALL_API FActiveGameplayEffectHandle ApplyTimedTagToTarget(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, FGameplayTag Tag, float DurationSeconds);
 }

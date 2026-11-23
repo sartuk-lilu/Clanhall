@@ -2,7 +2,6 @@
 #include "Clanhall.h"
 #include "Animation/AnimNotifyState_Hitbox.h"
 #include "Animation/AnimMontage.h"
-#include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
@@ -21,11 +20,6 @@ UClanhallHitboxComponent::UClanhallHitboxComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
-}
-
-void UClanhallHitboxComponent::SetCurrentDirection(EClanhallAttackDirection Dir)
-{
-	CurrentDirection = Dir;
 }
 
 int32 UClanhallHitboxComponent::BeginHitbox(const FClanhallHitboxDesc& Desc, const UObject* Source)
@@ -102,12 +96,9 @@ void UClanhallHitboxComponent::SuppressHitboxes()
 
 	if (!bHadActiveZones)
 	{
-		// Своя зона ещё не успела открыться (типичный случай клэша — окно парирования всегда
-		// закрывается раньше Hitbox-нотифая, см. AnimNotifyState_ParryWindow разметку). Без
-		// этого явного вызова EndAllHitboxes() выше не эмитит Closed (не было перехода
-		// «были->нет»), а UGA_DirectionalAttackBase на контактном пути ждёт именно этот ивент
-		// как единственный терминатор — без него способность не заканчивается вовсе, а не только
-		// подвисает (`DataAssetAndFragments.md`, «Терминатор способности»).
+		// Своя зона ещё не успела открыться. Без этого явного вызова EndAllHitboxes() выше не
+		// эмитит Closed (не было перехода «были->нет»), и подписчик, ждущий конца фазы контакта,
+		// не узнал бы, что её не будет.
 		NotifyAllHitboxesClosed();
 	}
 }
@@ -235,8 +226,7 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 		return;
 	}
 
-	// Копии для фазы оповещения ниже — Box станет небезопасен для чтения после неё.
-	const bool bParryable = Box.Desc.bParryable;
+	// Копия для фазы оповещения ниже — Box станет небезопасен для чтения после неё.
 	const int32 HitboxHandle = Box.Handle;
 
 	const FCollisionShape Shape = Box.Desc.MakeCollisionShape();
@@ -286,7 +276,7 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 #if !UE_BUILD_SHIPPING
 	if (bDrawDebugHitboxes)
 	{
-		const FColor Color = Box.Desc.bParryable ? FColor::Cyan : FColor::Orange;
+		const FColor Color = FColor::Orange;
 		DrawDebugLine(GetWorld(), Box.LastLocation, CurrentLocation, Color, false, 0.0f, SDPG_Foreground, 1.0f);
 		switch (Box.Desc.Shape)
 		{
@@ -314,20 +304,15 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 	// Ниже этой точки Box трогать НЕЛЬЗЯ: подписчик может изнутри колбэка закрыть зону
 	// (EndHitbox/EndAllHitboxes) или открыть новую (BeginHitbox), а это RemoveAll/Empty/Add
 	// по ActiveHitboxes — ссылка Box протухнет. Всё состояние зоны уже записано выше,
-	// здесь работаем только с копиями bParryable/HitboxHandle и локальным PendingHits.
+	// здесь работаем только с копией HitboxHandle и локальным PendingHits.
 	for (const FPendingHit& Pending : PendingHits)
 	{
-		if (bParryable && CheckAndHandleParry(Pending.Actor, Pending.ImpactPoint))
-		{
-			continue;   // парирование обработано, обычный хит не нужен
-		}
-
 		// (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): подавление зоны цели и хитстоп бьющему живут ЗДЕСЬ,
 		// на самом контакте — а не в расчёте урона (ResolveStandardDamage), куда не доходят удар,
 		// полностью поглощённый DT (0 урона -> bConfirmedHit=false), и утилитарные навыки без
 		// UDamageFragment (War Shout и подобные). Контакт — факт, произошедший независимо от того,
-		// что дальше решит формула урона. Симметрично клэшу (UClanhallParryComponent::TryParry):
-		// хитстоп — владельцу зоны (this), подавление — цели, чья зона получила контакт.
+		// что дальше решит формула урона. Хитстоп — владельцу зоны (this), подавление — цели, чья
+		// зона получила контакт.
 		if (UClanhallHitboxComponent* TargetHitbox = Pending.Actor->FindComponentByClass<UClanhallHitboxComponent>())
 		{
 			TargetHitbox->SuppressHitboxes();
@@ -343,25 +328,4 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 		Payload.EventMagnitude = static_cast<float>(HitboxHandle);
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Owner, Payload.EventTag, Payload);
 	}
-}
-
-bool UClanhallHitboxComponent::CheckAndHandleParry(AActor* HitActor, FVector ImpactPoint)
-{
-	// Враг должен быть в паррируемом состоянии
-	IAbilitySystemInterface* Interface = Cast<IAbilitySystemInterface>(HitActor);
-	if (!Interface) return false;
-
-	UAbilitySystemComponent* HitASC = Interface->GetAbilitySystemComponent();
-	if (!HitASC) return false;
-
-	if (!HitASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_Parrying.GetTag()))
-	{
-		return false;
-	}
-
-	// Передаём в ParryComponent: он проверяет совпадение направления и ставит флаг
-	UClanhallParryComponent* ParryComp = GetOwner()->FindComponentByClass<UClanhallParryComponent>();
-	if (!ParryComp) return false;
-
-	return ParryComp->TryParry(HitActor, CurrentDirection, ImpactPoint);
 }

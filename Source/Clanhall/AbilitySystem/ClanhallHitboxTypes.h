@@ -51,15 +51,6 @@ struct FClanhallHitboxDesc
 	UPROPERTY(EditAnywhere, Category = "Hitbox", meta = (EditCondition = "Shape == EClanhallHitboxShape::Box", EditConditionHides))
 	FVector BoxExtent = FVector(20.0f, 20.0f, 20.0f);
 
-	/** Участвует ли этот взмах в клэше парирования (`AbilitySystem.md`, «Контрнавык»: WASD парируют WASD,
-	 *  активки контрят активки — активка в клэше не участвует вообще).
-	 *  true  — WASD-удары: попадание по актору со State.Parrying идёт в UClanhallParryComponent.
-	 *  false — активки Q/E/R/F: зона бьёт, но парирование не проверяет. Так протухшее
-	 *          CurrentDirection от последнего WASD-удара до проверки не доходит вовсе —
-	 *          для таких зон проверка парирования не вызывается. */
-	UPROPERTY(EditAnywhere, Category = "Hitbox")
-	bool bParryable = true;
-
 	/** Мировой трансформ зоны на текущей позе меша. Единая точка для свипа в рантайме и для
 	 *  превью в редакторе монтажей: разойдись они — превью показывало бы не то, что бьёт.
 	 *  false = кости/сокета с именем Bone на меше нет. Логировать или молчать решает

@@ -50,8 +50,8 @@ void UClanhallCounterComponent::ConsumeCounter()
 #endif
 	}
 
-	// Хитстоп сбитому — переиспользуем UClanhallHitboxComponent::ApplyHitstop, ту же реализацию,
-	// что резолв клэша в TryParry. Синхронно, не через OnCounterConsumed — тот делегат для будущей
+	// Хитстоп сбитому — переиспользуем UClanhallHitboxComponent::ApplyHitstop, длительность —
+	// HitstopDurationOnClash (хитстоп контра). Синхронно, не через OnCounterConsumed — тот делегат для будущей
 	// реакции получателя (флинч/VFX), хитстоп должен ударить в тот же кадр, что и сам контр.
 	if (AActor* Owner = GetOwner())
 	{
