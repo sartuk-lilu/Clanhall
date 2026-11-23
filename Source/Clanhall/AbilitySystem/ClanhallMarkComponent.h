@@ -1,11 +1,17 @@
-// Метка участника боя (`MarksSystem.md`). Канон: "Метки = GameplayTags на компоненте"
-// (CLAUDE.md). Один экземпляр на каждого боеспособного актора —
-// у игрока и у каждого врага свой, независимый (`MarksSystem.md`, «Получение метки от врага»: "два независимых трека").
+// Метки бойца - три уровня (`MarksSystem.md`, «Уровни меток», «Слоты меток»). Один экземпляр на
+// каждого бойца, симметрично: противник кладёт метки на игрока по той же лестнице.
 //
-// Два ТРЕКА (`MarksSystem.md`, «Концепция»): физический — от физических активок, магический —
-// от заклинаний. Правило максимума (не больше одной метки) действует ВНУТРИ трека: метка
-// физического трека не снимает и не видит метку магического, и наоборот. Один и тот же путь
-// кода (шаблон FMarkTrackState) обслуживает оба трека, различаются только индексом.
+// - Первый уровень - один слот дебаффа и один слот баффа. Новая метка заменяет лежащую в своём
+//   слоте, та же самая обновляет таймер.
+// - Второй уровень и третий (травмы, преимущества) - списки без потолка.
+// - Копий нет: повтор той же метки обновляет таймер. Уровни лежат отдельно: подъём съедает метку
+//   только читаемого уровня. Истёкшая метка пропадает целиком, ниже не опускается.
+// - Каждая метка помнит школу и бойца, который её положил: третий уровень сравнивает школы.
+//
+// Время жизни - по уровню из настроек боя; держит его компонент (тик раз в 0.1 с), а не
+// длительность GameplayEffect: обновление таймера - просто новое время, без переприменения.
+// Эффект метки (UMarkData::Effect, Infinite) снимается вместе с меткой. Пока метка лежит, её тег
+// висит на ASC loose-тегом.
 
 #pragma once
 
@@ -16,9 +22,37 @@
 #include "ClanhallMarkComponent.generated.h"
 
 class UAbilitySystemComponent;
-class UGameplayEffect;
+class UMarkData;
 
-UCLASS()
+/** Лежащая на бойце метка - для HUD и отладки. */
+USTRUCT(BlueprintType)
+struct CLANHALL_API FClanhallMarkView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mark")
+	TObjectPtr<UMarkData> Mark = nullptr;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mark")
+	FGameplayTag Tag;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mark")
+	int32 Level = 1;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mark")
+	EClanhallMarkKind Kind = EClanhallMarkKind::Debuff;
+
+	/** Школа, которая положила метку (`School.*`); пусто - отладка. */
+	UPROPERTY(BlueprintReadOnly, Category = "Mark")
+	FGameplayTag SourceSchool;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mark")
+	float RemainingBeats = 0.0f;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallMarksChanged);
+
+UCLASS(ClassGroup = "Clanhall", meta = (BlueprintSpawnableComponent))
 class CLANHALL_API UClanhallMarkComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -26,62 +60,61 @@ class CLANHALL_API UClanhallMarkComponent : public UActorComponent
 public:
 	UClanhallMarkComponent();
 
-	/** Снимает текущую метку ТРЕКА (если есть) и накладывает новую на 5 сек.
-	 *  InSourceASC — кто наложил метку (игрок или враг). Нужно для IsOwnMark().
-	 *  Правило максимума (`MarksSystem.md`, «Перезапись»): на участнике всегда не больше одной
-	 *  метки НА ТРЕК. Метка другого трека не трогается. */
-	void ApplyMark(EClanhallMarkTrack Track, FGameplayTag NewMark, UAbilitySystemComponent* InSourceASC = nullptr);
+	/** Положить метку. Слот и время - по уровню и виду метки. Та же метка уже лежит - обновить
+	 *  таймер и источник. Возвращает, легла ли. */
+	bool PlaceMark(UMarkData* Mark, FGameplayTag SourceSchool, AActor* SourceActor);
 
-	/** Снимает метку ТРЕКА без замены — используется когда метка сгорает в синергии (Правило 2). */
-	void ClearMark(EClanhallMarkTrack Track);
+	/** Съесть названную метку уровня, если она ещё лежит (метка могла истечь между нажатием и
+	 *  попаданием). OutSchool - школа съеденной: третий уровень сравнивает её со своей. */
+	bool ConsumeMark(int32 Level, FGameplayTag MarkTag, FGameplayTag& OutSchool);
 
-	/** Текущая метка ТРЕКА, если её время ещё не истекло; невалидный тег иначе. */
-	FGameplayTag GetCurrentMark(EClanhallMarkTrack Track) const;
+	/** Лежит ли метка с этим тегом на этом уровне. */
+	bool HasMark(int32 Level, FGameplayTag MarkTag) const;
 
-	bool HasMark(EClanhallMarkTrack Track, FGameplayTag MarkTag) const { return MarkTag.IsValid() && GetCurrentMark(Track) == MarkTag; }
+	/** Снять одну, самую старую, травму или преимущество (`MarksSystem.md`, «Травмы и
+	 *  преимущества»: снятие - мгновенный эффект отдельного навыка, по одной). */
+	bool RemoveOldest(EClanhallMarkKind Kind);
 
-	/** Возвращает true если QueryASC является источником текущей метки ТРЕКА.
-	 *  Потребителя сейчас НЕТ: перенос своей метки на цель убран вместе с концепцией
-	 *  «горячей картошки» (`MarksSystem.md`, «Наложение» — метка летит только от
-	 *  атакующего к цели и только при попадании). Метод сохранён под HUD («кто повесил
-	 *  метку») и синергии врага. Вражеская метка атакой не снимается. */
-	bool IsOwnMark(EClanhallMarkTrack Track, const UAbilitySystemComponent* QueryASC) const;
+	/** Все лежащие метки: слоты первого уровня, потом второй, потом третий. */
+	UFUNCTION(BlueprintPure, Category = "Clanhall|Marks")
+	TArray<FClanhallMarkView> GetMarks() const;
 
-	/** Слот баффа владельца (`MarksSystem.md`, «Правила метки», «Слоты эффектов от активаций»):
-	 *  хендл активного баффа от СОБСТВЕННЫХ активаций владельца. Снимает прежний хендл (если жив)
-	 *  и применяет новый — один слот, новый эффект того же вида заменяет прежний. */
-	void ApplySelfBuff(TSubclassOf<UGameplayEffect> EffectClass);
+	UPROPERTY(BlueprintAssignable, Category = "Clanhall|Marks")
+	FOnClanhallMarksChanged OnMarksChanged;
 
-	/** Слот дебаффа на владельце, ПО ОДНОМУ НА КАЖДОГО СОЗДАТЕЛЯ (`MarksSystem.md`, «Правила
-	 *  метки», «Слоты эффектов от активаций»): снимает прежний дебафф ЭТОГО ЖЕ SourceASC на
-	 *  владельце (если жив) и применяет новый. Дебаффы других создателей не трогаются. */
-	void ApplyDebuffFrom(UAbilitySystemComponent* SourceASC, TSubclassOf<UGameplayEffect> EffectClass);
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+protected:
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
-	/** Состояние одного трека — кэш тега, хендл эффекта, источник. Один и тот же путь кода для
-	 *  обоих треков, только индекс разный. */
-	struct FMarkTrackState
+	/** Ассет метки держит не эта структура (она не UPROPERTY), а его владельцы - UAbilityData
+	 *  тестового набора; ассеты данных в бою не выгружаются. */
+	struct FPlacedMark
 	{
-		// Подсказка "какой именно тег проверять" — реальная истина всегда в теге на ASC,
-		// см. GetCurrentMark(): по истечении 5 сек GE сам снимает тег, кэш мог не узнать об этом сразу.
-		FGameplayTag CachedMarkTag;
-
-		FActiveGameplayEffectHandle ActiveMarkEffectHandle;
-
-		// Кто наложил текущую метку. Валиден пока метка жива.
-		TWeakObjectPtr<UAbilitySystemComponent> CurrentMarkSourceASC;
+		TObjectPtr<UMarkData> Mark;
+		FGameplayTag SourceSchool;
+		TWeakObjectPtr<AActor> SourceActor;
+		double PlacedAt = 0.0;
+		double ExpiresAt = 0.0;
+		FActiveGameplayEffectHandle EffectHandle;
 	};
 
+	/** Первый уровень: слот дебаффа [0] и слот баффа [1]. */
+	TOptional<FPlacedMark> LevelOneSlots[2];
+
+	/** Второй уровень - без потолка. */
+	TArray<FPlacedMark> LevelTwo;
+
+	/** Третий уровень - травмы и преимущества, без потолка. */
+	TArray<FPlacedMark> LevelThree;
+
 	UAbilitySystemComponent* GetOwnerASC() const;
+	double Now() const;
+	double LifetimeSeconds(int32 Level) const;
 
-	FMarkTrackState Tracks[2];
+	void Apply(FPlacedMark& Placed);
+	void Remove(FPlacedMark& Placed);
 
-	/** Хендл активного баффа от собственных активаций владельца (см. ApplySelfBuff). Снятие по
-	 *  устаревшему/протухшему хендлу безопасно — RemoveActiveGameplayEffect не требует отдельной
-	 *  проверки на истечение. */
-	FActiveGameplayEffectHandle SelfBuffHandle;
-
-	/** Дебаффы на владельце, по одному хендлу на создателя (см. ApplyDebuffFrom). Протухшие ключи
-	 *  (создатель уничтожен) чистятся при вставке новой записи. */
-	TMap<TWeakObjectPtr<UAbilitySystemComponent>, FActiveGameplayEffectHandle> DebuffHandlesBySource;
+	FClanhallMarkView MakeView(const FPlacedMark& Placed) const;
 };

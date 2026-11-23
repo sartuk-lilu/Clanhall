@@ -9,6 +9,14 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_Retribution, "Ability.Knight.Retribution", "Knight F — Retribution");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Warrior, "Ability.Warrior", "Корень навыков Warrior");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Assassin, "Ability.Assassin", "Корень навыков Assassin");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_LongSword, "Ability.LongSword", "Long sword skills root");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School, "School", "Schools: five weapon schools and magic");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School_LongSword, "School.LongSword", "Long sword school");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School_DualSwords, "School.DualSwords", "Dual swords school");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School_Greatsword, "School.Greatsword", "Heavy two-hander school");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School_Dagger, "School.Dagger", "Dagger school");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School_Spear, "School.Spear", "Staff-spear school");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School_Magic, "School.Magic", "Magic school");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Common, "Ability.Common", "Common actions, not weapon skills");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Common_Taunt, "Ability.Common.Taunt", "Taunt - common action with its own cooldown");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Lancer, "Ability.Lancer", "Корень навыков Lancer");

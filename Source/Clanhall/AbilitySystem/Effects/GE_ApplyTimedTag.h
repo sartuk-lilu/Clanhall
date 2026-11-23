@@ -2,9 +2,10 @@
 // когда оказалось, что временные состояния устроены точно так же (тег на
 // время), просто другой GameplayTag и другая длительность. Какой тег и насколько — решает
 // вызывающий код: DynamicGrantedTags для тега, SetByCaller для длительности.
-// Используется UClanhallMarkComponent (метки, фикс. 5 сек), UGA_Dodge и UGA_Duck
-// (State.EvadeRecovery, по длине анимации). КД навыков в проекте не осталось нигде
-// (`EconomySystem.md`, «Почему кулдаунов нет») — этот эффект для них больше не применяется.
+// Используется UGA_Dodge и UGA_Duck (State.EvadeRecovery, по длине анимации), сменой оружия
+// (State.WeaponSwap), контром (State.Stunned) и насмешкой-парированием. Метки этим эффектом не
+// пользуются: их время держит UClanhallMarkComponent. Перезарядку приёмов тоже держит свой
+// компонент (UClanhallSkillCooldownComponent), а не этот эффект.
 
 #pragma once
 

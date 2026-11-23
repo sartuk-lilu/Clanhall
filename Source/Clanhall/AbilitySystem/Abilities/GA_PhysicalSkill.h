@@ -1,6 +1,6 @@
 // Один навык-класс для всех физических активных способностей (Q/E/R/F/..., `DataAssetAndFragments.md`, «Один класс на все активки»).
 // Канон CLAUDE.md: "Логика абилки не меняется при правке данных — меняется только DataAsset".
-// Конкретное содержание (урон/метка/синергия/длина) приходит из UAbilityData,
+// Конкретное содержание (урон/уровни и метки/длина) приходит из UAbilityData,
 // который привязывается к каждому гранту через FGameplayAbilitySpec::SourceObject —
 // то есть один и тот же класс граннтится 4 раза (Shield Slam/Power Strike/Shield Charge/
 // Retribution), и каждый раз с другим SourceObject.
@@ -32,12 +32,12 @@
 
 #include "GA_ClanhallAbilityBase.h"
 #include "GameplayTagContainer.h"
+#include "ClanhallCombatTypes.h"
 #include "GA_PhysicalSkill.generated.h"
 
 class UAbilityData;
 class UClanhallMarkComponent;
 class UAnimMontage;
-struct FMarkSynergy;
 
 UCLASS()
 class CLANHALL_API UGA_PhysicalSkill : public UGA_ClanhallAbilityBase
@@ -82,19 +82,29 @@ private:
 	 *  считает — только ключует SkillHandlesByWeaponType и привязку ввода. */
 	FGameplayTag GetAbilitySlotTag(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
-	void ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent);
+	/** Держатель метки, по которому выбирается уровень в момент нажатия: на себя - свой компонент;
+	 *  на цель - мягкая цель прицела, у противника - игрок, иначе ближайший перед собой. */
+	UClanhallMarkComponent* FindLevelHolder(AActor* Avatar, EClanhallMarkTarget Target) const;
+
+	/** Метки выбранной версии на держателе (`MarksSystem.md`, «Уровни навыка»): уровень 1 кладёт,
+	 *  2 съедает метку уровня 1 из условия и кладёт свою, 3 съедает уровень 2 и на чужой школе
+	 *  кладёт травму или преимущество. Плюс мгновенные эффекты версии. */
+	void ApplyChosenLevel(UClanhallMarkComponent* Holder, AActor* Avatar);
 
 	/** Насмешка-парирование (`CombatSystem.md`, «Насмешка»): цель насмехается и сильнее в
 	 *  TauntParryRatio раз - удар остановлен до урона, меток и контра, оба в анимации, приём отменён.
 	 *  Возвращает true, если парирование случилось. */
 	bool TryTauntParry(AActor* Avatar, AActor* Target, UAbilitySystemComponent* TargetASC);
 
-	/** Общая часть контактного и фолбэк-путей: урон + метки/синергия + debug.
+	/** Общая часть контактного и фолбэк-путей: урон + метки версии + debug.
 	 *  Вызывается ОДИН раз на каждую задетую цель. */
 	void ResolveHitOn(AActor* Target);
 
-	/** Баф на себя из синергии (EffectOnSelf) уже применён за это применение навыка. */
-	bool bSelfSynergySpent = false;
+	/** Версия приёма, выбранная в момент нажатия - индекс в USkillLevelsFragment::Levels. */
+	int32 ChosenLevelIndex = INDEX_NONE;
+
+	/** Школа приёма - школа класса выбранного оружия на активации. */
+	FGameplayTag SkillSchool;
 
 	/** Каст-монтаж, который эта активка реально запустила (0, если Montage_Play не стартовал).
 	 *  Ключ идентичности для уборки залипших зон в EndAbility: сносим только своё, потому что
@@ -114,11 +124,9 @@ private:
 	/** Версия приёма бьёт без порога (мгновенный эффект `PierceThreshold`, `MarksSystem.md`). */
 	bool bHitIgnoresThreshold = false;
 
-	/** Цели, по которым логика метки за это применение уже отработала. Урон идёт на КАЖДЫЙ
-	 *  контакт (два хитбокса на монтаже = два урона), а метка/синергия — один раз
-	 *  на цель за применение: иначе вторая фаза увидит метку, которую положила первая, и
-	 *  синергия с корневым RequiredMark (Retribution — «любая метка») сработает на собственной
-	 *  метке, отработав дважды за одно применение. InstancedPerExecution — сбрасывать вручную не нужно. */
+	/** Цели, по которым метки за это применение уже отработали. Урон идёт на КАЖДЫЙ контакт (два
+	 *  хитбокса на монтаже = два урона), а метки - один раз на цель за применение: иначе вторая фаза
+	 *  съела бы метку, которую положила первая. InstancedPerExecution - сбрасывать вручную не нужно. */
 	TArray<TWeakObjectPtr<AActor>> MarkResolvedTargets;
 
 	// Все поля выше — обычные, без сброса: InstancingPolicy == InstancedPerExecution,

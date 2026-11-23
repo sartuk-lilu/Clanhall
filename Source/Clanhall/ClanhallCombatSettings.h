@@ -91,6 +91,17 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Counter", meta = (ClampMin = "0.0"))
 	float MinCounterWindowBeats = 1.0f;
 
+	/** Время жизни метки по уровню, в долях (`MarksSystem.md`, «Уровни меток»: уровень - горизонт
+	 *  времени). `Gameloop/Parameters.md`: 10 / 40 (гипотеза) / 120 (гипотеза). */
+	UPROPERTY(config, EditAnywhere, Category = "Marks", meta = (ClampMin = "0.0"))
+	float MarkL1Beats = 10.0f;
+
+	UPROPERTY(config, EditAnywhere, Category = "Marks", meta = (ClampMin = "0.0"))
+	float MarkL2Beats = 40.0f;
+
+	UPROPERTY(config, EditAnywhere, Category = "Marks", meta = (ClampMin = "0.0"))
+	float MarkL3Beats = 120.0f;
+
 	static const UClanhallCombatSettings& Get() { return *GetDefault<UClanhallCombatSettings>(); }
 };
 

@@ -73,6 +73,13 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, Category = "Ability")
 	TArray<TObjectPtr<UAbilityFragment>> Fragments;
 
+#if WITH_EDITOR
+	/** Уровни навыка (`MarksSystem.md`, «Уровни навыка»): есть уровень 1; уровни не повторяются; у
+	 *  уровня 2 и 3 ровно одна метка условия. Предупреждение - навык читает метку, которую кладёт сам
+	 *  (открытый пункт дизайна). */
+	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
+#endif
+
 	/** Возвращает первый фрагмент типа T, или nullptr если у этого навыка такого нет. */
 	template <typename T>
 	T* FindFragment() const

@@ -26,6 +26,9 @@ namespace ClanhallGameplayTags
 	// Общие действия, не приёмы оружия: идентичность для перезарядки и отмены по тегу.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common_Taunt);
+	// Корень приёмов длинного меча - заводится при реализации класса (`WeaponSystem.md`,
+	// «Исторические идентификаторы»). Кинжал - существующий Ability.Assassin.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_LongSword);
 
 	// ---- State.* ----
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Casting);
@@ -147,6 +150,17 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank2);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank3);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank4);
+
+	// ---- School.* ----
+	// Шесть школ (`AbilitySystem.md`, «Приёмы оружия»): пять оружия и магия. Поле класса оружия
+	// UWeaponTypeData::School; метка помнит школу, третий уровень навыка сравнивает школы.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(School);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(School_LongSword);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(School_DualSwords);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(School_Greatsword);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(School_Dagger);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(School_Spear);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(School_Magic);
 
 	// ---- Magic.School.* ----
 	// Только корни школ. Структура рангов (Rank.*) откладывается —

@@ -29,6 +29,11 @@ class CLANHALL_API UWeaponTypeData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+	/** Школа класса оружия (`School.*`, `AbilitySystem.md`, «Приёмы оружия»): метка помнит школу,
+	 *  которая её положила, третий уровень навыка сравнивает школы (`MarksSystem.md`). */
+	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "School"))
+	FGameplayTag School;
+
 	/** Множитель к базовым скоростям бойца (JogSpeed/WalkSpeed/SprintSpeed), не см/с -
 	 *  абсолютное число непереносимо между бойцами с разной базой (`WeaponSystem.md`,
 	 *  «Оружие как актор»). Применяется при экипировке ко всем трём разом

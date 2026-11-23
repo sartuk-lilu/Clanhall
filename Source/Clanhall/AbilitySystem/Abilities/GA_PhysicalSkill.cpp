@@ -3,7 +3,9 @@
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Fragments/GameplayFragments.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
-#include "AbilitySystem/ClanhallMarkTypes.h"
+#include "AbilitySystem/MarkData.h"
+#include "AbilitySystem/ClanhallTargetingComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "ClanhallCombatTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
@@ -196,73 +198,117 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 	return true;
 }
 
-void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent)
+UClanhallMarkComponent* UGA_PhysicalSkill::FindLevelHolder(AActor* Avatar, EClanhallMarkTarget Target) const
 {
-	if (!TargetMarkComponent)
+	if (!Avatar)
+	{
+		return nullptr;
+	}
+	if (Target == EClanhallMarkTarget::Self)
+	{
+		return Avatar->FindComponentByClass<UClanhallMarkComponent>();
+	}
+
+	// Уровень выбирается в момент нажатия (`MarksSystem.md`, «Уровни навыка»), когда контакта ещё
+	// нет: держатель - тот, по кому приём направлен. Игрок - мягкая цель прицела, противник - игрок
+	// (прототипное допущение 1v1), иначе ближайший перед собой.
+	AActor* Opponent = nullptr;
+	if (const UClanhallTargetingComponent* Targeting = Avatar->FindComponentByClass<UClanhallTargetingComponent>())
+	{
+		Opponent = Targeting->CurrentTarget;
+	}
+	if (!Opponent)
+	{
+		const APawn* AvatarPawn = Cast<APawn>(Avatar);
+		if (AvatarPawn && !AvatarPawn->IsPlayerControlled())
+		{
+			Opponent = UGameplayStatics::GetPlayerPawn(Avatar, 0);
+		}
+	}
+	if (!Opponent)
+	{
+		Opponent = FindMeleeTarget(Avatar);
+	}
+	return Opponent ? Opponent->FindComponentByClass<UClanhallMarkComponent>() : nullptr;
+}
+
+void UGA_PhysicalSkill::ApplyChosenLevel(UClanhallMarkComponent* Holder, AActor* Avatar)
+{
+	const UAbilityData* Data = GetAbilityData(CurrentSpecHandle, CurrentActorInfo);
+	const USkillLevelsFragment* Levels = Data ? Data->FindFragment<USkillLevelsFragment>() : nullptr;
+	if (!Levels || !Levels->Levels.IsValidIndex(ChosenLevelIndex) || !Holder)
 	{
 		return;
 	}
+	const FClanhallSkillLevel& Level = Levels->Levels[ChosenLevelIndex];
 
-	// Владелец этой активки — для слота баффа EffectOnSelf (`MarksSystem.md`, «Слоты эффектов
-	// от активаций»), собственный UClanhallMarkComponent атакующего, не путать с TargetMarkComponent.
-	AActor* SourceAvatar = CurrentActorInfo ? CurrentActorInfo->AvatarActor.Get() : nullptr;
-
-	if (const UMarkTriggerFragment* Trigger = Data->FindFragment<UMarkTriggerFragment>())
+	// Навык уровня N съедает метку уровня N-1, названную в условии, и кладёт следующую
+	// (`MarksSystem.md`, «Уровни навыка»). Метка съедается на попадании: истекла между нажатием и
+	// попаданием - версия бьёт как выбрана, но ничего не кладёт.
+	if (Level.Level <= 1)
 	{
-		// Физическая активка читает и сжигает ТОЛЬКО физический трек — магический трек
-		// (заклинания) она не трогает ни в каком случае (`MarksSystem.md`, «Концепция»).
-		const FGameplayTag CurrentMark = TargetMarkComponent->GetCurrentMark(EClanhallMarkTrack::Physical);
-		if (CurrentMark.IsValid())
+		if (Level.Places)
 		{
-			for (const FMarkSynergy& Synergy : Trigger->Synergies)
+			Holder->PlaceMark(Level.Places, SkillSchool, Avatar);
+		}
+	}
+	else
+	{
+		FGameplayTag EatenSchool;
+		if (Holder->ConsumeMark(Level.Level - 1, Level.Reads, EatenSchool))
+		{
+			if (Level.Level == 2)
 			{
-				// MatchesTag, а не ==: RequiredMark задаёт КРУПНОСТЬ записи. Конкретный тег
-				// (Mark.BrokenGuard) матчит только себя; корневой Mark матчит любую метку — так
-				// выражается «активирует независимо от типа метки» (Knight Retribution,
-				// `PhysicalAbilities.md`). Тот же приём, что у CounteredBy в контрнавыке.
-				if (!Synergy.RequiredMark.IsValid() || !CurrentMark.MatchesTag(Synergy.RequiredMark))
+				if (Level.Places)
 				{
-					continue;
+					Holder->PlaceMark(Level.Places, SkillSchool, Avatar);
 				}
-
-				// (`MarksSystem.md`, «Активация синергии»): метка сгорает -> бафф на себя ИЛИ дебафф на цель, никогда оба.
-				TargetMarkComponent->ClearMark(EClanhallMarkTrack::Physical);
-
-				if (Synergy.EffectOnTarget)
-				{
-					// Состояние на цель — на каждой задетой цели, через слот дебаффа ЭТОГО
-					// создателя на цели (`MarksSystem.md`, «Слоты эффектов от активаций»): новый
-					// дебафф того же атакующего снимает свой прежний, дебаффы других не трогает.
-					// TargetMarkComponent гарантирован не-null — единственный вызывающий,
-					// ResolveHitOn, находит его до вызова ResolveMarkLogic (см. ранний return выше).
-					TargetMarkComponent->ApplyDebuffFrom(SourceASC, Synergy.EffectOnTarget);
-				}
-				else if (Synergy.EffectOnSelf && !bSelfSynergySpent)
-				{
-					// Состояние на себя — один раз за применение, сколько бы целей ни задело,
-					// через слот баффа атакующего (`MarksSystem.md`, «Слоты эффектов от активаций»).
-					if (UClanhallMarkComponent* SourceMarkComponent = SourceAvatar ? SourceAvatar->FindComponentByClass<UClanhallMarkComponent>() : nullptr)
-					{
-						SourceMarkComponent->ApplySelfBuff(Synergy.EffectOnSelf);
-					}
-					else
-					{
-						UE_LOG(LogClanhall, Warning, TEXT("ResolveMarkLogic: source has no UClanhallMarkComponent, applying %s without a buff slot"), *Synergy.EffectOnSelf->GetName());
-						ClanhallGameplayEffects::ApplyEffect(SourceASC, SourceASC, Synergy.EffectOnSelf);
-					}
-					bSelfSynergySpent = true;
-				}
-
-				break;
 			}
+			else if (EatenSchool != SkillSchool)
+			{
+				// Третий уровень на метке другой школы - травма цели или преимущество себе
+				// (`MarksSystem.md`, «Травмы и преимущества»).
+				if (Level.Places)
+				{
+					UClanhallMarkComponent* LongHolder = Level.Places->Kind == EClanhallMarkKind::Advantage
+						? Avatar->FindComponentByClass<UClanhallMarkComponent>() : Holder;
+					if (LongHolder)
+					{
+						LongHolder->PlaceMark(Level.Places, SkillSchool, Avatar);
+					}
+				}
+			}
+#if !UE_BUILD_SHIPPING
+			else
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(
+					TEXT("%s: %s placed by own school - strong version only"), *Data->DisplayName.ToString(), *Level.Reads.ToString()));
+			}
+#endif
 		}
 	}
 
-	if (const UMarkApplyFragment* MarkApply = Data->FindFragment<UMarkApplyFragment>())
+	// Мгновенные эффекты версии - один раз в момент попадания (`MarksSystem.md`, «Мгновенные
+	// эффекты»). PierceThreshold уже учтён в расчёте урона (bHitIgnoresThreshold).
+	for (const EClanhallInstantEffect Effect : Level.InstantEffects)
 	{
-		// Порядок «сначала потребить, потом положить» (см. выше) сохранён: положить метку
-		// физического трека — последний шаг резолва, после того как прежняя уже могла сгореть.
-		TargetMarkComponent->ApplyMark(EClanhallMarkTrack::Physical, MarkApply->MarkTag, SourceASC);
+		switch (Effect)
+		{
+		case EClanhallInstantEffect::RemoveOwnTrauma:
+			if (UClanhallMarkComponent* Own = Avatar->FindComponentByClass<UClanhallMarkComponent>())
+			{
+				Own->RemoveOldest(EClanhallMarkKind::Trauma);
+			}
+			break;
+		case EClanhallInstantEffect::RemoveTargetAdvantage:
+			if (Levels->Target == EClanhallMarkTarget::Enemy)
+			{
+				Holder->RemoveOldest(EClanhallMarkKind::Advantage);
+			}
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -316,9 +362,45 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// тела защищающегося, состояние защищающегося проверяется в момент касания.
 	AActor* Target = FindMeleeTarget(Avatar);
 
+	// Школа приёма - школа класса выбранного оружия: метка помнит её, третий уровень сравнивает
+	// школы (`MarksSystem.md`, «Слоты меток»).
+	if (const AClanhallHumanoidBase* SchoolOwner = Cast<AClanhallHumanoidBase>(Avatar))
+	{
+		SkillSchool = SchoolOwner->GetWeaponType() ? SchoolOwner->GetWeaponType()->School : FGameplayTag();
+	}
+
+	// Уровень навыка решает метка в момент нажатия (`MarksSystem.md`, «Уровни навыка»): от
+	// старшего к младшему, выполнены оба условия - старший. Версия задаёт силу, длину и мгновенные
+	// эффекты.
+	float DurationBeats = Data->DurationBeats;
+	const USkillLevelsFragment* LevelsFragment = Data->FindFragment<USkillLevelsFragment>();
+	if (LevelsFragment)
+	{
+		ChosenLevelIndex = LevelsFragment->ChooseLevelIndex(FindLevelHolder(Avatar, LevelsFragment->Target));
+		if (LevelsFragment->Levels.IsValidIndex(ChosenLevelIndex))
+		{
+			const FClanhallSkillLevel& Level = LevelsFragment->Levels[ChosenLevelIndex];
+			HitDamageMultiplier *= Level.DamageMultiplier;
+			bHitIgnoresThreshold = Level.InstantEffects.Contains(EClanhallInstantEffect::PierceThreshold);
+			if (Level.DurationBeatsOverride > 0.0f)
+			{
+				DurationBeats = Level.DurationBeatsOverride;
+			}
+#if !UE_BUILD_SHIPPING
+			GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::White, FString::Printf(TEXT("%s - level %d"), *Data->DisplayName.ToString(), Level.Level));
+#endif
+		}
+
+		// Приём на себя кладёт метку на активации: цели нет, попадания ждать не по кому.
+		if (LevelsFragment->Target == EClanhallMarkTarget::Self)
+		{
+			ApplyChosenLevel(Avatar->FindComponentByClass<UClanhallMarkComponent>(), Avatar);
+		}
+	}
+
 	// Длина приёма - данные, а не клип (`AbilitySystem.md`, «Приёмы оружия»): монтаж подгоняется
-	// под DurationBeats play rate'ом, нотифаи сохраняют пропорции разметки.
-	const float DurationSeconds = ClanhallBeats::ToSeconds(Data->DurationBeats);
+	// под длину версии play rate'ом, нотифаи сохраняют пропорции разметки.
+	const float DurationSeconds = ClanhallBeats::ToSeconds(DurationBeats);
 
 	// Монтаж запускаем ДО подписки на Event.Hitbox.*.
 	UAnimInstance* AnimInst = nullptr;
@@ -580,20 +662,17 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	// Только подтверждённое попадание: удар, целиком поглощённый порогом, не контрит (выше - return).
 	UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag, Avatar, ActivationTime);
 
-	// Метка/синергия — один раз НА ЦЕЛЬ за применение, а не на каждый контакт: два
-	// хитбокса на монтаже дают два урона, но вторая фаза не должна видеть метку, которую только
-	// что положила первая (синергия с корневым RequiredMark сработала бы на собственной метке).
+	// Метки - один раз НА ЦЕЛЬ за применение, а не на каждый контакт: два хитбокса на монтаже
+	// дают два урона, но вторая фаза не должна съесть метку, которую только что положила первая.
+	// Навык по площади кладёт метку каждой цели отдельно (`MarksSystem.md`, «Слоты меток»).
+	const USkillLevelsFragment* LevelsFragment = Data->FindFragment<USkillLevelsFragment>();
 	const bool bMarkAlreadyResolved = MarkResolvedTargets.ContainsByPredicate([Target](const TWeakObjectPtr<AActor>& Weak)
 	{
 		return Weak.Get() == Target;
 	});
-	if (!bMarkAlreadyResolved)
+	if (LevelsFragment && LevelsFragment->Target == EClanhallMarkTarget::Enemy && !bMarkAlreadyResolved)
 	{
 		MarkResolvedTargets.Add(Target);
-
-		if (UClanhallMarkComponent* TargetMarkComponent = Target->FindComponentByClass<UClanhallMarkComponent>())
-		{
-			ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
-		}
+		ApplyChosenLevel(Target->FindComponentByClass<UClanhallMarkComponent>(), Avatar);
 	}
 }

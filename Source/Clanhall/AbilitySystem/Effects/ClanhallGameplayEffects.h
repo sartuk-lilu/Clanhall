@@ -43,8 +43,8 @@ namespace ClanhallGameplayEffects
 	 *  равен TargetASC при применении к себе. */
 	CLANHALL_API void ApplyModifyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass, float Magnitude);
 
-	/** Применяет произвольный GameplayEffect к TargetASC без SetByCaller — для эффектов синергии меток
-	 *  (FMarkSynergy::EffectOnTarget/EffectOnSelf), у которых магнитуда уже зашита в самом классе эффекта.
+	/** Применяет произвольный GameplayEffect к TargetASC без SetByCaller — для эффектов меток
+	 *  (UMarkData::Effect), у которых магнитуда уже зашита в самом классе эффекта.
 	 *  Возвращает handle применённого эффекта (невалиден, если применение не удалось или эффект Instant). */
 	CLANHALL_API FActiveGameplayEffectHandle ApplyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass);
 

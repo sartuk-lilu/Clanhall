@@ -24,7 +24,7 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParried.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParrying.GetTag());
 
-	// Оглушение (State.Stunned — эффект синергии меток, FMarkSynergy::EffectOnTarget) блокирует
+	// Оглушение (State.Stunned — короткий стан от контрнавыка, UClanhallCounterComponent) блокирует
 	// новые физдействия. Контрнавык стана не выдаёт (`CounterAbility.md`, «Наказание сбитого»).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());
 }

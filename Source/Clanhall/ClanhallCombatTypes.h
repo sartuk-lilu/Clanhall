@@ -6,14 +6,34 @@
 #include "UObject/ObjectMacros.h"
 #include "ClanhallCombatTypes.generated.h"
 
-/** Трек метки (`MarksSystem.md`, «Концепция»): физический трек кладут и снимают только
- *  физические активки, магический — только заклинания. Один боец несёт по одной метке
- *  на каждый трек одновременно, независимо друг от друга. */
+/** Вид метки (`MarksSystem.md`, «Уровни меток»): на цели - дебафф, на себе - бафф; на третьем
+ *  уровне дебафф называется травмой, бафф - преимуществом. */
 UENUM(BlueprintType)
-enum class EClanhallMarkTrack : uint8
+enum class EClanhallMarkKind : uint8
 {
-	Physical,
-	Magic
+	Debuff     UMETA(DisplayName = "Debuff"),
+	Buff       UMETA(DisplayName = "Buff"),
+	Trauma     UMETA(DisplayName = "Trauma"),
+	Advantage  UMETA(DisplayName = "Advantage")
+};
+
+/** На кого приём кладёт метку (`MarksSystem.md`, «Слоты меток»: либо на цель, либо на себя, не на
+ *  обоих сразу). На этом же держателе приём читает метку своего условия. */
+UENUM(BlueprintType)
+enum class EClanhallMarkTarget : uint8
+{
+	Enemy  UMETA(DisplayName = "Enemy"),
+	Self   UMETA(DisplayName = "Self")
+};
+
+/** Мгновенный эффект версии навыка (`MarksSystem.md`, «Мгновенные эффекты»): срабатывает один раз
+ *  в момент попадания и ничего не оставляет висеть. Набор расширяется по мере приёмов. */
+UENUM(BlueprintType)
+enum class EClanhallInstantEffect : uint8
+{
+	RemoveOwnTrauma        UMETA(DisplayName = "Remove Own Trauma"),
+	RemoveTargetAdvantage  UMETA(DisplayName = "Remove Target Advantage"),
+	PierceThreshold        UMETA(DisplayName = "Pierce Threshold")
 };
 
 /** Направление уклонения (`CombatSystem.md`, «Уклонение»): «Пробел + направление». Смещение

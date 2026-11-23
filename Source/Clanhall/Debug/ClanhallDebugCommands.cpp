@@ -6,6 +6,7 @@
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
+#include "AbilitySystem/MarkData.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallSkillCooldownComponent.h"
 #include "ClanhallCombatTypes.h"
@@ -19,6 +20,7 @@
 #include "GameplayTagContainer.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "AssetRegistry/IAssetRegistry.h"
 
 #if !UE_BUILD_SHIPPING
 
@@ -43,6 +45,8 @@ enum class EDebugMsgKey : int32
 	EnemyTaunt,
 	PlayerSetPower,
 	EnemySetPower,
+	PlayerShowMarks,
+	EnemyShowMarks,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -236,8 +240,7 @@ static void HandleShowStats(UWorld* World, bool bTargetEnemy)
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxMPAttribute())));
 
 	// Модификаторы боя - то, что меняют метки (`Implementation/Damage.md`).
-	Message += FString::Printf(TEXT("
-crit %s · threshold -%s · dealt x%s · taken x%s · speed x%s"),
+	Message += FString::Printf(TEXT("\ncrit %s · threshold -%s · dealt x%s · taken x%s · speed x%s"),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetCritChanceAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetThresholdReductionAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetDamageDealtMultiplierAttribute())),
@@ -257,6 +260,40 @@ crit %s · threshold -%s · dealt x%s · taken x%s · speed x%s"),
 	PrintResult(Key, Message, FColor::Cyan);
 }
 
+// Ассет метки по имени (DA_Mark_Bleed), регистронезависимо. Ищем через реестр ассетов: метки
+// в бою могут быть ещё не загружены, если их не держит ни один приём.
+static UMarkData* FindMarkAsset(const FString& Name)
+{
+	const IAssetRegistry* Registry = IAssetRegistry::Get();
+	if (!Registry)
+	{
+		return nullptr;
+	}
+	TArray<FAssetData> Assets;
+	Registry->GetAssetsByClass(UMarkData::StaticClass()->GetClassPathName(), Assets, /*bSearchSubClasses=*/true);
+	for (const FAssetData& Asset : Assets)
+	{
+		if (Asset.AssetName.ToString().Equals(Name, ESearchCase::IgnoreCase))
+		{
+			return Cast<UMarkData>(Asset.GetAsset());
+		}
+	}
+	return nullptr;
+}
+
+static const TCHAR* MarkKindName(EClanhallMarkKind Kind)
+{
+	switch (Kind)
+	{
+	case EClanhallMarkKind::Buff: return TEXT("buff");
+	case EClanhallMarkKind::Trauma: return TEXT("trauma");
+	case EClanhallMarkKind::Advantage: return TEXT("advantage");
+	default: return TEXT("debuff");
+	}
+}
+
+// Метка кладётся без школы: третий уровень, сравнивая школы, видит пустую как чужую
+// (`MarksSystem.md`, «Травмы и преимущества»). Необязательный второй аргумент - школа (School.Dagger).
 static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTargetEnemy)
 {
 	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemyAddMark : EDebugMsgKey::PlayerAddMark;
@@ -264,8 +301,8 @@ static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTarg
 	if (Args.Num() < 1)
 	{
 		PrintError(Key, bTargetEnemy
-			? TEXT("Usage: Clanhall.Enemy.AddMark <TagName> [Physical|Magic]")
-			: TEXT("Usage: Clanhall.Player.AddMark <TagName> [Physical|Magic]"));
+			? TEXT("Usage: Clanhall.Enemy.AddMark <MarkDataAssetName> [School.X]")
+			: TEXT("Usage: Clanhall.Player.AddMark <MarkDataAssetName> [School.X]"));
 		return;
 	}
 
@@ -275,25 +312,20 @@ static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTarg
 		return;
 	}
 
-	const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName(*Args[0]), /*ErrorIfNotFound=*/false);
-	if (!Tag.IsValid())
+	UMarkData* Mark = FindMarkAsset(Args[0]);
+	if (!Mark)
 	{
-		PrintError(Key, FString::Printf(TEXT("Unknown gameplay tag '%s'"), *Args[0]));
+		PrintError(Key, FString::Printf(TEXT("No UMarkData asset named '%s'"), *Args[0]));
 		return;
 	}
 
-	// Необязательный второй аргумент — трек метки, регистронезависимо, по умолчанию Physical
-	// (`MarksSystem.md`, «Концепция»).
-	EClanhallMarkTrack Track = EClanhallMarkTrack::Physical;
+	FGameplayTag School;
 	if (Args.Num() >= 2)
 	{
-		if (Args[1].Equals(TEXT("Magic"), ESearchCase::IgnoreCase))
+		School = FGameplayTag::RequestGameplayTag(FName(*Args[1]), /*ErrorIfNotFound=*/false);
+		if (!School.IsValid())
 		{
-			Track = EClanhallMarkTrack::Magic;
-		}
-		else if (!Args[1].Equals(TEXT("Physical"), ESearchCase::IgnoreCase))
-		{
-			PrintError(Key, FString::Printf(TEXT("Unknown mark track '%s' (expected Physical or Magic)"), *Args[1]));
+			PrintError(Key, FString::Printf(TEXT("Unknown school tag '%s'"), *Args[1]));
 			return;
 		}
 	}
@@ -305,9 +337,34 @@ static void HandleAddMark(UWorld* World, const TArray<FString>& Args, bool bTarg
 		return;
 	}
 
-	MarkComponent->ApplyMark(Track, Tag);
-	PrintResult(Key, FString::Printf(TEXT("%s mark %s applied (%s track)"), bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"), *Tag.ToString(),
-		Track == EClanhallMarkTrack::Magic ? TEXT("Magic") : TEXT("Physical")));
+	MarkComponent->PlaceMark(Mark, School, /*SourceActor=*/nullptr);
+	PrintResult(Key, FString::Printf(TEXT("%s mark %s placed (level %d %s)"), bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"),
+		*Mark->MarkTag.ToString(), Mark->Level, MarkKindName(Mark->Kind)));
+}
+
+static void HandleShowMarks(UWorld* World, bool bTargetEnemy)
+{
+	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemyShowMarks : EDebugMsgKey::PlayerShowMarks;
+	AActor* Actor = bTargetEnemy ? ResolveTargetActor(World, Key) : ResolvePlayerPawn(World, Key);
+	const UClanhallMarkComponent* Marks = Actor ? Actor->FindComponentByClass<UClanhallMarkComponent>() : nullptr;
+	if (!Marks)
+	{
+		PrintError(Key, TEXT("No MarkComponent"));
+		return;
+	}
+
+	FString Message = bTargetEnemy ? TEXT("[Enemy] marks:") : TEXT("[Player] marks:");
+	const TArray<FClanhallMarkView> Views = Marks->GetMarks();
+	if (Views.Num() == 0)
+	{
+		Message += TEXT(" none");
+	}
+	for (const FClanhallMarkView& View : Views)
+	{
+		Message += FString::Printf(TEXT("\nL%d %s %s  %.1f beats  [%s]"), View.Level, MarkKindName(View.Kind), *View.Tag.ToString(),
+			View.RemainingBeats, View.SourceSchool.IsValid() ? *View.SourceSchool.ToString() : TEXT("no school"));
+	}
+	PrintResult(Key, Message, FColor::Cyan);
 }
 
 static void HandleListStats(EDebugMsgKey Key)
@@ -508,7 +565,7 @@ static FAutoConsoleCommandWithWorldAndArgs CVarEnemyShowStats(
 
 static FAutoConsoleCommandWithWorldAndArgs CVarPlayerAddMark(
 	TEXT("Clanhall.Player.AddMark"),
-	TEXT("Apply a mark to the player via UClanhallMarkComponent. Usage: Clanhall.Player.AddMark <TagName> [Physical|Magic]"),
+	TEXT("Place a mark (UMarkData asset) on the player. Usage: Clanhall.Player.AddMark <MarkDataAssetName> [School.X]"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandleAddMark(World, Args, /*bTargetEnemy=*/false);
@@ -516,7 +573,7 @@ static FAutoConsoleCommandWithWorldAndArgs CVarPlayerAddMark(
 
 static FAutoConsoleCommandWithWorldAndArgs CVarEnemyAddMark(
 	TEXT("Clanhall.Enemy.AddMark"),
-	TEXT("Apply a mark to the current target via UClanhallMarkComponent. Usage: Clanhall.Enemy.AddMark <TagName> [Physical|Magic]"),
+	TEXT("Place a mark (UMarkData asset) on the current target. Usage: Clanhall.Enemy.AddMark <MarkDataAssetName> [School.X]"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandleAddMark(World, Args, /*bTargetEnemy=*/true);
@@ -592,6 +649,22 @@ static FAutoConsoleCommandWithWorldAndArgs CVarEnemyShowCooldowns(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
 	{
 		HandleShowCooldowns(World, /*bTargetEnemy=*/true);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowMarks(
+	TEXT("Clanhall.Player.ShowMarks"),
+	TEXT("Print marks on the player: level, kind, tag, remaining beats, source school."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		HandleShowMarks(World, /*bTargetEnemy=*/false);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemyShowMarks(
+	TEXT("Clanhall.Enemy.ShowMarks"),
+	TEXT("Print marks on the current target: level, kind, tag, remaining beats, source school."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		HandleShowMarks(World, /*bTargetEnemy=*/true);
 	}));
 
 #endif // !UE_BUILD_SHIPPING
