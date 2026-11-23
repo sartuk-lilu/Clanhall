@@ -46,6 +46,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.25"))
 	float DurationBeats = 2.0f;
 
+	/** Перезарядка приёма в долях (`EconomySystem.md`, «Перезарядка приёмов») - поле приёма, а не
+	 *  клавиши; стартует на активации и идёт у всего оружия. Ноль законен только для отладки. */
+	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.0"))
+	float CooldownBeats = 0.0f;
+
 	/** Монтаж навыка. Слот — fullbody, для ВСЕХ активок без исключения: активка отыгрывается
 	 *  целым телом, разбиение «лёгкие на верх, тяжёлые целиком» отменено (`LocomotionStructure.md`, «Слоты: создание и назначение»).
 	 *  Типовая ошибка — монтаж остался в DefaultSlot: логика работает, анимации не видно.

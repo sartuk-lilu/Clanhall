@@ -7,6 +7,7 @@
 #include "ClanhallCombatTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
+#include "AbilitySystem/ClanhallSkillCooldownComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
@@ -132,7 +133,19 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return false;
 	}
 
-	// Гейт применения — перезарядка приёма (`EconomySystem.md`), приходит в P5.
+	// Гейт применения — собственная перезарядка приёма (`EconomySystem.md`, «Перезарядка приёмов»).
+	// Ключ - идентичность приёма, не спек: тот же приём в двух оружиях перезаряжается один раз.
+	const AActor* Avatar = ActorInfo->AvatarActor.Get();
+	const UClanhallSkillCooldownComponent* Cooldowns = Avatar ? Avatar->FindComponentByClass<UClanhallSkillCooldownComponent>() : nullptr;
+	if (Cooldowns && Cooldowns->IsOnCooldown(Data->CounterTag))
+	{
+		if (OptionalRelevantTags)
+		{
+			OptionalRelevantTags->AddTag(ClanhallGameplayTags::Denied_Cooldown.GetTag());
+		}
+		return false;
+	}
+
 	return true;
 }
 
@@ -216,6 +229,13 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
+	}
+
+	// Перезарядка стартует на коммите приёма, включая промах и сбитый контром приём: он уходит
+	// на перезарядку как использованный (`EconomySystem.md`, «Наказание сбитого контром»).
+	if (UClanhallSkillCooldownComponent* Cooldowns = Avatar->FindComponentByClass<UClanhallSkillCooldownComponent>())
+	{
+		Cooldowns->StartCooldown(Data->CounterTag, Data->CooldownBeats);
 	}
 
 	// (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): новая активка — снимаем подавление зон прошлого шага/промаха,

@@ -39,6 +39,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_C, "Slot.C", "Слот C — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_V, "Slot.V", "Слот V — общий для всех оружий");
 
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Denied_Cooldown, "Denied.Cooldown", "Activation denied: the skill is on cooldown");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Denied_Charges, "Denied.Charges", "Activation denied for lack of charges. Mechanic removed in P4; tag kept until Reference Viewer check");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP)");

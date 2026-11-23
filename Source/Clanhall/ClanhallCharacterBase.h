@@ -18,6 +18,7 @@ class UClanhallMarkComponent;
 class UClanhallHitboxComponent;
 class UClanhallCounterComponent;
 class UClanhallCombatStateComponent;
+class UClanhallSkillCooldownComponent;
 
 UCLASS(abstract)
 class AClanhallCharacterBase : public ACharacter, public IAbilitySystemInterface
@@ -49,6 +50,11 @@ protected:
 	 *  (`CombatSystem.md`, «Боевое состояние»). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallCombatStateComponent> CombatStateComponent;
+
+	/** Перезарядка приёмов (`EconomySystem.md`, «Перезарядка приёмов») - симметрично: противник
+	 *  перезаряжается по тем же правилам. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallSkillCooldownComponent> SkillCooldownComponent;
 
 	/** Unit.Role.* — вешается на ASC в BeginPlay (`CharacterHierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
 	 *  (актор не участвует в ролевой логике HUD/AI), так у игрока по умолчанию. */

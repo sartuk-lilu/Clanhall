@@ -86,6 +86,9 @@ namespace ClanhallGameplayTags
 	// Причина отказа TryActivateAbility (OptionalRelevantTags у CanActivateAbility). Корень
 	// остаётся под будущие причины. Denied.Charges — нехватка зарядов: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Denied_Charges);
+	// Приём на перезарядке (`EconomySystem.md`, «Перезарядка приёмов») - кладёт
+	// UGA_PhysicalSkill::CanActivateAbility.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Denied_Cooldown);
 
 	// ---- SetByCaller.* ----
 	// Служебный тег: все наши generic GameplayEffect-классы (GE_Modify*) несут

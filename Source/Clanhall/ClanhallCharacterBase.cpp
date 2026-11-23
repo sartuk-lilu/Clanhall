@@ -5,6 +5,7 @@
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
+#include "AbilitySystem/ClanhallSkillCooldownComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -29,6 +30,8 @@ AClanhallCharacterBase::AClanhallCharacterBase()
 
 	// State.InCombat — стороне-нейтрален (`CombatSystem.md`, «Боевое состояние»).
 	CombatStateComponent = CreateDefaultSubobject<UClanhallCombatStateComponent>(TEXT("CombatStateComponent"));
+
+	SkillCooldownComponent = CreateDefaultSubobject<UClanhallSkillCooldownComponent>(TEXT("SkillCooldownComponent"));
 
 	// Без этого Crouch() молча ничего не делает (`CombatSystem.md`) - UGA_Duck опускает
 	// капсулу движковым Crouch(), не SetCapsuleSize.
