@@ -50,10 +50,9 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<AClanhallWeaponActor> SpawnedOffhand;
 
-	/** Хэндлы активок по слоту (Slot.*), гранятся
-	 *  в BeginPlay из GetWeaponType()->Skills через два гейта владения — один цикл на любой
-	 *  класс, а не четыре именованных поля (`CharacterHierarchy.md`, «Грант в BeginPlay»;
-	 *  `WeaponSystem.md`, «Владение оружием»). */
+	/** Хэндлы активок по слоту (Slot.*), гранятся в BeginPlay из GetWeaponType()->Skills через
+	 *  гейт «выучен ли» — один цикл на любой класс, а не четыре именованных поля
+	 *  (`CharacterHierarchy.md`, «Грант в BeginPlay»; `WeaponSystem.md`, «Класс ↔ лист персонажа»). */
 	TMap<FGameplayTag, FGameplayAbilitySpecHandle> ActiveSkillHandles;
 
 public:
@@ -80,7 +79,7 @@ public:
 	float GetWeaponSpeedMultiplier() const;
 
 	/** Хэндл активного навыка по слоту (Slot.Q/E/R/F/...) — не найден на момент
-	 *  BeginPlay (слот закрыт рангом, навык не выучен, или в GetWeaponType()->Skills вовсе
+	 *  BeginPlay (навык не выучен, или в GetWeaponType()->Skills вовсе
 	 *  нет записи) = невалидный хэндл, TryActivateAbility просто откажет. */
 	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const;
 
@@ -94,9 +93,9 @@ protected:
 	 *  состояние, фолбэки работают как раньше. */
 	virtual void PostInitializeComponents() override;
 
-	/** Грант активок из GetWeaponType()->Skills, через два
-	 *  гейта владения — общий для игрока и AClanhallHumanoidBoss (`CharacterHierarchy.md`,
-	 *  «Грант в BeginPlay»; `WeaponSystem.md`, «Владение оружием»). Спавнит и крепит акторы
+	/** Грант активок из GetWeaponType()->Skills через гейт «выучен ли» — общий для игрока и
+	 *  AClanhallHumanoidBoss (`CharacterHierarchy.md`, «Грант в BeginPlay»; `WeaponSystem.md`,
+	 *  «Класс ↔ лист персонажа»). Спавнит и крепит акторы
 	 *  текущего оружия и оффхенда. */
 	virtual void BeginPlay() override;
 

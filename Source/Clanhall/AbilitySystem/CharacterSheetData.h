@@ -3,8 +3,8 @@
 // «Тип оружия ↔ лист персонажа»).
 //
 // Живой лист (компонент, который мутирует в бою) появится вместе с прогрессией — сейчас
-// строится только шаблон, мутировать физически нечем: статов, перков и изучения навыков
-// в игре нет (`WeaponSystem.md`, «Шаблон и живой лист»).
+// строится только шаблон, мутировать физически нечем: прогрессии в прототипе нет
+// (`WeaponSystem.md`, «Шаблон и живой лист»).
 
 #pragma once
 
@@ -27,29 +27,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "CharacterSheet")
 	TArray<TObjectPtr<UWeaponData>> Loadout;
 
-	/** Стартовые значения статов. Атрибутов STR/DEX в UClanhallAttributeSet нет, скейла урона
-	 *  от них тоже — числа лежат здесь, потребитель появится вместе со скейлом
-	 *  (`WeaponSystem.md`, «Что отменено и почему»). */
-	UPROPERTY(EditAnywhere, Category = "CharacterSheet|Stats", meta = (ClampMin = "0"))
-	int32 STR = 0;
-
-	UPROPERTY(EditAnywhere, Category = "CharacterSheet|Stats", meta = (ClampMin = "0"))
-	int32 DEX = 0;
-
-	/** Перки, включая ранги владения оружием (Perk.Proficiency.*.RankN). Один контейнер
-	 *  на всё: ранги накапливаются, повторная выдача низкого ранга ничего не меняет —
-	 *  тег уже на месте, клэмп не нужен (`WeaponSystem.md`, «Владение оружием»). */
-	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Perk"))
-	FGameplayTagContainer Perks;
-
 	/** Навыки, которые боец видел в бою. Симметрично SeenSyllables/SeenSpells магии
 	 *  (`AbilitySystem.md`, «Боевой журнал как источник «узнанного»»). Писателя пока нет —
-	 *  заполняется вручную в редакторе; потребитель (условия выдачи ранга) не спроектирован. */
+	 *  заполняется вручную в редакторе; потребитель не спроектирован. */
 	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability"))
 	FGameplayTagContainer SeenSkills;
 
-	/** Навыки, которые боец выучил. Второй из двух гейтов гранта активки — первый ранг владения
-	 *  (`WeaponSystem.md`, «Владение оружием»). Ключ — идентичность навыка, UAbilityData::CounterTag. */
+	/** Навыки, которые боец выучил — гейт гранта активки: на панели только выученные приёмы
+	 *  класса оружия (`WeaponSystem.md`, «Класс ↔ лист персонажа»). Ключ — идентичность навыка,
+	 *  UAbilityData::CounterTag. */
 	UPROPERTY(EditAnywhere, Category = "CharacterSheet", meta = (Categories = "Ability"))
 	FGameplayTagContainer LearnedSkills;
 };

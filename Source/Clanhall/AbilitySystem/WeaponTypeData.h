@@ -52,13 +52,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Slot"))
 	TMap<FGameplayTag, TObjectPtr<UAbilityData>> Skills;
 
-	/** Теги владения этим типом оружия по рангам: индекс 0 — ранг 1, индекс 3 — ранг 4.
-	 *  Массив, а не сборка тега из имени в рантайме: строковая сборка ломается молча при первом
-	 *  переименовании, а теги в проекте залочены именно от этого (`WeaponSystem.md`,
-	 *  «Владение оружием»). */
-	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Perk.Proficiency"))
-	TArray<FGameplayTag> ProficiencyTagsByRank;
-
 	/** Возвращает первый фрагмент типа T, или nullptr если у этого типа оружия такого нет. */
 	template <typename T>
 	T* FindFragment() const
@@ -72,10 +65,4 @@ public:
 		}
 		return nullptr;
 	}
-
-	/** Открыт ли тир навыка (`UAbilityData::Tier`, 1-4) при данном наборе перков листа —
-	 *  гейт больше не привязан к слоту панели, на который навык посажен (`WeaponSystem.md`,
-	 *  «Владение оружием»). Tier вне границ ProficiencyTagsByRank (недозаполненный ассет —
-	 *  законное состояние, не повод для краша) считается закрытым. */
-	bool IsTierUnlocked(int32 Tier, const FGameplayTagContainer& Perks) const;
 };

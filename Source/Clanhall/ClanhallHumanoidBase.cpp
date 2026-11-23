@@ -73,15 +73,13 @@ void AClanhallHumanoidBase::BeginPlay()
 
 	// Один класс GA_PhysicalSkill гранится по числу записей в
 	// GetWeaponType()->Skills (`CharacterHierarchy.md`, «Грант в BeginPlay»; `WeaponSystem.md`,
-	// «Владение оружием») — набор активок принадлежит оружию, не листу. Каждая запись проходит
-	// два гейта владения: открыт ли тир слота рангом (CharacterSheet->Perks) и выучен ли сам
-	// навык (CharacterSheet->LearnedSkills). Тот же цикл обслуживает и игрока,
-	// и AClanhallHumanoidBoss — DataAsset'ы назначаются в Blueprint-наследнике.
+	// «Класс ↔ лист персонажа») — набор активок принадлежит оружию, не листу. Каждая запись
+	// проходит гейт «выучен ли навык» (CharacterSheet->LearnedSkills). Тот же цикл обслуживает и
+	// игрока, и AClanhallHumanoidBoss — DataAsset'ы назначаются в Blueprint-наследнике.
 	const UWeaponTypeData* WeaponType = GetWeaponType();
 	if (WeaponType)
 	{
 		int32 NumGranted = 0;
-		int32 NumRejectedByRank = 0;
 		int32 NumRejectedByLearned = 0;
 
 		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : WeaponType->Skills)
@@ -104,26 +102,14 @@ void AClanhallHumanoidBase::BeginPlay()
 				continue;
 			}
 
-			// Тир закрыт — штатное состояние владения, не ошибка данных
-			// (`WeaponSystem.md`, «Владение оружием»): боец без ранга новым оружием бьёт
-			// и паррирует, но тратить заряды не на что. Verbose, не Warning — иначе лог
-			// заливается на каждом бойце без прокачки. Гейт по тиру навыка
-			// (UAbilityData::Tier), не по слоту панели, на который навык посажен.
-			if (!WeaponType->IsTierUnlocked(Skill.Value->Tier, CharacterSheet ? CharacterSheet->Perks : FGameplayTagContainer::EmptyContainer))
-			{
-				UE_LOG(LogClanhall, Verbose, TEXT("%s: слот %s закрыт тиром навыка %d — навык не грантится."), *GetName(), *Skill.Key.ToString(), Skill.Value->Tier);
-				++NumRejectedByRank;
-				continue;
-			}
-
 			if (!Skill.Value->CounterTag.IsValid())
 			{
 				UE_LOG(LogClanhall, Warning, TEXT("%s: навык в слоте %s без CounterTag — выучить его нечем, LearnedSkills не может на него сослаться."), *GetName(), *Skill.Key.ToString());
 				continue;
 			}
 
-			// Не выучен — тоже штатное состояние владения, Verbose по той же причине, что и
-			// закрытый тир выше.
+			// Не выучен — штатное состояние, не ошибка данных (`WeaponSystem.md`, «Класс ↔ лист
+			// персонажа»). Verbose, не Warning — иначе лог заливается на каждом бойце.
 			if (!CharacterSheet || !CharacterSheet->LearnedSkills.HasTag(Skill.Value->CounterTag))
 			{
 				UE_LOG(LogClanhall, Verbose, TEXT("%s: навык в слоте %s не выучен (LearnedSkills) — не грантится."), *GetName(), *Skill.Key.ToString());
@@ -141,9 +127,9 @@ void AClanhallHumanoidBase::BeginPlay()
 		}
 
 		// Итоговая строка, чтобы гейт не отлаживался вслепую: игрок жмёт Q, ничего не
-		// происходит, и без этой строки причина (ранг или изученность) не ищется.
-		UE_LOG(LogClanhall, Log, TEXT("%s: активок гранто %d, отсеяно рангом %d, отсеяно изученностью %d."),
-			*GetName(), NumGranted, NumRejectedByRank, NumRejectedByLearned);
+		// происходит, и без этой строки причина (изученность) не ищется.
+		UE_LOG(LogClanhall, Log, TEXT("%s: активок гранто %d, отсеяно изученностью %d."),
+			*GetName(), NumGranted, NumRejectedByLearned);
 	}
 }
 
