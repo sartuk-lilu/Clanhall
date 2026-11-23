@@ -76,6 +76,21 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Taunt", meta = (ClampMin = "0.0"))
 	float TauntParryBeats = 2.0f;
 
+	/** Короткий стан с отменой приёма от контрнавыка, в долях, одинаковый для всех
+	 *  (`CombatSystem.md`, «Контроль»). Верх - «потолок обычного контроля на игроке» 0.5 с
+	 *  (`Gameloop/Parameters.md`). */
+	UPROPERTY(config, EditAnywhere, Category = "Counter", meta = (ClampMin = "0.0"))
+	float CounterStunBeats = 1.0f;
+
+	/** Одновременная активация (`AbilitySystem.md`, «Контрнавык»): насколько раньше контрящего мог
+	 *  стартовать контримый приём, чтобы встык считался перехватом, в долях. */
+	UPROPERTY(config, EditAnywhere, Category = "Counter", meta = (ClampMin = "0.0"))
+	float SimultaneousBeats = 0.25f;
+
+	/** Окно контра не должно быть узким (`AbilitySystem.md`): уже этого - варн разметки. */
+	UPROPERTY(config, EditAnywhere, Category = "Counter", meta = (ClampMin = "0.0"))
+	float MinCounterWindowBeats = 1.0f;
+
 	static const UClanhallCombatSettings& Get() { return *GetDefault<UClanhallCombatSettings>(); }
 };
 

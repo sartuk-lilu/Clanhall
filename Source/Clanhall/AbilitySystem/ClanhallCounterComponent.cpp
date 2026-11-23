@@ -1,6 +1,9 @@
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
+#include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
+#include "ClanhallCombatSettings.h"
+#include "Engine/World.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Engine/Engine.h"
@@ -29,6 +32,23 @@ void UClanhallCounterComponent::CloseWindow()
 	}
 }
 
+void UClanhallCounterComponent::NotifySkillActivated(const FGameplayTagContainer& InCounteredBy, FGameplayAbilitySpecHandle InHandle)
+{
+	ActiveSkillCounteredBy = InCounteredBy;
+	ActiveSkillHandle = InHandle;
+	ActiveSkillStartTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+}
+
+void UClanhallCounterComponent::NotifySkillEnded(FGameplayAbilitySpecHandle InHandle)
+{
+	if (InHandle == ActiveSkillHandle)
+	{
+		ActiveSkillCounteredBy.Reset();
+		ActiveSkillHandle = FGameplayAbilitySpecHandle();
+		ActiveSkillStartTime = -1.0;
+	}
+}
+
 bool UClanhallCounterComponent::IsCounterableBy(FGameplayTag IncomingTag) const
 {
 	return bWindowOpen && IncomingTag.IsValid() && CounteredByTags.HasTag(IncomingTag);
@@ -36,14 +56,21 @@ bool UClanhallCounterComponent::IsCounterableBy(FGameplayTag IncomingTag) const
 
 void UClanhallCounterComponent::ConsumeCounter()
 {
-	if (!bWindowOpen)
+	// Окно открыто - сбиваем приём окна; встык (окна ещё нет) - идущий приём.
+	const FGameplayAbilitySpecHandle HandleToCancel = bWindowOpen ? CounteredHandle : ActiveSkillHandle;
+	if (!HandleToCancel.IsValid())
 	{
 		return;
 	}
 
 	if (UAbilitySystemComponent* ASC = GetASC())
 	{
-		ASC->CancelAbilityHandle(CounteredHandle);
+		ASC->CancelAbilityHandle(HandleToCancel);
+
+		// Короткий стан с отменой приёма - только от контрнавыка и контрмагии, одинаковый для всех
+		// (`CombatSystem.md`, «Контроль»). Хватает на продолжение связки, не на спам.
+		ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_Stunned.GetTag(),
+			ClanhallBeats::ToSeconds(UClanhallCombatSettings::Get().CounterStunBeats));
 
 #if !UE_BUILD_SHIPPING
 		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван"));
@@ -66,7 +93,7 @@ void UClanhallCounterComponent::ConsumeCounter()
 	CloseWindow();
 }
 
-bool UClanhallCounterComponent::TryResolveCounter(AActor* Target, FGameplayTag IncomingCounterTag)
+bool UClanhallCounterComponent::TryResolveCounter(AActor* Target, FGameplayTag IncomingCounterTag, AActor* Source, double SourceActivationTime)
 {
 	if (!Target || !IncomingCounterTag.IsValid())
 	{
@@ -74,13 +101,41 @@ bool UClanhallCounterComponent::TryResolveCounter(AActor* Target, FGameplayTag I
 	}
 
 	UClanhallCounterComponent* TargetComp = Target->FindComponentByClass<UClanhallCounterComponent>();
-	if (!TargetComp || !TargetComp->IsCounterableBy(IncomingCounterTag))
+	if (!TargetComp)
 	{
 		return false;
 	}
 
-	TargetComp->ConsumeCounter();
-	return true;
+	if (TargetComp->IsCounterableBy(IncomingCounterTag))
+	{
+		TargetComp->ConsumeCounter();
+		return true;
+	}
+
+	// Одновременная активация (`AbilitySystem.md`, «Контрнавык»): оба выпустили приём встык - окно
+	// цели ещё не открылось, но её приём контрится этим. Работает как перехват.
+	if (TargetComp->ActiveSkillHandle.IsValid() && TargetComp->ActiveSkillCounteredBy.HasTag(IncomingCounterTag) && SourceActivationTime >= 0.0)
+	{
+		const double Delta = SourceActivationTime - TargetComp->ActiveSkillStartTime;
+		const double Window = ClanhallBeats::ToSeconds(UClanhallCombatSettings::Get().SimultaneousBeats);
+		if (Delta >= 0.0 && Delta <= Window)
+		{
+			// Кадр в кадр - редкий VFX-взрыв на обоих.
+			const UWorld* World = Target->GetWorld();
+			if (World && Delta <= World->GetDeltaSeconds())
+			{
+				TargetComp->OnPerfectClash.Broadcast(Source);
+				if (UClanhallCounterComponent* SourceComp = Source ? Source->FindComponentByClass<UClanhallCounterComponent>() : nullptr)
+				{
+					SourceComp->OnPerfectClash.Broadcast(Target);
+				}
+			}
+			TargetComp->ConsumeCounter();
+			return true;
+		}
+	}
+
+	return false;
 }
 
 UAbilitySystemComponent* UClanhallCounterComponent::GetASC()

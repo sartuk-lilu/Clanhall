@@ -1,10 +1,7 @@
-// State.Stunned на фиксированную длительность — единственная выдача стана в проекте. Потеря
-// управления, разрешена только на противнике асимметрией (`Invariants.md`, «Разрешённые
-// асимметрии»); на игроке не применяется. Источник — эффект синергии меток
-// (FMarkSynergy::EffectOnTarget), обналичивающий требуемую метку конкретного навыка синергии.
-// Применяется ClanhallGameplayEffects::ApplyEffect БЕЗ SetByCaller (в отличие от
-// GE_ApplyTimedTag) — длительность целиком в данных, а не в вызывающем коде: сама точка вызова
-// (GA_PhysicalSkill::ResolveMarkLogic) навыко-нейтральна и не может решать за конкретную синергию.
+// State.Stunned на фиксированную длительность из ассета. Кодом не применяется: короткий стан
+// от контрнавыка вешает UClanhallCounterComponent::ConsumeCounter через GE_ApplyTimedTag с
+// длительностью из настроек боя (CounterStunBeats). Класс держится ради Blueprint-эффектов,
+// которые на него ссылаются; удаляется после проверки Reference Viewer.
 //
 // Длительность НЕ вынесена в собственное поле (StunDuration): DurationMagnitude — уже штатный
 // EditDefaultsOnly UPROPERTY на UGameplayEffect, правится напрямую в ассете/Blueprint-потомке.

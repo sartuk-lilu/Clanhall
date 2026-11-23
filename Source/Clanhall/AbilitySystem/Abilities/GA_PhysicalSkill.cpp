@@ -75,6 +75,40 @@ namespace
 	}
 }
 
+namespace
+{
+	/** Окно контра не должно быть узким (`AbilitySystem.md`, «Контрнавык»): контрнавык проверяет
+	 *  знание, а не реакцию. Ширина - разметка CounterWindow с учётом play rate под длину приёма.
+	 *  Варн один раз за монтаж. */
+	void WarnIfCounterWindowNarrow(const UAnimMontage* Montage, float PlayRate, const FString& AbilityName)
+	{
+		if (!Montage || PlayRate <= 0.0f)
+		{
+			return;
+		}
+		static TSet<const UAnimMontage*> WarnedMontages;
+		if (WarnedMontages.Contains(Montage))
+		{
+			return;
+		}
+		for (const FAnimNotifyEvent& Event : Montage->Notifies)
+		{
+			if (Cast<UAnimNotifyState_CounterWindow>(Event.NotifyStateClass))
+			{
+				const float WindowSeconds = Event.GetDuration() / PlayRate;
+				const float MinSeconds = ClanhallBeats::ToSeconds(UClanhallCombatSettings::Get().MinCounterWindowBeats);
+				if (WindowSeconds < MinSeconds)
+				{
+					UE_LOG(LogClanhall, Warning, TEXT("%s: CounterWindow on %s lasts %.2fs at this skill length, narrower than %.2fs - the counter becomes a reaction test"),
+						*AbilityName, *Montage->GetName(), WindowSeconds, MinSeconds);
+					WarnedMontages.Add(Montage);
+				}
+				return;
+			}
+		}
+	}
+}
+
 UGA_PhysicalSkill::UGA_PhysicalSkill()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerExecution;
@@ -251,6 +285,17 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		Cooldowns->StartCooldown(Data->CounterTag, Data->CooldownBeats);
 	}
 
+	// Контримый приём запоминается с момента активации - для одновременной активации, когда окно
+	// контра ещё не открылось (`AbilitySystem.md`, «Контрнавык»).
+	ActivationTime = Avatar->GetWorld() ? Avatar->GetWorld()->GetTimeSeconds() : 0.0;
+	if (UClanhallCounterComponent* OwnCounter = Avatar->FindComponentByClass<UClanhallCounterComponent>())
+	{
+		if (!Data->CounteredBy.IsEmpty())
+		{
+			OwnCounter->NotifySkillActivated(Data->CounteredBy, Handle);
+		}
+	}
+
 	// Приём выхватывает выбранное оружие и бьёт одним движением - лишней доли нет
 	// (`WeaponSystem.md`, «Свап оружия»). Время приёма этого оружия - для ножен.
 	if (AClanhallHumanoidBase* Humanoid = Cast<AClanhallHumanoidBase>(Avatar))
@@ -278,6 +323,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// Монтаж запускаем ДО подписки на Event.Hitbox.*.
 	UAnimInstance* AnimInst = nullptr;
 	float MontagePlayLength = 0.0f;
+	float MontagePlayRate = 1.0f;
 	if (Data->CastMontage)
 	{
 		if (ACharacter* Char = Cast<ACharacter>(Avatar))
@@ -286,8 +332,8 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			if (AnimInst)
 			{
 				const float ClipLength = Data->CastMontage->GetPlayLength();
-				const float PlayRate = (ClipLength > 0.0f && DurationSeconds > 0.0f) ? ClipLength / DurationSeconds : 1.0f;
-				MontagePlayLength = AnimInst->Montage_Play(Data->CastMontage, PlayRate);
+				MontagePlayRate = (ClipLength > 0.0f && DurationSeconds > 0.0f) ? ClipLength / DurationSeconds : 1.0f;
+				MontagePlayLength = AnimInst->Montage_Play(Data->CastMontage, MontagePlayRate);
 			}
 		}
 	}
@@ -314,6 +360,10 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	if (bResolveOnContact)
 	{
 		WarnIfHitboxOutlivesCounterWindow(Data->CastMontage, Data->DisplayName.ToString());
+	}
+	if (bMontageStarted)
+	{
+		WarnIfCounterWindowNarrow(Data->CastMontage, MontagePlayRate, Data->DisplayName.ToString());
 	}
 
 	if (!bResolveOnContact || !bMontageStarted)
@@ -397,6 +447,14 @@ void UGA_PhysicalSkill::EndAbility(const FGameplayAbilitySpecHandle Handle, cons
 	if (UAbilitySystemComponent* SourceASC = ActorInfo ? ActorInfo->AbilitySystemComponent.Get() : nullptr)
 	{
 		SourceASC->RemoveLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	}
+
+	if (AActor* EndingAvatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr)
+	{
+		if (UClanhallCounterComponent* OwnCounter = EndingAvatar->FindComponentByClass<UClanhallCounterComponent>())
+		{
+			OwnCounter->NotifySkillEnded(Handle);
+		}
 	}
 
 	// После приёма оружие остаётся в руках и само уходит на тело через несколько долей без дела.
@@ -519,7 +577,8 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	// Контр резолвится ПО КОНТАКТУ: зона дотянулась до тела врага, и в этот
 	// момент проверяется его открытое окно. Промах и недостаточная дальность = контра не было.
 	// Двойное срабатывание невозможно: ConsumeCounter закрывает окно, второй вызов вернёт false.
-	UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag);
+	// Только подтверждённое попадание: удар, целиком поглощённый порогом, не контрит (выше - return).
+	UClanhallCounterComponent::TryResolveCounter(Target, Data->CounterTag, Avatar, ActivationTime);
 
 	// Метка/синергия — один раз НА ЦЕЛЬ за применение, а не на каждый контакт: два
 	// хитбокса на монтаже дают два урона, но вторая фаза не должна видеть метку, которую только
