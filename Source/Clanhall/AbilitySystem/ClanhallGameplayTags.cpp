@@ -3,31 +3,31 @@
 namespace ClanhallGameplayTags
 {
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight, "Ability.Knight", "Корень навыков Knight");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_ShieldSlam, "Ability.Knight.ShieldSlam", "Knight Q — Shield Slam (Ранг 1, тир Q/E — 2 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_PowerStrike, "Ability.Knight.PowerStrike", "Knight E — Power Strike (Ранг 1, тир Q/E — 2 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_ShieldCharge, "Ability.Knight.ShieldCharge", "Knight R — Shield Charge (Ранг 2, тир R/F — 4 Charges)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_Retribution, "Ability.Knight.Retribution", "Knight F — Retribution (Ранг 2, тир R/F — 4 Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_ShieldSlam, "Ability.Knight.ShieldSlam", "Knight Q — Shield Slam");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_PowerStrike, "Ability.Knight.PowerStrike", "Knight E — Power Strike");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_ShieldCharge, "Ability.Knight.ShieldCharge", "Knight R — Shield Charge");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_Retribution, "Ability.Knight.Retribution", "Knight F — Retribution");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Warrior, "Ability.Warrior", "Корень навыков Warrior");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Assassin, "Ability.Assassin", "Корень навыков Assassin");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Lancer, "Ability.Lancer", "Корень навыков Lancer");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Casting, "State.Casting", "Идёт набор слогов обычного заклинания (ПКМ зажат)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CastingAntimagic, "State.CastingAntimagic", "Идёт набор слогов антимагии (ПКМ зажат, Ctrl)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Parrying, "State.Parrying", "Окно парирования физической серии открыто");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CastingAntimagic, "State.CastingAntimagic", "Antimagic cast. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Parrying, "State.Parrying", "Parry window of a WASD series. Mechanic removed in P4; tag kept until Reference Viewer check");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_CounterWindow, "State.CounterWindow", "Окно контрнавыка против активного навыка врага открыто");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InStance, "State.InStance", "ЛКМ зажат — боевая стойка (WASD = направленные удары)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InStance, "State.InStance", "Static combat stance. Mechanic removed in P4; tag kept until Reference Viewer check");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Потеря управления на противнике, источник - эффект синергии (FMarkSynergy::EffectOnTarget); на игроке не применяется (Invariants.md, «Разрешённые асимметрии»)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Лок-аут после максимальной серии парирования — комбо не продолжается");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Активка в фазе коммита — от активации до Event.Hitbox.Closed, блокирует WASD-серию и вторую активку");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Lockout after a WASD series. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Active skill committed: from activation to the end of the cast montage; blocks a second skill, dodge and duck");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InCombat, "State.InCombat", "Вешает/снимает UClanhallCombatStateComponent — живой противник в радиусе, снятие с задержкой");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_EvadeRecovery, "State.EvadeRecovery", "Лок-аут после ухода/рывка/приседа - общий тег, длительность равна Recovery-монтажу конкретного действия (было State.DodgeRecovery)");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Sprinting, "State.Sprinting", "ЛКМ отпущен, Shift зажат - бег, корпус развёрнут по движению");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Sprinting, "State.Sprinting", "Sprinting (Shift held), body faces movement");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "Владелец сейчас бьёт Overhead (W) — висит на время замаха");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_S, "Attack.Direction.S", "Владелец сейчас бьёт Low Sweep (S) — висит на время замаха");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_A, "Attack.Direction.A", "Владелец сейчас бьёт Left Slash (A) — висит на время замаха");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_D, "Attack.Direction.D", "Владелец сейчас бьёт Right Slash (D) — висит на время замаха");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_W, "Attack.Direction.W", "WASD series swing direction for clash. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_S, "Attack.Direction.S", "WASD series swing direction for clash. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_A, "Attack.Direction.A", "WASD series swing direction for clash. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Attack_Direction_D, "Attack.Direction.D", "WASD series swing direction for clash. Mechanic removed in P4; tag kept until Reference Viewer check");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot, "Slot", "Корень слотов активок — фильтр динамических тегов спека в GA_PhysicalSkill::GetAbilitySlotTag");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_Q, "Slot.Q", "Слот Q — общий для всех оружий (AbilitySystem.md, «Слоты активных навыков»)");
@@ -39,12 +39,12 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_C, "Slot.C", "Слот C — общий для всех оружий");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Slot_V, "Slot.V", "Слот V — общий для всех оружий");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Denied_Charges, "Denied.Charges", "CanActivateAbility отказал из-за нехватки Charges — причина для Denied-фидбека на HUD");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Denied_Charges, "Denied.Charges", "Activation denied for lack of charges. Mechanic removed in P4; tag kept until Reference Viewer check");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP/Charges)");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(SetByCaller_Magnitude, "SetByCaller.Magnitude", "Единственный SetByCaller-слот для generic GE_Modify*-эффектов (AP/HP/MP)");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_ApplyMark, "Event.ApplyMark", "AnimNotify_ApplyMark отправляет этот GameplayEvent — GA_PhysicalSkill может слушать его для async-подтверждения хита");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_DirectionalAttack, "Event.DirectionalAttack", "Служебный тег для TriggerAbilityFromGameplayEvent — несёт BaseDamage (EventMagnitude) от UClanhallComboComponent к GA_DirectionalAttackBase, не гейтит выбор способности");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_DirectionalAttack, "Event.DirectionalAttack", "Carried WASD series damage into the directional attack. Mechanic removed in P4; tag kept until Reference Viewer check");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Evade, "Event.Evade", "Служебный тег для TriggerAbilityFromGameplayEvent - несёт направление (EClanhallEvadeDirection, EventMagnitude) от AClanhallCharacter::TriggerEvade к UGA_Dodge, не гейтит выбор способности");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Hitbox_Hit, "Event.Hitbox.Hit", "UClanhallHitboxComponent шлёт на каждую задетую цель — Instigator = владелец зоны, Target = задетый актор, EventMagnitude = хендл зоны");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Hitbox_Closed, "Event.Hitbox.Closed", "UClanhallHitboxComponent шлёт при переходе «были зоны -> зон не осталось» — фаза контакта окончена");
@@ -53,13 +53,13 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Pierce, "Damage.Type.Pierce", "Тип урона — колющий (заглушка, в расчёте не используется)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Damage_Type_Blunt, "Damage.Type.Blunt", "Тип урона — дробящий (заглушка, в расчёте не используется)");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk, "Perk", "Корень перк-системы");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk, "Perk", "Perk root. Mechanic removed in P4; tag kept until Reference Viewer check");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency, "Perk.Proficiency", "Владение типом оружия — накопительные ранги, HasTag на конкретный лист проверяет открытый тир");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank1, "Perk.Proficiency.Knight.Rank1", "Владение мечом+щитом: ранг 1, открывает тир Q/E");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank2, "Perk.Proficiency.Knight.Rank2", "Владение мечом+щитом: ранг 2, открывает тир R/F");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank3, "Perk.Proficiency.Knight.Rank3", "Владение мечом+щитом: ранг 3, открывает тир Z/X");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank4, "Perk.Proficiency.Knight.Rank4", "Владение мечом+щитом: ранг 4, открывает тир C/V");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency, "Perk.Proficiency", "Weapon proficiency ranks. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank1, "Perk.Proficiency.Knight.Rank1", "Knight proficiency rank 1. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank2, "Perk.Proficiency.Knight.Rank2", "Knight proficiency rank 2. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank3, "Perk.Proficiency.Knight.Rank3", "Knight proficiency rank 3. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Perk_Proficiency_Knight_Rank4, "Perk.Proficiency.Knight.Rank4", "Knight proficiency rank 4. Mechanic removed in P4; tag kept until Reference Viewer check");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Materia, "Magic.School.Materia", "Школа Материи (Q/A) — класс Artisan");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Magic_School_Elemental, "Magic.School.Elemental", "Школа Стихий (W/S)");
@@ -69,7 +69,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role, "Unit.Role", "Умбрелла-корень: «это участник боя», без разбора подтипа — UClanhallCombatStateComponent");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Mob, "Unit.Role.Mob", "Пушечное мясо: без уникальных атак, рамки нет (HUD.md)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss, "Unit.Role.Boss", "Родитель Humanoid/Monster — сенсор рамки матчит этот тег, чтобы захватить оба подтипа");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Humanoid, "Unit.Role.Boss.Humanoid", "«Псевдоигрок»: навыки из пула игрока, есть AP/MP/Charges, игрок учится у него навыкам");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Humanoid, "Unit.Role.Boss.Humanoid", "«Псевдоигрок»: навыки из пула игрока, есть AP/MP, игрок учится у него навыкам");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Unit_Role_Boss_Monster, "Unit.Role.Boss.Monster", "Босс-монстр: уникальные атаки, без MP и без AP, ничему не учит; рамка HP-центричная");
 
 	// Стрелки в `MarksSystem.md`, «Типы меток» — тематические семейства (группировка по стихии/типу),

@@ -38,8 +38,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
 	float SideDodgeDistance = 200.0f;
 
-	/** За сколько секунд проходится боковой уход - Root Motion Source, тем же способом, что
-	 *  рывок в UGA_PhysicalSkill/UDashFragment. Плейсхолдер. */
+	/** За сколько секунд проходится боковой уход - Root Motion Source. Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
 	float SideDodgeDuration = 0.2f;
 

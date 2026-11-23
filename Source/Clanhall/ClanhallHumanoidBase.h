@@ -62,14 +62,8 @@ public:
 	 *  вызывающий обязан иметь фолбэк, а не разыменовывать. */
 	const UWeaponTypeData* GetWeaponType() const;
 
-	/** Лист персонажа как есть, без разворачивания цепочки — нужен читам вроде
-	 *  Clanhall.Player.ShowWeaponEconomy, которым важно различать, ГДЕ именно цепочка
-	 *  CurrentWeapon -> Type оборвалась, а не только факт разрыва (GetWeaponType()
-	 *  это различие стирает, возвращая nullptr на любом звене). */
-	const UCharacterSheetData* GetCharacterSheet() const { return CharacterSheet; }
-
-	/** Оружие в руках сейчас, как есть — тот же смысл, что у GetCharacterSheet(): читам вроде
-	 *  Clanhall.Player.ShowWeaponEconomy важно различать, ГДЕ цепочка оборвалась. */
+	/** Оружие в руках сейчас, как есть — без разворачивания до типа. Читает
+	 *  GA_PhysicalSkill::ResolveHitOn (тип урона экземпляра). */
 	const UWeaponData* GetCurrentWeapon() const { return CurrentWeapon; }
 
 	/** Множитель скорости активного оружия - GetWeaponType()->WeaponSpeedMultiplier, фолбэк

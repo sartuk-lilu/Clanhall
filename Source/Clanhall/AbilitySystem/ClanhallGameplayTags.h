@@ -12,7 +12,7 @@
 namespace ClanhallGameplayTags
 {
 	// ---- Ability.* ----
-	// Корневые теги веток навыков + листовые теги Knight Ранг 1-2.
+	// Корневые теги веток навыков + листовые теги навыков Knight.
 	// Листья других классов добавляются вместе с самими навыками.
 	// Листья нужны для контрнавыка: детектор сравнивает активный тег врага с известными.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Knight);
@@ -26,16 +26,19 @@ namespace ClanhallGameplayTags
 
 	// ---- State.* ----
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Casting);
+	// Антимагия: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_CastingAntimagic);
+	// Окно парирования встречным замахом: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Parrying);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_CounterWindow);
+	// Статичная стойка: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InStance);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Stunned);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Knockdown);
+	// Лок-аут после серии WASD: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_ComboRecovery);
-	// Активка в фазе коммита: живёт от активации до закрытия окна контакта. Пока висит —
-	// нельзя начать WASD-серию и нельзя запустить вторую активку (`CombatSystem.md`, «Боевая стойка и переключение режимов»,
-	// «начатую активку нельзя оборвать»). Выход из стойки при этом свободен всегда.
+	// Активка в фазе коммита: живёт от активации до конца каст-монтажа. Пока висит — нельзя
+	// запустить вторую активку, уйти или присесть: начатый приём доигрывает целиком (`CombatSystem.md`).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_SkillCommitted);
 	// Вешает и снимает UClanhallCombatStateComponent, пока в радиусе есть живой противник
 	// (`CombatSystem.md`, «Боевое состояние»). Снятие идёт с задержкой — не в момент, когда
@@ -46,16 +49,11 @@ namespace ClanhallGameplayTags
 	// стартовал; блокирует любую активацию защиты - тег защищает сам класс действий от спама.
 	// Было State.DodgeRecovery - переименован вместе с расширением словаря защиты.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_EvadeRecovery);
-	// ЛКМ отпущен, Shift зажат - бег (`CombatSystem.md`). Вешает/снимает
-	// AClanhallCharacter::StartSprint/StopSprint.
+	// Shift зажат - бег (`CombatSystem.md`). Вешает/снимает AClanhallCharacter::StartSprint/StopSprint.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Sprinting);
 
 	// ---- Attack.Direction.* ----
-	// Тег, который владелец вешает на СЕБЯ на время удара — кодирует направление СВОЕГО
-	// замаха (UClanhallComboComponent::ActivateStep), стороне-нейтрален (и игрок, и AI).
-	// Раньше назывался Parry.Incoming.* — имя лгало (описывало «летит откуда-то», а не
-	// «я бью туда-то»); переименован (`Parrying.md`, «`UClanhallParryComponent`»). Обратная пара для клэша:
-	// W↔S, A↔D (`CombatSystem.md`, «Механика клэша — резолв на контакте атакующего, не на реакции защищающегося»).
+	// Направление замаха серии WASD для клэша: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_W);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_S);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Attack_Direction_A);
@@ -63,23 +61,17 @@ namespace ClanhallGameplayTags
 
 	// ---- Slot.* ----
 	// Слот принадлежит клавише, а не конкретному навыку (`AbilitySystem.md`, «Слоты активных навыков») — общий для всех
-	// оружий, ключует UCharacterSheetData::Skills и живёт как динамический тег спека
+	// оружий, ключует UWeaponTypeData::Skills и живёт как динамический тег спека
 	// (FGameplayAbilitySpec::GetDynamicSpecSourceTags), UAbilityData его не хранит
 	// (`CharacterHierarchy.md`, «Ключ по слоту, а не по имени навыка»). Корень нужен GA_PhysicalSkill::GetAbilitySlotTag, чтобы
 	// отфильтровать слот среди прочих динамических тегов спека.
-	// Разведён из-под Ability (был Ability.Slot.*, `task_tag_roots.md`): слот про клавишу
-	// и тир, а не про идентичность навыка, и жил под чужим корнем — meta=(Categories="Ability")
-	// на полях идентичности навыка (CounterTag, CounteredBy, SeenSkills, LearnedSkills)
-	// предлагал слоты как валидное значение.
+	// Корень свой, не под Ability: слот про клавишу, а не про идентичность навыка —
+	// meta=(Categories="Ability") на полях идентичности навыка (CounterTag, CounteredBy,
+	// SeenSkills, LearnedSkills) иначе предлагал бы слоты как валидное значение.
 	// Корень принадлежит СЛОТАМ АКТИВНЫХ НАВЫКОВ. Слоты оружия 1–6 сегодня тегами не являются —
 	// UCharacterSheetData::Loadout это TArray, слот там индекс массива. Если они когда-нибудь
 	// станут тегами, им место в Slot.Weapon.*, а не в этом корне: иначе meta=(Categories="Slot")
 	// на Skills начнёт предлагать и слоты оружия — та же дыра уровнем ниже.
-	// Раньше мигрировано из Cooldown.Slot.* (`CombatSystem.md`, «Боевая стойка и переключение режимов»):
-	// слот пережил смерть кулдаунов, но неймспейс Cooldown.* стал бы врать. Ключи существующих
-	// UCharacterSheetData-ассетов, если ещё не перенесены вручную в редакторе, ссылаются на
-	// несуществующий тег — гранты активок для них молчаливо сломаны, чинится только правкой
-	// ассета, не кодом.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_Q);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_E);
@@ -91,13 +83,8 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_V);
 
 	// ---- Denied.* ----
-	// Причина отказа TryActivateAbility, пробрасывается в OptionalRelevantTags у
-	// CanActivateAbility и долетает до UAbilitySystemComponent::AbilityFailedCallbacks
-	// (`DataAssetAndFragments.md`, «Denied-фидбек (только делегат)»). Charges — единственная причина, которую HUD обязан
-	// показать игроку отдельно от прочих отказов (State.SkillCommitted/State.Stunned).
-	// Разведён из-под Ability (был Ability.Denied.Charges, `task_tag_roots.md`) — причина
-	// отказа не навык вообще. Следующая причина (нет ранга владения, State.SkillCommitted)
-	// ложится сюда же: Denied.Proficiency, Denied.Committed.
+	// Причина отказа TryActivateAbility (OptionalRelevantTags у CanActivateAbility). Корень
+	// остаётся под будущие причины. Denied.Charges — нехватка зарядов: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Denied_Charges);
 
 	// ---- SetByCaller.* ----
@@ -108,13 +95,11 @@ namespace ClanhallGameplayTags
 	// ---- Event.* ----
 	// GameplayEvent-сигналы от AnimNotify к активной способности.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_ApplyMark);
-	// (`CombatStanceAndWASDAttacks.md`): несёт BaseDamage (EventMagnitude) от UClanhallComboComponent
-	// к GA_DirectionalAttackBase через TriggerAbilityFromGameplayEvent — Handle-активация сохраняется,
-	// тег тут служебный (не гейтит выбор способности, тот идёт по Handle).
+	// Нёс урон серии WASD в направленный удар: механика снята в P4, тег объявлен до проверки Reference Viewer.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_DirectionalAttack);
 	// Несёт направление (EClanhallEvadeDirection, EventMagnitude) от AClanhallCharacter::TriggerEvade
 	// к UGA_Dodge::ActivateAbility через TriggerAbilityFromGameplayEvent - служебный, не гейтит
-	// выбор способности (тот идёт по Handle), тем же приёмом, что Event.DirectionalAttack.
+	// выбор способности (тот идёт по Handle).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Evade);
 	// Сигналы от UClanhallHitboxComponent к живой способности.
 	// Hit: Instigator = владелец зоны, Target = задетый актор, EventMagnitude = хендл зоны
@@ -125,7 +110,7 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Hitbox_Closed);
 
 	// ---- Damage.Type.* ----
-	// Тег типа урона на FDirectionalDamage (`CombatStanceAndWASDAttacks.md`). Заглушка —
+	// Тег типа урона на экземпляре оружия (UWeaponData::DamageType). Заглушка —
 	// в расчёте урона пока НЕ используется. Ровно три листа для физического урона прототипа;
 	// магический (Damage.Type.Magic.*) — отдельной веткой, пока не заводить.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage_Type_Slash);
@@ -133,19 +118,11 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Damage_Type_Blunt);
 
 	// ---- Perk.* ----
-	// Корень перк-системы. Раньше сюда указывал FComboChain.RequiredUnlock (удалён — условие
-	// было на каждой цепочке, не там, где реально нужно: см. `CombatSystem.md`, «Цена модели
-	// пар»). Планируется вернуться как fragment на уровне конкретного хода/навыка, когда
-	// несколько навыков делят один MoveId.
+	// Перки и ранги владения оружием: механика снята в P4, тег объявлен до проверки Reference Viewer. Прогрессии в прототипе нет
+	// (`Docs/FuturePlans/ProgressionSystem.md`).
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk);
 
 	// ---- Perk.Proficiency.* ----
-	// Владение типом оружия (`WeaponSystem.md`, «Владение оружием»). Ранги НАКАПЛИВАЮТСЯ,
-	// а не перезаписываются — у бойца с рангом 3 в UCharacterSheetData::Perks висят
-	// одновременно Rank1, Rank2 и Rank3. Проверка «открыт ли тир» — обычный HasTag, без
-	// разбора номера из имени тега. Четыре листа на Knight — единственный тип оружия в
-	// проекте; новый тип оружия заводит свои четыре, как Ability.* заводит листья
-	// вместе с самими навыками.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank1);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Perk_Proficiency_Knight_Rank2);

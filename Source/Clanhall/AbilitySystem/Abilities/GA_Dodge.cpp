@@ -80,9 +80,9 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 	const FVector TargetLocation = Character->GetActorLocation() + WorldDirection * Distance;
 
 	// Корпус на уходе не доворачивается - смещение и только (`CombatSystem.md`). Кадров
-	// неуязвимости нет: перемещение капсулы Root Motion Source'ом, тем же способом, что рывок
-	// в UGA_PhysicalSkill/UDashFragment - не LaunchCharacter и не телепорт SetActorLocation,
-	// иначе свип противника прошёл бы сквозь то место, где игрока уже нет, но коллизия ещё есть.
+	// неуязвимости нет: перемещение капсулы Root Motion Source'ом - не LaunchCharacter и не
+	// телепорт SetActorLocation, иначе свип противника прошёл бы сквозь то место, где игрока уже
+	// нет, но коллизия ещё есть.
 	UAbilityTask_ApplyRootMotionMoveToForce* DodgeTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(
 		this, TEXT("ClanhallDodge"), TargetLocation, Duration,
 		/*bSetNewMovementMode*/ false, EMovementMode::MOVE_Walking,
