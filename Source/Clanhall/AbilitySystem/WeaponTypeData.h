@@ -10,6 +10,7 @@
 #include "WeaponTypeData.generated.h"
 
 class UAbilityData;
+class UAnimMontage;
 
 /** Именованные фолбэки на отсутствие данных в цепочке CharacterSheet -> Weapon -> Type — не
  *  баланс, страховка от нуля. Живут здесь, а не разъезжаются по файлам. */
@@ -17,6 +18,9 @@ namespace ClanhallWeaponDefaults
 {
 	constexpr float ArmorPenetration = 0.0f;
 	constexpr float WeaponSpeedMultiplier = 1.0f;
+	constexpr float DodgeDistance = 250.0f;
+	constexpr float DodgeBeats = 1.0f;
+	constexpr float SkillTurnRate = 180.0f;
 }
 
 UCLASS()
@@ -41,6 +45,41 @@ public:
 
 	UPROPERTY(EditAnywhere, Instanced, Category = "WeaponType")
 	TArray<TObjectPtr<UWeaponFragment>> Fragments;
+
+	// --- Уклонение (`CombatSystem.md`, «Уклонение»): общее действие, но анимация, дальность и
+	// длина в долях - свои у оружия и зависят от его веса. ---
+
+	/** Дальность отскока, см. Плейсхолдер. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge", meta = (ClampMin = "0.0"))
+	float DodgeDistance = ClanhallWeaponDefaults::DodgeDistance;
+
+	/** Длина отскока в долях - его цена: пока идёт, новые действия закрыты. Плейсхолдер. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge", meta = (ClampMin = "0.25"))
+	float DodgeBeats = ClanhallWeaponDefaults::DodgeBeats;
+
+	/** Урон отклика по касанию (Hitbox-нотифай на монтаже отскока) - просто удар, без меток.
+	 *  0 - отклика нет. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge", meta = (ClampMin = "0.0"))
+	float DodgeTouchDamage = 0.0f;
+
+	/** Монтажи отскока по направлениям - косметика, nullptr законен. Слот fullbody, root motion
+	 *  выключен: перемещение даёт Root Motion Source способности. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge")
+	TObjectPtr<UAnimMontage> DodgeMontageForward;
+
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge")
+	TObjectPtr<UAnimMontage> DodgeMontageBack;
+
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge")
+	TObjectPtr<UAnimMontage> DodgeMontageLeft;
+
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge")
+	TObjectPtr<UAnimMontage> DodgeMontageRight;
+
+	/** Разворот в приёме (`CombatSystem.md`, «Контроль»): пока идёт свой приём, боец доворачивается
+	 *  к цели медленно, град/с; у тяжёлого ниже. Замах тяжёлого можно обежать. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "0.0"))
+	float SkillTurnRate = ClanhallWeaponDefaults::SkillTurnRate;
 
 	/** Активные навыки. Ключ — Slot.* (Q/E/R/F и далее по канону восьми
 	 *  слотов, `AbilitySystem.md`, «Слоты активных навыков»; `CharacterHierarchy.md`,

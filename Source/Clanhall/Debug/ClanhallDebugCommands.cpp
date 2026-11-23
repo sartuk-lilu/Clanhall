@@ -40,6 +40,9 @@ enum class EDebugMsgKey : int32
 	PlayerShowCooldowns,
 	EnemyShowCooldowns,
 	EnemySelectWeapon,
+	EnemyTaunt,
+	PlayerSetPower,
+	EnemySetPower,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -412,6 +415,41 @@ static void HandleEnemySelectWeapon(UWorld* World, const TArray<FString>& Args)
 		bSelected ? FColor::Green : FColor::Red);
 }
 
+static void HandleEnemyTaunt(UWorld* World)
+{
+	const EDebugMsgKey Key = EDebugMsgKey::EnemyTaunt;
+	AClanhallHumanoidBase* Enemy = Cast<AClanhallHumanoidBase>(ResolveTargetActor(World, Key));
+	UAbilitySystemComponent* ASC = Enemy ? Enemy->GetAbilitySystemComponent() : nullptr;
+	if (!ASC)
+	{
+		PrintError(Key, TEXT("Current target is not an AClanhallHumanoidBase with ASC"));
+		return;
+	}
+	const bool bActivated = ASC->TryActivateAbility(Enemy->GetTauntHandle());
+	PrintResult(Key, FString::Printf(TEXT("[Enemy] taunt: %s"), bActivated ? TEXT("activated") : TEXT("refused")),
+		bActivated ? FColor::Green : FColor::Red);
+}
+
+// Сила для насмешки-парирования (`CombatSystem.md`, «Насмешка»): проверить парирование в обе стороны.
+static void HandleSetPower(UWorld* World, const TArray<FString>& Args, bool bTargetEnemy)
+{
+	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemySetPower : EDebugMsgKey::PlayerSetPower;
+	if (Args.Num() < 1)
+	{
+		PrintError(Key, TEXT("Usage: Clanhall.<Player|Enemy>.SetPower <Value>"));
+		return;
+	}
+	AActor* Actor = bTargetEnemy ? ResolveTargetActor(World, Key) : ResolvePlayerPawn(World, Key);
+	AClanhallCharacterBase* Fighter = Cast<AClanhallCharacterBase>(Actor);
+	if (!Fighter)
+	{
+		PrintError(Key, TEXT("Not an AClanhallCharacterBase"));
+		return;
+	}
+	Fighter->SetPower(FCString::Atof(*Args[0]));
+	PrintResult(Key, FString::Printf(TEXT("%s power = %.2f"), *Fighter->GetName(), Fighter->GetPower()), FColor::Green);
+}
+
 static void HandleShowCooldowns(UWorld* World, bool bTargetEnemy)
 {
 	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemyShowCooldowns : EDebugMsgKey::PlayerShowCooldowns;
@@ -514,6 +552,30 @@ static FAutoConsoleCommandWithWorldAndArgs CVarEnemySelectWeapon(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandleEnemySelectWeapon(World, Args);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemyTaunt(
+	TEXT("Clanhall.Enemy.Taunt"),
+	TEXT("The current target taunts."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		HandleEnemyTaunt(World);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerSetPower(
+	TEXT("Clanhall.Player.SetPower"),
+	TEXT("Set the player's Power (taunt-parry strength). Usage: Clanhall.Player.SetPower <Value>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandleSetPower(World, Args, /*bTargetEnemy=*/false);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemySetPower(
+	TEXT("Clanhall.Enemy.SetPower"),
+	TEXT("Set the current target's Power (taunt-parry strength). Usage: Clanhall.Enemy.SetPower <Value>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandleSetPower(World, Args, /*bTargetEnemy=*/true);
 	}));
 
 static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowCooldowns(

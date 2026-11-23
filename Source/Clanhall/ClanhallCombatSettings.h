@@ -59,6 +59,23 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Damage", meta = (ClampMin = "1.0"))
 	float CritMultiplier = 1.5f;
 
+	/** Длина насмешки в долях - всё это время боец открыт (`CombatSystem.md`, «Насмешка»). */
+	UPROPERTY(config, EditAnywhere, Category = "Taunt", meta = (ClampMin = "0.25"))
+	float TauntBeats = 2.0f;
+
+	/** Своя перезарядка насмешки в долях. Плейсхолдер. */
+	UPROPERTY(config, EditAnywhere, Category = "Taunt", meta = (ClampMin = "0.0"))
+	float TauntCooldownBeats = 10.0f;
+
+	/** Во сколько раз насмехающийся должен быть сильнее (Power), чтобы насмешка стала
+	 *  парированием. Открытый пункт дизайна «чем мерить» - пока поле Power, как в симуляторе. */
+	UPROPERTY(config, EditAnywhere, Category = "Taunt", meta = (ClampMin = "1.0"))
+	float TauntParryRatio = 3.0f;
+
+	/** Длина анимации насмешки-парирования в долях - на это время оба без управления. */
+	UPROPERTY(config, EditAnywhere, Category = "Taunt", meta = (ClampMin = "0.0"))
+	float TauntParryBeats = 2.0f;
+
 	static const UClanhallCombatSettings& Get() { return *GetDefault<UClanhallCombatSettings>(); }
 };
 

@@ -17,6 +17,13 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Dead.GetTag());
 
+	// Общие действия занимают тело: пока идёт уклонение или его хвост, насмешка или её
+	// парирование - приём не начинается (`CombatSystem.md`, «Общие действия», «Насмешка»).
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Taunting.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParried.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParrying.GetTag());
+
 	// Оглушение (State.Stunned — эффект синергии меток, FMarkSynergy::EffectOnTarget) блокирует
 	// новые физдействия. Контрнавык стана не выдаёт (`CounterAbility.md`, «Наказание сбитого»).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());

@@ -130,6 +130,7 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Move);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnMoveReleased);
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Look);
 
 		// Looking
@@ -164,8 +165,9 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 		// Пробел: прыжок / рывок, решает сам обработчик (`CombatSystem.md`).
 		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSpacePressed);
-		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnSpaceReleased);
-		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnSpaceReleased);
+		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnJumpPressed);
+		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnJumpReleased);
+		EnhancedInputComponent->BindAction(TauntAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnTauntPressed);
 
 		// Shift: бег.
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSprintPressed);
@@ -185,9 +187,15 @@ void AClanhallCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
+	CurrentMoveInput = MovementVector;
 
 	// route the input
 	DoMove(MovementVector.X, MovementVector.Y);
+}
+
+void AClanhallCharacter::OnMoveReleased()
+{
+	CurrentMoveInput = FVector2D::ZeroVector;
 }
 
 void AClanhallCharacter::Look(const FInputActionValue& Value)
@@ -211,6 +219,9 @@ bool AClanhallCharacter::IsBodyBusy() const
 	FGameplayTagContainer BusyTags;
 	BusyTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 	BusyTags.AddTag(ClanhallGameplayTags::State_Dead.GetTag());
+	BusyTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());
+	BusyTags.AddTag(ClanhallGameplayTags::State_TauntParried.GetTag());
+	BusyTags.AddTag(ClanhallGameplayTags::State_TauntParrying.GetTag());
 	return AbilitySystemComponent->HasAnyMatchingGameplayTags(BusyTags);
 }
 
@@ -289,20 +300,42 @@ void AClanhallCharacter::OnSprintReleased()
 
 void AClanhallCharacter::OnSpacePressed()
 {
-	// На бегу Пробел - длинный рывок вперёд по корпусу; корпус на бегу развёрнут по движению,
-	// так что отдельного направления не нужно.
-	if (IsSprinting())
+	// «Пробел + направление» - отскок в эту сторону (`CombatSystem.md`, «Уклонение»). Направление
+	// нажатой клавиши, а мировое направление отскока потом берётся от корпуса. Нет направления -
+	// нет отскока: «назад по умолчанию» не существует.
+	if (CurrentMoveInput.IsNearlyZero())
 	{
-		TriggerEvade(EClanhallEvadeDirection::ForwardDash);
 		return;
 	}
 
+	EClanhallEvadeDirection Direction;
+	if (FMath::Abs(CurrentMoveInput.X) > FMath::Abs(CurrentMoveInput.Y))
+	{
+		Direction = CurrentMoveInput.X > 0.0f ? EClanhallEvadeDirection::Right : EClanhallEvadeDirection::Left;
+	}
+	else
+	{
+		Direction = CurrentMoveInput.Y > 0.0f ? EClanhallEvadeDirection::Forward : EClanhallEvadeDirection::Back;
+	}
+	TriggerEvade(Direction);
+}
+
+void AClanhallCharacter::OnJumpPressed()
+{
 	Jump();
 }
 
-void AClanhallCharacter::OnSpaceReleased()
+void AClanhallCharacter::OnJumpReleased()
 {
 	StopJumping();
+}
+
+void AClanhallCharacter::OnTauntPressed()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbility(GetTauntHandle());
+	}
 }
 
 void AClanhallCharacter::OnDuckPressed()
@@ -363,10 +396,25 @@ void AClanhallCharacter::TickBodyTurn()
 		return;
 	}
 
+	// Разворот в приёме (`CombatSystem.md`, «Контроль»): пока идёт свой приём, корпус доворачивается
+	// к камере медленно, со скоростью оружия и без порога. Правило общее с противником
+	// (AClanhallHumanoidBase::TickSkillTurn), у игрока цель - направление камеры.
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
+	{
+		Movement->bOrientRotationToMovement = false;
+		Movement->bUseControllerDesiredRotation = true;
+		Movement->RotationRate.Yaw = GetSkillTurnRate();
+		bTurningInPlace = false;
+		return;
+	}
+	Movement->RotationRate.Yaw = GetTurnRate();
+
 	// На бегу ротацией заведует движковый bOrientRotationToMovement (StartSprint/StopSprint) -
 	// тик сюда не лезет (`LocomotionStructure.md`).
 	if (IsSprinting())
 	{
+		Movement->bOrientRotationToMovement = true;
+		Movement->bUseControllerDesiredRotation = false;
 		return;
 	}
 

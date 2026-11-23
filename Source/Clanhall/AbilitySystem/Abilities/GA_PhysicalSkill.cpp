@@ -21,6 +21,8 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "ClanhallCombatSettings.h"
+#include "ClanhallCharacterBase.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Animation/AnimInstance.h"
@@ -133,6 +135,15 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 	if (!Data || !ASC)
 	{
 		return false;
+	}
+
+	// В прыжке не бьют (`CombatSystem.md`, «Общие действия») - правило общее для игрока и противника.
+	if (const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get()))
+	{
+		if (Character->GetCharacterMovement() && Character->GetCharacterMovement()->IsFalling())
+		{
+			return false;
+		}
 	}
 
 	// Гейт применения — собственная перезарядка приёма (`EconomySystem.md`, «Перезарядка приёмов»).
@@ -397,6 +408,44 @@ void UGA_PhysicalSkill::EndAbility(const FGameplayAbilitySpecHandle Handle, cons
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
+bool UGA_PhysicalSkill::TryTauntParry(AActor* Avatar, AActor* Target, UAbilitySystemComponent* TargetASC)
+{
+	UAbilitySystemComponent* SourceASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
+	const AClanhallCharacterBase* SourceFighter = Cast<AClanhallCharacterBase>(Avatar);
+	const AClanhallCharacterBase* TargetFighter = Cast<AClanhallCharacterBase>(Target);
+	if (!SourceASC || !TargetASC || !SourceFighter || !TargetFighter
+		|| !TargetASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_Taunting.GetTag()))
+	{
+		return false;
+	}
+
+	const UClanhallCombatSettings& Settings = UClanhallCombatSettings::Get();
+	if (TargetFighter->GetPower() < Settings.TauntParryRatio * SourceFighter->GetPower())
+	{
+		// Против равных и сильных насмешка-парирования нет: удар идёт по обычным правилам и,
+		// если подтвердится, сорвёт насмешку (ClanhallDamage::ResolveHit).
+		return false;
+	}
+
+	// Анимация, а не окно под урон: оба без управления на одно и то же время.
+	const float Seconds = ClanhallBeats::ToSeconds(Settings.TauntParryBeats);
+	ClanhallGameplayEffects::ApplyTimedTagToTarget(TargetASC, SourceASC, ClanhallGameplayTags::State_TauntParried.GetTag(), Seconds);
+	ClanhallGameplayEffects::ApplyTimedTag(TargetASC, ClanhallGameplayTags::State_TauntParrying.GetTag(), Seconds);
+
+	// Насмешка закончилась парированием, приём атакующего отменён без урона и меток.
+	FGameplayTagContainer TauntTags;
+	TauntTags.AddTag(ClanhallGameplayTags::Ability_Common_Taunt.GetTag());
+	TargetASC->CancelAbilities(&TauntTags);
+
+#if !UE_BUILD_SHIPPING
+	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, FString::Printf(TEXT("%s stopped %s with a taunt"),
+		*GetNameSafe(Target), *GetNameSafe(Avatar)));
+#endif
+
+	CancelAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true);
+	return true;
+}
+
 void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 {
 	if (!Target)
@@ -418,6 +467,14 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 
 	IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
 	UAbilitySystemComponent* TargetASC = TargetInterface ? TargetInterface->GetAbilitySystemComponent() : nullptr;
+
+	// Насмешка против гораздо более слабого - парирование (`CombatSystem.md`, «Насмешка»): удар
+	// останавливается до урона, меток и контра, оба уходят в анимацию без окна под урон. Работает в
+	// обе стороны: сила сравнивается, а не роль.
+	if (TryTauntParry(Avatar, Target, TargetASC))
+	{
+		return;
+	}
 
 	// Один расчёт попадания на все источники урона (`Implementation/Damage.md`): порог по типу
 	// урона выбранного оружия минус его пробитие, спина, крит, смертельный удар.

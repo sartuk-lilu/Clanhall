@@ -84,6 +84,11 @@ private:
 
 	void ResolveMarkLogic(const UAbilityData* Data, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, UClanhallMarkComponent* TargetMarkComponent);
 
+	/** Насмешка-парирование (`CombatSystem.md`, «Насмешка»): цель насмехается и сильнее в
+	 *  TauntParryRatio раз - удар остановлен до урона, меток и контра, оба в анимации, приём отменён.
+	 *  Возвращает true, если парирование случилось. */
+	bool TryTauntParry(AActor* Avatar, AActor* Target, UAbilitySystemComponent* TargetASC);
+
 	/** Общая часть контактного и фолбэк-путей: урон + метки/синергия + debug.
 	 *  Вызывается ОДИН раз на каждую задетую цель. */
 	void ResolveHitOn(AActor* Target);

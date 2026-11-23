@@ -20,6 +20,9 @@ UGA_Duck::UGA_Duck()
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Dead.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParried.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParrying.GetTag());
 }
 
 void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

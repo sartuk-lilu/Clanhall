@@ -9,6 +9,8 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Knight_Retribution, "Ability.Knight.Retribution", "Knight F — Retribution");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Warrior, "Ability.Warrior", "Корень навыков Warrior");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Assassin, "Ability.Assassin", "Корень навыков Assassin");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Common, "Ability.Common", "Common actions, not weapon skills");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Common_Taunt, "Ability.Common.Taunt", "Taunt - common action with its own cooldown");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Lancer, "Ability.Lancer", "Корень навыков Lancer");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Casting, "State.Casting", "Идёт набор слогов обычного заклинания (ПКМ зажат)");
@@ -19,6 +21,9 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Потеря управления на противнике, источник - эффект синергии (FMarkSynergy::EffectOnTarget); на игроке не применяется (Invariants.md, «Разрешённые асимметрии»)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Lockout after a WASD series. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Taunting, "State.Taunting", "Taunting: the fighter is open; a confirmed hit breaks the taunt");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_TauntParried, "State.TauntParried", "Hit stopped by a much stronger taunting fighter: animation without control, no damage window");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_TauntParrying, "State.TauntParrying", "Stopping a much weaker fighter's hit with a taunt: animation without control");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Dead, "State.Dead", "The fighter is dead (HP reached zero); closes abilities, movement and input");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_WeaponSwap, "State.WeaponSwap", "Weapon swap with a weapon in hands: one beat to put it away; skills, dodge and duck are closed");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Active skill committed: from activation to the end of the cast montage; blocks a second skill, dodge and duck");

@@ -165,6 +165,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool IsDead() const { return bDead; }
 
+	float GetPower() const { return Power; }
+	void SetPower(float NewPower) { Power = FMath::Max(NewPower, 0.01f); }
+
 	/** Любое попадание, рассчитанное по этому бойцу, - точка для аддитивной анимации вздрагивания:
 	 *  начатый приём получателя не отменяется. */
 	UPROPERTY(BlueprintAssignable, Category = "Combat")
@@ -203,6 +206,11 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	/** Сила бойца для насмешки-парирования (`CombatSystem.md`, «Насмешка»: «в n раз сильнее» -
+	 *  открытый пункт дизайна; пока поле, как в симуляторе). 1 - обычная. */
+	UPROPERTY(EditAnywhere, Category = "Attributes", meta = (ClampMin = "0.01"))
+	float Power = 1.0f;
 
 	/** Порог урона по типу (`Damage.Type.*`). Прототип заполняет одно значение на все типы. */
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes", meta = (Categories = "Damage.Type"))

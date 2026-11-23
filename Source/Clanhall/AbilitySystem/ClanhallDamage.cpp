@@ -177,6 +177,15 @@ FClanhallHitResult ClanhallDamage::ResolveHit(const FClanhallHitContext& Context
 		}
 	}
 
+	// Подтверждённое попадание срывает насмешку без награды (`CombatSystem.md`, «Насмешка»); удар,
+	// целиком поглощённый порогом, - нет.
+	if (Result.bConfirmed && TargetASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_Taunting.GetTag()))
+	{
+		FGameplayTagContainer TauntTags;
+		TauntTags.AddTag(ClanhallGameplayTags::Ability_Common_Taunt.GetTag());
+		TargetASC->CancelAbilities(&TauntTags);
+	}
+
 	if (Result.bConfirmed && Context.TargetActor)
 	{
 		// Пробивший контакт сбивает зону получателя до конца его текущего действия - только

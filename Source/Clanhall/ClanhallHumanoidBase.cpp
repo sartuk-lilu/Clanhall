@@ -9,6 +9,8 @@
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
+#include "AbilitySystem/Abilities/GA_Taunt.h"
+#include "Kismet/GameplayStatics.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "ClanhallWeaponActor.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -18,6 +20,9 @@
 
 AClanhallHumanoidBase::AClanhallHumanoidBase()
 {
+	// Разворот противника в приёме считается в тике (TickSkillTurn).
+	PrimaryActorTick.bCanEverTick = true;
+	TauntAbilityClass = UGA_Taunt::StaticClass();
 }
 
 void AClanhallHumanoidBase::PostInitializeComponents()
@@ -60,6 +65,12 @@ void AClanhallHumanoidBase::BeginPlay()
 	if (!AbilitySystemComponent)
 	{
 		return;
+	}
+
+	// Насмешка - общее действие любого гуманоида (`CombatSystem.md`, «Насмешка»).
+	if (TauntAbilityClass)
+	{
+		TauntAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(TauntAbilityClass, 1, INDEX_NONE, this));
 	}
 
 	// Отсутствие данных не должно ломать бой (`WeaponSystem.md`, «Шаблон и живой лист») — боец
@@ -365,6 +376,44 @@ TArray<UWeaponData*> AClanhallHumanoidBase::GetLoadout() const
 		}
 	}
 	return Result;
+}
+
+float AClanhallHumanoidBase::GetSkillTurnRate() const
+{
+	const UWeaponTypeData* WeaponType = GetWeaponType();
+	return WeaponType ? WeaponType->SkillTurnRate : ClanhallWeaponDefaults::SkillTurnRate;
+}
+
+void AClanhallHumanoidBase::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	TickSkillTurn(DeltaSeconds);
+}
+
+void AClanhallHumanoidBase::TickSkillTurn(float DeltaSeconds)
+{
+	if (IsPlayerControlled() || !AbilitySystemComponent
+		|| !AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
+	{
+		return;
+	}
+
+	// Цель противника - игрок: прототипное допущение 1v1 (`Implementation/CharacterHierarchy.md`),
+	// пока нет AIController и выбора цели.
+	const APawn* Opponent = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!Opponent)
+	{
+		return;
+	}
+	FVector ToOpponent = Opponent->GetActorLocation() - GetActorLocation();
+	ToOpponent.Z = 0.0f;
+	if (ToOpponent.IsNearlyZero())
+	{
+		return;
+	}
+	const FRotator Current = GetActorRotation();
+	const FRotator Desired(0.0f, ToOpponent.Rotation().Yaw, 0.0f);
+	SetActorRotation(FMath::RInterpConstantTo(Current, Desired, DeltaSeconds, GetSkillTurnRate()));
 }
 
 const UWeaponTypeData* AClanhallHumanoidBase::GetWeaponType() const

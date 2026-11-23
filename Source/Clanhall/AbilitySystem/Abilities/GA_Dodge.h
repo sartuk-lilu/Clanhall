@@ -1,19 +1,20 @@
-// Уход/рывок (`CombatSystem.md`, «Уклонение»). Наследуется от UGameplayAbility напрямую, не от
-// UGA_ClanhallAbilityBase: тот существует ради урона и поиска цели (FindMeleeTarget,
-// ResolveStandardDamage), а уход не наносит урона вообще. Сегодня с ввода доступен только рывок
-// вперёд на бегу (Пробел); боковой уход получит клавишу в P5 («Пробел + направление», `Controls.md`).
+// Уклонение (`CombatSystem.md`, «Уклонение») - общее действие, а не приём: «Пробел + направление»,
+// отскок в эту сторону. Логика одна у всех оружий, а анимация, дальность и длина в долях - свои
+// у оружия (поля UWeaponTypeData). Цена - доли: пока отскок и его хвост идут, новые действия
+// закрыты; отдельной перезарядки нет.
 //
-// Один хэндл на все три направления (Left/Right/ForwardDash, EClanhallEvadeDirection) -
-// направление приходит событием через FGameplayEventData::EventMagnitude (см.
-// AClanhallCharacter::TriggerEvade).
-// Форма выбирается ПО направлению: боковой уход (Left/Right) - короткое чистое
-// репозиционирование; рывок вперёд (ForwardDash, доступен только на бегу - см.
-// AClanhallCharacter::OnSpacePressed). Цена - доли, отдельной перезарядки нет (`CombatSystem.md`,
-// «Уклонение»). Кадров неуязвимости нет ни у одной формы: уход/рывок уводит тело из зоны
-// контакта физически, и это вся его защита.
+// Касание - свой отклик оружия: если во время отскока зона оружия (Hitbox-нотифай на монтаже
+// уклонения) задела противника, это просто удар - урон без меток, контра и перезарядок.
 //
-// Грант - в AClanhallCharacter::BeginPlay, рядом с приседом. У противников ухода пока нет; сам
-// класс при этом пишется стороне-нейтрально.
+// Наследуется от UGameplayAbility напрямую, не от UGA_ClanhallAbilityBase: тот существует ради
+// приёмов. Урон отклика считает общий ClanhallDamage::ResolveHit.
+//
+// Один хэндл на все направления (EClanhallEvadeDirection) - направление приходит событием через
+// FGameplayEventData::EventMagnitude (см. AClanhallCharacter::TriggerEvade). Направление в мире -
+// от корпуса, а не от камеры и не от вектора ввода. Кадров неуязвимости нет.
+//
+// Грант - в AClanhallCharacter::BeginPlay. У противников уклонения пока нет (ИИ реактивно не
+// уклоняется - `Invariants.md`, «Разрешённые асимметрии»); класс при этом стороне-нейтрален.
 
 #pragma once
 
@@ -34,45 +35,21 @@ public:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
 protected:
-	/** Дистанция бокового ухода - репозиционирование, а не побег. Плейсхолдер. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
-	float SideDodgeDistance = 200.0f;
-
-	/** За сколько секунд проходится боковой уход - Root Motion Source. Плейсхолдер. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
-	float SideDodgeDuration = 0.2f;
-
-	/** Дистанция длинного рывка вперёд на бегу - «большой перекат в соулс-играх». Плейсхолдер. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
-	float LongDashDistance = 600.0f;
-
-	/** За сколько секунд проходится рывок. Плейсхолдер. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
-	float LongDashDuration = 0.25f;
-
-	/** Косметический монтаж бокового ухода влево - механика не зависит от него (`CLAUDE.md`,
-	 *  «Механика работает без анимационных ассетов»). nullptr — законное состояние. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge|Animation")
-	TObjectPtr<UAnimMontage> SideDodgeLeftMontage;
-
-	/** Косметический монтаж бокового ухода вправо. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge|Animation")
-	TObjectPtr<UAnimMontage> SideDodgeRightMontage;
-
-	/** Косметический монтаж рывка вперёд. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge|Animation")
-	TObjectPtr<UAnimMontage> LongDashMontage;
-
-	/** Хвост восстановления - общий для всех трёх форм. Длительность State.EvadeRecovery равна
-	 *  ровно его GetPlayLength(), вешается только если монтаж реально стартовал
-	 *  (`CombatSystem.md`). nullptr - законное состояние: лока тогда нет вовсе,
-	 *  невидимого лока в системе не бывает ни при каких условиях. */
+	/** Хвост восстановления - общий для всех направлений и оружий. Длительность State.EvadeRecovery
+	 *  после отскока равна ровно его GetPlayLength(), вешается только если монтаж реально стартовал.
+	 *  nullptr - законное состояние: хвоста тогда нет, лок - только сам отскок. */
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge|Animation")
 	TObjectPtr<UAnimMontage> EvadeRecoveryMontage;
 
 private:
-	/** Конец Root Motion Source — дублирован на оба финальных делегата задачи, тем же паттерном,
-	 *  что UGA_PhysicalSkill::OnDashFinished. */
+	/** Конец Root Motion Source — дублирован на оба финальных делегата задачи. */
 	UFUNCTION()
 	void OnDodgeFinished();
+
+	/** Зона оружия задела цель во время отскока - отклик: урон без меток. */
+	UFUNCTION()
+	void OnTouchHit(FGameplayEventData Payload);
+
+	/** Урон отклика по касанию - из класса выбранного оружия на момент отскока. */
+	float TouchDamage = 0.0f;
 };

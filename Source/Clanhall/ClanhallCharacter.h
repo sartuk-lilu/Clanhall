@@ -146,11 +146,23 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* SprintAction;
 
-	// --- Пробел: прыжок / рывок (`CombatSystem.md`) ---
+	// --- Пробел: уклонение «Пробел + направление» (`CombatSystem.md`, «Уклонение») ---
 
-	/** Пробел - прыжок, либо (с зажатым Shift) длинный рывок вперёд. */
+	/** Пробел - уклонение в сторону зажатого направления; без направления ничего. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* SpaceAction;
+
+	/** Прыжок - своя клавиша, не Пробел (`Controls.md`: уклонение на важной клавише, прыжок - нет). */
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	TObjectPtr<UInputAction> JumpAction;
+
+	/** Насмешка - общее действие на своей клавише (`CombatSystem.md`, «Насмешка»). */
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	TObjectPtr<UInputAction> TauntAction;
+
+	/** Вектор движения этого кадра (X - вправо, Y - вперёд) - из Move, обнуляется на отпускании.
+	 *  Уклонение читает его: GetLastMovementInputVector обнуляется после потребления. */
+	FVector2D CurrentMoveInput = FVector2D::ZeroVector;
 
 	// --- Ctrl: присед (`CombatSystem.md`) ---
 
@@ -214,11 +226,17 @@ protected:
 	/** Shift отпущен - гасит бег, если он был активен. */
 	void OnSprintReleased();
 
-	/** Пробел нажат: на бегу - длинный рывок вперёд (TriggerEvade), иначе прыжок. */
+	/** Пробел нажат: уклонение по доминирующей оси зажатого направления (W/S/A/D). */
 	void OnSpacePressed();
 
-	/** Пробел отпущен - StopJumping(). */
-	void OnSpaceReleased();
+	/** Движение отпущено - вектор ввода обнулён, Пробел без направления ничего не делает. */
+	void OnMoveReleased();
+
+	void OnJumpPressed();
+	void OnJumpReleased();
+
+	/** Насмешка - UGA_Taunt через хэндл гуманоида. */
+	void OnTauntPressed();
 
 	/** Ctrl нажат - активирует UGA_Duck. */
 	void OnDuckPressed();

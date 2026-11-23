@@ -16,15 +16,16 @@ enum class EClanhallMarkTrack : uint8
 	Magic
 };
 
-/** Направление уклонения (`CombatSystem.md`, «Уклонение»). Смещение
- *  капсулы, не направление ввода - уводит тело от корпуса, а не от камеры (см.
- *  AClanhallCharacter::TriggerEvade). */
+/** Направление уклонения (`CombatSystem.md`, «Уклонение»): «Пробел + направление». Смещение
+ *  капсулы от корпуса, а не от камеры и не по вектору ввода (см. AClanhallCharacter::TriggerEvade).
+ *  Отскока «назад по умолчанию» нет: без направления уклонения нет. */
 UENUM(BlueprintType)
 enum class EClanhallEvadeDirection : uint8
 {
 	Left,
 	Right,
-	ForwardDash
+	Forward,
+	Back
 };
 
 /** Может ли приём стать смертельным ударом (`CombatSystem.md`, «Случайность») - свойство приёма.

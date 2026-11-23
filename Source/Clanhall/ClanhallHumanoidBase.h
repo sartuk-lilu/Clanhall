@@ -24,6 +24,7 @@ class UCharacterSheetData;
 class UWeaponTypeData;
 class UWeaponData;
 class AClanhallWeaponActor;
+class UGA_Taunt;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallWeaponSelected, int32, LoadoutIndex);
 
@@ -81,6 +82,13 @@ protected:
 	TArray<double> LastSkillTimeByWeapon;
 
 	FTimerHandle AutoHolsterTimer;
+
+	/** Класс насмешки - общее действие всех гуманоидов, противник тоже насмехается. Дефолт - сам
+	 *  C++-класс; Blueprint-наследник открывает его поля (монтаж) в редакторе. */
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Common")
+	TSubclassOf<UGA_Taunt> TauntAbilityClass;
+
+	FGameplayAbilitySpecHandle TauntAbilityHandle;
 
 public:
 	AClanhallHumanoidBase();
@@ -141,6 +149,14 @@ public:
 	/** Секунды с последнего приёма выбранного оружия; ни разу - очень большое число. */
 	double GetSecondsSinceSelectedWeaponUsed() const;
 
+	FGameplayAbilitySpecHandle GetTauntHandle() const { return TauntAbilityHandle; }
+
+	/** Скорость разворота в приёме, град/с - поле класса выбранного оружия (`CombatSystem.md`,
+	 *  «Контроль»), фолбэк ClanhallWeaponDefaults::SkillTurnRate. */
+	float GetSkillTurnRate() const;
+
+	virtual void Tick(float DeltaSeconds) override;
+
 protected:
 	/** Выставляет выбранное оружие (индекс 0). Не BeginPlay — ловушка: AActor::BeginPlay
 	 *  диспатчит BeginPlay компонентам раньше, чем выполняется тело переопределения BeginPlay
@@ -174,4 +190,8 @@ private:
 	void SetSelectedWeaponIndex(int32 LoadoutIndex);
 
 	void HolsterByTimer();
+
+	/** Разворот в приёме у бойца без контроллера игрока: медленный доворот к сопернику, пока висит
+	 *  State.SkillCommitted. Игрок доворачивается к камере в AClanhallCharacter::TickBodyTurn. */
+	void TickSkillTurn(float DeltaSeconds);
 };

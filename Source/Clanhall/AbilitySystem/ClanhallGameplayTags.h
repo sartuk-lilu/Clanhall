@@ -23,6 +23,9 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Warrior);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Assassin);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Lancer);
+	// Общие действия, не приёмы оружия: идентичность для перезарядки и отмены по тегу.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common_Taunt);
 
 	// ---- State.* ----
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Casting);
@@ -46,6 +49,13 @@ namespace ClanhallGameplayTags
 	// Боец мёртв (HP дошёл до нуля) - AClanhallCharacterBase::HandleOutOfHealth. Закрывает все
 	// способности, движение и ввод.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dead);
+	// Насмешка (`CombatSystem.md`, «Насмешка»): идёт насмешка - боец открыт; подтверждённое
+	// попадание её срывает. Вешает UGA_Taunt через ActivationOwnedTags.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Taunting);
+	// Насмешка-парирование против гораздо более слабого: тот, чей удар остановлен (Parried), и тот,
+	// кто остановил (Parrying), оба в анимации без управления, окна под урон нет.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_TauntParried);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_TauntParrying);
 	// Вешает и снимает UClanhallCombatStateComponent, пока в радиусе есть живой противник
 	// (`CombatSystem.md`, «Боевое состояние»). Снятие идёт с задержкой — не в момент, когда
 	// последний противник покинул радиус.

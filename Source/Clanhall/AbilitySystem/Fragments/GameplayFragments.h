@@ -10,7 +10,7 @@
 #include "GameplayFragments.generated.h"
 
 /** У навыков, наносящих урон. AP/HP-обмен по стандартной формуле (`CombatSystem.md`, «AP — Armor Points») —
- *  считает GA_ClanhallAbilityBase::ResolveStandardDamage, этот фрагмент только хранит число. */
+ *  считает ClanhallDamage::ResolveHit, этот фрагмент только хранит число. */
 UCLASS()
 class CLANHALL_API UDamageFragment : public UAbilityFragment
 {
