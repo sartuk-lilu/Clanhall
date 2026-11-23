@@ -39,6 +39,26 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Weapons", meta = (ClampMin = "0.05", Units = "s"))
 	float WeaponDoubleTapSeconds = 0.3f;
 
+	/** Сектор спины для удара в спину, градусы (`Gameloop/Parameters.md`: 120°). */
+	UPROPERTY(config, EditAnywhere, Category = "Damage", meta = (ClampMin = "0.0", ClampMax = "360.0"))
+	float BackSectorDegrees = 120.0f;
+
+	/** Шанс смертельного удара у приёмов, которые им бывают (1%). */
+	UPROPERTY(config, EditAnywhere, Category = "Damage", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float LethalChance = 0.01f;
+
+	/** Доля MaxHP, которую теряют босс и игрок вместо смерти от смертельного удара (35%). */
+	UPROPERTY(config, EditAnywhere, Category = "Damage", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float LethalHPFraction = 0.35f;
+
+	/** Потолок шанса крита, одинаково у игрока и противника (20%). */
+	UPROPERTY(config, EditAnywhere, Category = "Damage", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float CritChanceCap = 0.2f;
+
+	/** Множитель крита. Не назначен в Gameloop - плейсхолдер. */
+	UPROPERTY(config, EditAnywhere, Category = "Damage", meta = (ClampMin = "1.0"))
+	float CritMultiplier = 1.5f;
+
 	static const UClanhallCombatSettings& Get() { return *GetDefault<UClanhallCombatSettings>(); }
 };
 

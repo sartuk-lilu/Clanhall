@@ -9,6 +9,8 @@
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallSkillCooldownComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
+#include "AbilitySystem/ClanhallDamage.h"
+#include "AbilitySystem/WeaponTypeData.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "AbilitySystem/WeaponData.h"
@@ -409,28 +411,50 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 		return;
 	}
 
-	// Тип урона оружия в руке — донесён до резолва попадания, потребитель (порог зоны DT)
-	// появится в P3a (`WeaponSystem.md`, «Ассеты вместо `UClassKitData`»); пока не используется.
-	const AClanhallHumanoidBase* SourceCharacter = CurrentActorInfo ? Cast<AClanhallHumanoidBase>(CurrentActorInfo->AvatarActor.Get()) : nullptr;
+	AActor* Avatar = CurrentActorInfo ? CurrentActorInfo->AvatarActor.Get() : nullptr;
+	const AClanhallHumanoidBase* SourceCharacter = Cast<AClanhallHumanoidBase>(Avatar);
 	const UWeaponData* SourceWeapon = SourceCharacter ? SourceCharacter->GetCurrentWeapon() : nullptr;
-	const FGameplayTag SourceWeaponDamageType = SourceWeapon ? SourceWeapon->DamageType : FGameplayTag();
+	const UWeaponTypeData* SourceWeaponType = SourceCharacter ? SourceCharacter->GetWeaponType() : nullptr;
 
 	IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(Target);
 	UAbilitySystemComponent* TargetASC = TargetInterface ? TargetInterface->GetAbilitySystemComponent() : nullptr;
 
-	bool bConfirmedHit = false;
-	if (const UDamageFragment* Damage = Data->FindFragment<UDamageFragment>())
-	{
-		bConfirmedHit = ResolveStandardDamage(SourceASC, TargetASC, Damage->BaseDamage);
-	}
-	else
-	{
-		// Утилитарный навык без урона — попадание подтверждено самим фактом найденной цели,
-		// иначе метки у таких навыков никогда бы не срабатывали.
-		bConfirmedHit = (TargetASC != nullptr);
-	}
+	// Один расчёт попадания на все источники урона (`Implementation/Damage.md`): порог по типу
+	// урона выбранного оружия минус его пробитие, спина, крит, смертельный удар.
+	const UDamageFragment* DamageFragment = Data->FindFragment<UDamageFragment>();
+	FClanhallHitContext Hit;
+	Hit.SourceActor = Avatar;
+	Hit.SourceASC = SourceASC;
+	Hit.TargetActor = Target;
+	Hit.TargetASC = TargetASC;
+	Hit.RawDamage = DamageFragment ? DamageFragment->BaseDamage : 0.0f;
+	// Утилитарный навык без урона — попадание подтверждено самим фактом найденной цели,
+	// иначе метки у таких навыков никогда бы не срабатывали.
+	Hit.bUtility = (DamageFragment == nullptr);
+	Hit.DamageType = SourceWeapon ? SourceWeapon->DamageType : FGameplayTag();
+	Hit.ArmorPenetration = (SourceWeaponType ? SourceWeaponType->ArmorPenetration : 0.0f)
+		+ (SourceWeapon ? SourceWeapon->ArmorPenetrationBonus : 0.0f);
+	Hit.DamageMultiplier = HitDamageMultiplier;
+	Hit.bBackstab = Data->bBackstab;
+	Hit.LethalMode = Data->LethalMode;
+	Hit.bIgnoreThreshold = bHitIgnoresThreshold;
 
-	if (!bConfirmedHit)
+	const FClanhallHitResult HitResult = ClanhallDamage::ResolveHit(Hit);
+
+#if !UE_BUILD_SHIPPING
+	// На каждое попадание, без гейта: при мультицели полезно видеть, сколько целей задело.
+	GEngine->AddOnScreenDebugMessage(-1, 2.0f, HitResult.bConfirmed ? FColor::Orange : FColor::Silver, FString::Printf(
+		TEXT("%s -> %s | AP -%.0f HP -%.0f%s%s%s%s"),
+		*Data->DisplayName.ToString(), *GetNameSafe(Target), HitResult.DamageToAP, HitResult.DamageToHP,
+		HitResult.bAbsorbed ? TEXT(" | absorbed by threshold") : TEXT(""),
+		HitResult.bCrit ? TEXT(" | CRIT") : TEXT(""),
+		HitResult.bBackstab ? TEXT(" | backstab") : TEXT(""),
+		HitResult.bLethal ? TEXT(" | LETHAL") : TEXT("")));
+#endif
+
+	// Всё «на попадании» читает только bConfirmed: удар, целиком поглощённый порогом, - не
+	// попадание (`CombatSystem.md`, «Damage Threshold (DT)»): ни контра, ни меток.
+	if (!HitResult.bConfirmed)
 	{
 		return;
 	}
@@ -456,14 +480,4 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 			ResolveMarkLogic(Data, SourceASC, TargetASC, TargetMarkComponent);
 		}
 	}
-
-#if !UE_BUILD_SHIPPING
-	// На каждое попадание, без гейта: при мультицели полезно видеть, сколько целей задело.
-	if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, FString::Printf(
-			TEXT("%s hit | AP %.0f/%.0f"),
-			*Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP()));
-	}
-#endif
 }

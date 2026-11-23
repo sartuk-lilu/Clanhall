@@ -10,6 +10,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
+#include "AbilitySystem/ClanhallDamage.h"
 #include "ClanhallCharacterBase.generated.h"
 
 class UAbilitySystemComponent;
@@ -19,6 +20,11 @@ class UClanhallHitboxComponent;
 class UClanhallCounterComponent;
 class UClanhallCombatStateComponent;
 class UClanhallSkillCooldownComponent;
+struct FOnAttributeChangeData;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallHitReceived, const FClanhallHitResult&, Hit);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallArmorBroken, AActor*, Source);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallDied, AActor*, Killer);
 
 UCLASS(abstract)
 class AClanhallCharacterBase : public ACharacter, public IAbilitySystemInterface
@@ -144,6 +150,42 @@ public:
 	 *  движковый bUseControllerDesiredRotation). */
 	float GetTurnRate() const { return TurnRate; }
 
+	/** Порог урона по типу урона (`CombatSystem.md`, «Damage Threshold (DT)»): пара «противник ×
+	 *  тип урона». Тип, которого нет в карте, - порог 0. Действует только пока есть AP - решает
+	 *  ClanhallDamage::ResolveHit. */
+	float GetDamageThreshold(FGameplayTag DamageType) const { return DamageThresholds.FindRef(DamageType); }
+
+	/** Попадание по этому бойцу рассчитано (ClanhallDamage::ResolveHit) - вещает OnHitReceived
+	 *  (вздрагивание без отмены - `CombatSystem.md`, «Контроль») и OnArmorBroken. */
+	void NotifyHitReceived(const FClanhallHitResult& Hit);
+
+	/** HP дошёл до нуля (зовёт UClanhallAttributeSet). Повторный вызов - ничего. */
+	void HandleOutOfHealth(AActor* Killer);
+
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	bool IsDead() const { return bDead; }
+
+	/** Любое попадание, рассчитанное по этому бойцу, - точка для аддитивной анимации вздрагивания:
+	 *  начатый приём получателя не отменяется. */
+	UPROPERTY(BlueprintAssignable, Category = "Combat")
+	FOnClanhallHitReceived OnHitReceived;
+
+	/** AP был больше нуля и стал нулём - сигнал «пошло по живому» (звук + VFX трещины), без
+	 *  геймплейного эффекта (`CombatSystem.md`, «AP»). */
+	UPROPERTY(BlueprintAssignable, Category = "Combat")
+	FOnClanhallArmorBroken OnArmorBroken;
+
+	/** Смерть. Killer - источник последнего эффекта; кристалл слушает убийства. */
+	UPROPERTY(BlueprintAssignable, Category = "Combat")
+	FOnClanhallDied OnDied;
+
+	/** Пересчитать скорость перемещения: база × множитель меток. Гуманоид добавляет оружие, игрок
+	 *  - бег. Зовётся при смене оружия и при изменении MoveSpeedMultiplier. */
+	virtual void RefreshMovementSpeed();
+
+	/** Множитель скорости от меток (атрибут MoveSpeedMultiplier), 1 - если атрибута нет. */
+	float GetMoveSpeedMultiplier() const;
+
 	/** Сбрасывает состояние доворота для ABP - вызывается на бегу и на выходе из живого поворота
 	 *  (`LocomotionStructure.md`). */
 	void ResetTurnInPlace() { bTurningInPlace = false; TurnDirection = 0.0f; }
@@ -161,4 +203,13 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	/** Порог урона по типу (`Damage.Type.*`). Прототип заполняет одно значение на все типы. */
+	UPROPERTY(EditDefaultsOnly, Category = "Attributes", meta = (Categories = "Damage.Type"))
+	TMap<FGameplayTag, float> DamageThresholds;
+
+	bool bDead = false;
+
+private:
+	void OnMoveSpeedMultiplierChanged(const FOnAttributeChangeData& Data);
 };

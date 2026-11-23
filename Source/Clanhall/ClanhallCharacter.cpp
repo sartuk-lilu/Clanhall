@@ -100,8 +100,8 @@ void AClanhallCharacter::BeginPlay()
 		bUseControllerRotationYaw = false;             // не мгновенное прилипание, доворот считает тик
 		Movement->bUseControllerDesiredRotation = false;
 		Movement->RotationRate.Yaw = GetTurnRate();
-		Movement->MaxWalkSpeed = GetJogSpeed() * GetWeaponSpeedMultiplier();
 	}
+	RefreshMovementSpeed();
 }
 
 void AClanhallCharacter::Tick(float DeltaSeconds)
@@ -115,7 +115,7 @@ bool AClanhallCharacter::CanJumpInternal_Implementation() const
 {
 	// Fullbody-активка занимает всё тело, включая ноги — та же причина, что в DoMove:
 	// иначе персонаж подпрыгивает посреди приёма.
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
+	if (IsBodyBusy())
 	{
 		return false;
 	}
@@ -199,11 +199,26 @@ void AClanhallCharacter::Look(const FInputActionValue& Value)
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
 
+bool AClanhallCharacter::IsBodyBusy() const
+{
+	if (!AbilitySystemComponent)
+	{
+		return false;
+	}
+	// WASD - движение всегда (`CombatSystem.md`, «Ввод»), кроме: начатого приёма на всё тело и
+	// разрешённой потери управления - короткий стан, анимация насмешки-парирования
+	// (`Invariants.md`, «Метка не отнимает ввод»), - и смерти.
+	FGameplayTagContainer BusyTags;
+	BusyTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
+	BusyTags.AddTag(ClanhallGameplayTags::State_Dead.GetTag());
+	return AbilitySystemComponent->HasAnyMatchingGameplayTags(BusyTags);
+}
+
 void AClanhallCharacter::DoMove(float Right, float Forward)
 {
 	// Активка занимает слот fullbody целиком — свободных ног нет. State.SkillCommitted висит
-	// весь каст-монтаж и снимается только в EndAbility.
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
+	// весь приём и снимается только в EndAbility. Плюс потеря управления и смерть.
+	if (IsBodyBusy())
 	{
 		return;
 	}
@@ -308,8 +323,8 @@ void AClanhallCharacter::StartSprint()
 
 	Movement->bOrientRotationToMovement = true;    // 360: корпус по движению
 	Movement->bUseControllerDesiredRotation = false;
-	Movement->MaxWalkSpeed = GetSprintSpeed() * GetWeaponSpeedMultiplier();
 	AbilitySystemComponent->AddLooseGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag());
+	RefreshMovementSpeed();
 	ResetTurnInPlace(); // подшаг на бегу не играет
 }
 
@@ -322,8 +337,8 @@ void AClanhallCharacter::StopSprint()
 	}
 
 	Movement->bOrientRotationToMovement = false;
-	Movement->MaxWalkSpeed = GetJogSpeed() * GetWeaponSpeedMultiplier();
 	AbilitySystemComponent->RemoveLooseGameplayTag(ClanhallGameplayTags::State_Sprinting.GetTag());
+	RefreshMovementSpeed();
 }
 
 void AClanhallCharacter::TriggerEvade(EClanhallEvadeDirection Direction)
@@ -462,14 +477,14 @@ void AClanhallCharacter::OnWeaponKeyPressed(int32 WeaponInputIndex)
 	SelectWeapon(bDoubleTap ? Input.DoubleTapLoadoutIndex : Input.LoadoutIndex);
 }
 
-void AClanhallCharacter::ApplyWeaponSpeed()
+void AClanhallCharacter::RefreshMovementSpeed()
 {
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	if (!Movement)
 	{
 		return;
 	}
-	Movement->MaxWalkSpeed = (IsSprinting() ? GetSprintSpeed() : GetJogSpeed()) * GetWeaponSpeedMultiplier();
+	Movement->MaxWalkSpeed = (IsSprinting() ? GetSprintSpeed() : GetJogSpeed()) * GetWeaponSpeedMultiplier() * GetMoveSpeedMultiplier();
 }
 
 void AClanhallCharacter::OnCastPressed()

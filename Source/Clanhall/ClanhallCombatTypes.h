@@ -26,3 +26,13 @@ enum class EClanhallEvadeDirection : uint8
 	Right,
 	ForwardDash
 };
+
+/** Может ли приём стать смертельным ударом (`CombatSystem.md`, «Случайность») - свойство приёма.
+ *  У атакующих приёмов кинжала - только со спины (`AbilitySystem.md`, «Механика школы оружия»). */
+UENUM(BlueprintType)
+enum class EClanhallLethalMode : uint8
+{
+	None          UMETA(DisplayName = "Never"),
+	Always        UMETA(DisplayName = "Always"),
+	FromBackOnly  UMETA(DisplayName = "From Back Only")
+};

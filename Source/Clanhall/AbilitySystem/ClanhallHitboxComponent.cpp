@@ -307,16 +307,10 @@ void UClanhallHitboxComponent::TickHitbox(FActiveHitbox& Box, USkeletalMeshCompo
 	// здесь работаем только с копией HitboxHandle и локальным PendingHits.
 	for (const FPendingHit& Pending : PendingHits)
 	{
-		// (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»): подавление зоны цели и хитстоп бьющему живут ЗДЕСЬ,
-		// на самом контакте — а не в расчёте урона (ResolveStandardDamage), куда не доходят удар,
-		// полностью поглощённый DT (0 урона -> bConfirmedHit=false), и утилитарные навыки без
-		// UDamageFragment (War Shout и подобные). Контакт — факт, произошедший независимо от того,
-		// что дальше решит формула урона. Хитстоп — владельцу зоны (this), подавление — цели, чья
-		// зона получила контакт.
-		if (UClanhallHitboxComponent* TargetHitbox = Pending.Actor->FindComponentByClass<UClanhallHitboxComponent>())
-		{
-			TargetHitbox->SuppressHitboxes();
-		}
+		// Хитстоп бьющему - на самом контакте, даже если урон потом целиком уйдёт под порог: это
+		// обратная связь касания, а не результат (`CombatSystem.md`, «Пробивший контакт сбивает зону
+		// получателя»). Сбитие зоны получателя - только на подтверждённом попадании, его делает
+		// ClanhallDamage::ResolveHit.
 		ApplyHitstop(HitstopDurationOnDamage);
 
 		OnHitboxHit.Broadcast(Pending.Actor, Pending.ImpactPoint, HitboxHandle);

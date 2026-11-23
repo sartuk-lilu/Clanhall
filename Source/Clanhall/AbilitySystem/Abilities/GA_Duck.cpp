@@ -19,6 +19,7 @@ UGA_Duck::UGA_Duck()
 	// тег, что у UGA_Dodge.
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Dead.GetTag());
 }
 
 void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

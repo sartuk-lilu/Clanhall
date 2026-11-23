@@ -43,6 +43,9 @@ namespace ClanhallGameplayTags
 	// Смена оружия, когда в руках было оружие (`WeaponSystem.md`, «Свап оружия»): одна доля на
 	// уборку. Пока висит - приёмы, уклонение и присед закрыты. Вешает AClanhallHumanoidBase::SelectWeapon.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_WeaponSwap);
+	// Боец мёртв (HP дошёл до нуля) - AClanhallCharacterBase::HandleOutOfHealth. Закрывает все
+	// способности, движение и ввод.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dead);
 	// Вешает и снимает UClanhallCombatStateComponent, пока в радиусе есть живой противник
 	// (`CombatSystem.md`, «Боевое состояние»). Снятие идёт с задержкой — не в момент, когда
 	// последний противник покинул радиус.

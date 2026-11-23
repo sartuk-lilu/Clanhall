@@ -19,6 +19,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Потеря управления на противнике, источник - эффект синергии (FMarkSynergy::EffectOnTarget); на игроке не применяется (Invariants.md, «Разрешённые асимметрии»)");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Lockout after a WASD series. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Dead, "State.Dead", "The fighter is dead (HP reached zero); closes abilities, movement and input");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_WeaponSwap, "State.WeaponSwap", "Weapon swap with a weapon in hands: one beat to put it away; skills, dodge and duck are closed");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_SkillCommitted, "State.SkillCommitted", "Active skill committed: from activation to the end of the cast montage; blocks a second skill, dodge and duck");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_InCombat, "State.InCombat", "Вешает/снимает UClanhallCombatStateComponent — живой противник в радиусе, снятие с задержкой");

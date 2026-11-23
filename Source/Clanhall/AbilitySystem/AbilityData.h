@@ -10,6 +10,7 @@
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
 #include "Fragments/AbilityFragment.h"
+#include "ClanhallCombatTypes.h"
 #include "AbilityData.generated.h"
 
 class UTexture2D;
@@ -50,6 +51,16 @@ public:
 	 *  клавиши; стартует на активации и идёт у всего оружия. Ноль законен только для отладки. */
 	UPROPERTY(EditAnywhere, Category = "Ability", meta = (ClampMin = "0.0"))
 	float CooldownBeats = 0.0f;
+
+	/** Удар в спину (`CombatSystem.md`, «Удар в спину»): из сектора спины цели урон идёт в HP мимо
+	 *  AP и порога. Свойство приёма, а не вида оружия; спереди - обычный удар. */
+	UPROPERTY(EditAnywhere, Category = "Ability|Damage")
+	bool bBackstab = false;
+
+	/** Может ли приём стать смертельным ударом (`CombatSystem.md`, «Случайность»). У атакующих
+	 *  приёмов кинжала - только со спины. */
+	UPROPERTY(EditAnywhere, Category = "Ability|Damage")
+	EClanhallLethalMode LethalMode = EClanhallLethalMode::None;
 
 	/** Монтаж навыка. Слот — fullbody, для ВСЕХ активок без исключения: активка отыгрывается
 	 *  целым телом, разбиение «лёгкие на верх, тяжёлые целиком» отменено (`LocomotionStructure.md`, «Слоты: создание и назначение»).

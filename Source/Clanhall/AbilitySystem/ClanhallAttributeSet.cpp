@@ -1,4 +1,5 @@
 #include "ClanhallAttributeSet.h"
+#include "ClanhallCharacterBase.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffectExtension.h"
 #include "GameplayEffectTypes.h"
@@ -28,6 +29,15 @@ void UClanhallAttributeSet::ClampAttribute(const FGameplayAttribute& Attribute, 
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, MaxMP.GetCurrentValue());
 	}
+	else if (Attribute == GetCritChanceAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, 1.0f);
+	}
+	else if (Attribute == GetThresholdReductionAttribute() || Attribute == GetDamageDealtMultiplierAttribute()
+		|| Attribute == GetDamageTakenMultiplierAttribute() || Attribute == GetMoveSpeedMultiplierAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
 }
 
 void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -46,6 +56,16 @@ void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCa
 	else if (ChangedAttribute == GetHPAttribute())
 	{
 		SetHP(FMath::Clamp(GetHP(), 0.0f, GetMaxHP()));
+
+		// HP дошёл до нуля - смерть. Источник берётся из контекста эффекта: убийца нужен кристаллу
+		// (`EconomySystem.md`, «Кристалл»: убийства наращивают кристалл).
+		if (GetHP() <= 0.0f)
+		{
+			if (AClanhallCharacterBase* Owner = Cast<AClanhallCharacterBase>(GetOwningActor()))
+			{
+				Owner->HandleOutOfHealth(Data.EffectSpec.GetContext().GetInstigator());
+			}
+		}
 	}
 	else if (ChangedAttribute == GetMPAttribute())
 	{

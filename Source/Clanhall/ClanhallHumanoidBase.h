@@ -108,6 +108,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Weapon")
 	FOnClanhallWeaponSelected OnWeaponSelected;
 
+	/** Шаг × множитель выбранного оружия × множитель меток. Игрок переопределяет ради бега. */
+	virtual void RefreshMovementSpeed() override;
+
 	/** Множитель скорости выбранного оружия - GetWeaponType()->WeaponSpeedMultiplier, фолбэк
 	 *  ClanhallWeaponDefaults::WeaponSpeedMultiplier на разрыве цепочки (`WeaponSystem.md`). */
 	float GetWeaponSpeedMultiplier() const;
@@ -153,9 +156,6 @@ protected:
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	/** Скорость сменилась вместе с выбранным оружием. База - шаг (JogSpeed × множитель);
-	 *  игрок переопределяет, чтобы учесть бег. */
-	virtual void ApplyWeaponSpeed();
 
 private:
 	/** Спавнит актор оружия. nullptr, если класс не задан — законное состояние (оружие без визуала). */

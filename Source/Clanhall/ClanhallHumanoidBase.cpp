@@ -40,16 +40,16 @@ void AClanhallHumanoidBase::SetSelectedWeaponIndex(int32 LoadoutIndex)
 
 	// Множитель скорости оружия применяется при выборе ко всем базовым скоростям разом
 	// (`WeaponSystem.md`) - тяжёлое оружие медленное всегда, а не в момент удара.
-	ApplyWeaponSpeed();
+	RefreshMovementSpeed();
 }
 
-void AClanhallHumanoidBase::ApplyWeaponSpeed()
+void AClanhallHumanoidBase::RefreshMovementSpeed()
 {
 	// От базового JogSpeed бойца, не от текущего MaxWalkSpeed: повторный вызов при смене оружия
 	// иначе умножил бы второй раз.
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		Movement->MaxWalkSpeed = GetJogSpeed() * GetWeaponSpeedMultiplier();
+		Movement->MaxWalkSpeed = GetJogSpeed() * GetWeaponSpeedMultiplier() * GetMoveSpeedMultiplier();
 	}
 }
 

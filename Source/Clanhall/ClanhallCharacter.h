@@ -187,6 +187,9 @@ protected:
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
+	/** Тело занято - движение и прыжок закрыты: начатый приём, потеря управления, смерть. */
+	bool IsBodyBusy() const;
+
 	/** Клавиша выбора нажата - её слот становится выбранным. */
 	void OnSlotPressed(FGameplayTag Slot);
 
@@ -202,8 +205,6 @@ protected:
 	/** Клавиша оружия нажата - выбор оружия лоадаута, двойное нажатие - DoubleTapLoadoutIndex. */
 	void OnWeaponKeyPressed(int32 WeaponInputIndex);
 
-	/** Скорость при смене оружия - с учётом бега: на бегу база - SprintSpeed. */
-	virtual void ApplyWeaponSpeed() override;
 
 	void SetSelectedSlot(FGameplayTag NewSlot);
 
@@ -234,6 +235,9 @@ protected:
 	void TickBodyTurn();
 
 public:
+
+	/** Скорость с учётом бега: на бегу база - SprintSpeed, иначе шаг. Оружие и метки - множители. */
+	virtual void RefreshMovementSpeed() override;
 
 	/** Слот, выбранный зажатой клавишей, - для подсветки на панели. */
 	UFUNCTION(BlueprintPure, Category = "Input")

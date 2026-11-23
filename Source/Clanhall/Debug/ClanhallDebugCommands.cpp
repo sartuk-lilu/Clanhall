@@ -51,6 +51,8 @@ static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
 		{ TEXT("MaxHP"),       UClanhallAttributeSet::GetMaxHPAttribute() },
 		{ TEXT("MP"),          UClanhallAttributeSet::GetMPAttribute() },
 		{ TEXT("MaxMP"),       UClanhallAttributeSet::GetMaxMPAttribute() },
+		{ TEXT("CritChance"),  UClanhallAttributeSet::GetCritChanceAttribute() },
+		{ TEXT("ThresholdReduction"), UClanhallAttributeSet::GetThresholdReductionAttribute() },
 	};
 	return Map;
 }
@@ -220,7 +222,7 @@ static void HandleShowStats(UWorld* World, bool bTargetEnemy)
 		return;
 	}
 
-	const FString Message = FString::Printf(
+	FString Message = FString::Printf(
 		TEXT("%s AP %s/%s · HP %s/%s · MP %s/%s"),
 		bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetAPAttribute())),
@@ -229,6 +231,25 @@ static void HandleShowStats(UWorld* World, bool bTargetEnemy)
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxHPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxMPAttribute())));
+
+	// Модификаторы боя - то, что меняют метки (`Implementation/Damage.md`).
+	Message += FString::Printf(TEXT("
+crit %s · threshold -%s · dealt x%s · taken x%s · speed x%s"),
+		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetCritChanceAttribute())),
+		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetThresholdReductionAttribute())),
+		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetDamageDealtMultiplierAttribute())),
+		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetDamageTakenMultiplierAttribute())),
+		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMoveSpeedMultiplierAttribute())));
+
+	// Пороги урона по типам (`CombatSystem.md`, «Damage Threshold (DT)»).
+	if (const AClanhallCharacterBase* Fighter = Cast<AClanhallCharacterBase>(ASC->GetAvatarActor()))
+	{
+		for (const TCHAR* TypeName : { TEXT("Damage.Type.Slash"), TEXT("Damage.Type.Pierce"), TEXT("Damage.Type.Blunt") })
+		{
+			const FGameplayTag Type = FGameplayTag::RequestGameplayTag(FName(TypeName), false);
+			Message += FString::Printf(TEXT(" · %s %s"), TypeName + 12, *FormatValue(Fighter->GetDamageThreshold(Type)));
+		}
+	}
 
 	PrintResult(Key, Message, FColor::Cyan);
 }

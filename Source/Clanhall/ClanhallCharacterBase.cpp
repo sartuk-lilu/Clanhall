@@ -59,6 +59,13 @@ void AClanhallCharacterBase::BeginPlay()
 		AttributeSet->InitHP(DefaultMaxHP);
 		AttributeSet->InitMaxMP(DefaultMaxMP);
 		AttributeSet->InitMP(DefaultMaxMP);
+
+		// Модификаторы боя - нейтральная база, меняют их метки.
+		AttributeSet->InitCritChance(0.0f);
+		AttributeSet->InitThresholdReduction(0.0f);
+		AttributeSet->InitDamageDealtMultiplier(1.0f);
+		AttributeSet->InitDamageTakenMultiplier(1.0f);
+		AttributeSet->InitMoveSpeedMultiplier(1.0f);
 	}
 
 	if (AbilitySystemComponent)
@@ -70,7 +77,58 @@ void AClanhallCharacterBase::BeginPlay()
 		{
 			AbilitySystemComponent->AddLooseGameplayTag(RoleTag);
 		}
+
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UClanhallAttributeSet::GetMoveSpeedMultiplierAttribute())
+			.AddUObject(this, &AClanhallCharacterBase::OnMoveSpeedMultiplierChanged);
 	}
+}
+
+void AClanhallCharacterBase::OnMoveSpeedMultiplierChanged(const FOnAttributeChangeData& Data)
+{
+	RefreshMovementSpeed();
+}
+
+float AClanhallCharacterBase::GetMoveSpeedMultiplier() const
+{
+	bool bFound = false;
+	const float Multiplier = AbilitySystemComponent
+		? AbilitySystemComponent->GetGameplayAttributeValue(UClanhallAttributeSet::GetMoveSpeedMultiplierAttribute(), bFound) : 1.0f;
+	return bFound ? Multiplier : 1.0f;
+}
+
+void AClanhallCharacterBase::RefreshMovementSpeed()
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->MaxWalkSpeed = JogSpeed * GetMoveSpeedMultiplier();
+	}
+}
+
+void AClanhallCharacterBase::NotifyHitReceived(const FClanhallHitResult& Hit)
+{
+	OnHitReceived.Broadcast(Hit);
+	if (Hit.bArmorBroken)
+	{
+		OnArmorBroken.Broadcast(Hit.Source);
+	}
+}
+
+void AClanhallCharacterBase::HandleOutOfHealth(AActor* Killer)
+{
+	if (bDead)
+	{
+		return;
+	}
+	bDead = true;
+
+	// Мёртвый ничего не делает: способности отменены, State.Dead закрывает новые, движение и ввод
+	// игрока гейтятся им же. Тело и рэгдолл - не здесь.
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->CancelAllAbilities();
+		AbilitySystemComponent->AddLooseGameplayTag(ClanhallGameplayTags::State_Dead.GetTag());
+	}
+	OnDied.Broadcast(Killer);
 }
 
 bool AClanhallCharacterBase::IsSprinting() const

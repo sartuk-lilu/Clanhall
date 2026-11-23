@@ -1,4 +1,4 @@
-// Базовые ресурсы персонажа: AP, HP, MP.
+// Базовые ресурсы персонажа: AP, HP, MP - и модификаторы боя, которые меняют метки.
 // Канон: (`CombatSystem.md`, «Ресурсы персонажа»).
 
 #pragma once
@@ -51,6 +51,37 @@ public:
 	FGameplayAttributeData MaxMP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxMP);
 
+	// --- Модификаторы боя: база выставляется в AClanhallCharacterBase::BeginPlay, меняют их
+	// эффекты меток (`MarksSystem.md`). Бонусы меток складываются, а не перемножаются: модификаторы
+	// на множители - операция MultiplyAdditive (`MarksSystem.md`, «Слоты меток»). Читает их
+	// ClanhallDamage::ResolveHit (`Implementation/Damage.md`). Не реплицируются: мультиплеера нет. ---
+
+	/** Шанс крита, 0..1, обрезается потолком CritChanceCap (`CombatSystem.md`, «Случайность»). База 0. */
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|Combat")
+	FGameplayAttributeData CritChance;
+	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, CritChance);
+
+	/** Снижение порога урона владельца, плоское (`CombatSystem.md`: «порог можно немного снизить
+	 *  меткой, но не снять»). База 0. */
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|Combat")
+	FGameplayAttributeData ThresholdReduction;
+	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, ThresholdReduction);
+
+	/** Множитель наносимого урона. База 1. */
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|Combat")
+	FGameplayAttributeData DamageDealtMultiplier;
+	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, DamageDealtMultiplier);
+
+	/** Множитель получаемого урона. База 1. */
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|Combat")
+	FGameplayAttributeData DamageTakenMultiplier;
+	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, DamageTakenMultiplier);
+
+	/** Множитель скорости перемещения. База 1. Применяется к CharacterMovement при изменении. */
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|Combat")
+	FGameplayAttributeData MoveSpeedMultiplier;
+	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MoveSpeedMultiplier);
+
 protected:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
@@ -70,6 +101,6 @@ protected:
 	void OnRep_MaxMP(const FGameplayAttributeData& OldValue);
 
 private:
-	/** Держит AP/HP/MP в [0, Max] при любом источнике изменения. */
+	/** Держит AP/HP/MP в [0, Max], шанс крита в [0, 1], остальные модификаторы - не ниже нуля. */
 	void ClampAttribute(const FGameplayAttribute& Attribute, float& NewValue) const;
 };

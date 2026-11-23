@@ -21,6 +21,7 @@ UGA_Dodge::UGA_Dodge()
 	// тег, которым активка блокирует вторую активку (UGA_ClanhallAbilityBase).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Dead.GetTag());
 }
 
 void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

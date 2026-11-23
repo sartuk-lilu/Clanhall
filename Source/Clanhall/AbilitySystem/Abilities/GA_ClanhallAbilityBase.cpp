@@ -15,6 +15,7 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 
 	// Смена оружия с оружием в руках стоит долю на уборку (`WeaponSystem.md`, «Свап оружия»).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_WeaponSwap.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Dead.GetTag());
 
 	// Оглушение (State.Stunned — эффект синергии меток, FMarkSynergy::EffectOnTarget) блокирует
 	// новые физдействия. Контрнавык стана не выдаёт (`CounterAbility.md`, «Наказание сбитого»).
@@ -48,39 +49,4 @@ AActor* UGA_ClanhallAbilityBase::FindMeleeTarget(AActor* Avatar) const
 	}
 
 	return nullptr;
-}
-
-bool UGA_ClanhallAbilityBase::ResolveStandardDamage(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, float RawDamage) const
-{
-	if (!SourceASC || !TargetASC || RawDamage <= 0.0f)
-	{
-		return false;
-	}
-
-	const UClanhallAttributeSet* TargetAttributes = TargetASC->GetSet<UClanhallAttributeSet>();
-	if (!TargetAttributes)
-	{
-		return false;
-	}
-
-	const float TargetCurrentAP = TargetAttributes->GetAP();
-	const float APRemoved = FMath::Min(RawDamage, TargetCurrentAP);
-	const float Overflow = RawDamage - APRemoved;
-
-	if (APRemoved > 0.0f)
-	{
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, TargetASC, UGE_ModifyAP::StaticClass(), -APRemoved);
-	}
-
-	if (Overflow > 0.0f)
-	{
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, TargetASC, UGE_ModifyHP::StaticClass(), -Overflow);
-	}
-
-	// Подавление зоны цели (`CombatSystem.md`, «Сквозной принцип: контакт сбивает зону получателя»)
-	// и хитстоп бьющему переехали на сам контакт (UClanhallHitboxComponent::TickHitbox, цикл по
-	// PendingHits) — эта функция их больше
-	// не делает. Здесь урон мог обнулиться (DT поглотил всё), а контакт при этом уже случился;
-	// дублировать вызов тут значило бы делать его дважды на обычном хите и ни разу на поглощённом.
-	return true;
 }
