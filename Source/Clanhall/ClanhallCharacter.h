@@ -20,6 +20,22 @@ class UGA_Duck;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallSelectedSlotChanged, FGameplayTag, Slot);
+
+/** Клавиша выбора и слот, который она выбирает (`Controls.md`, «Ввод»). Слот - позиция панели,
+ *  клавиша - что угодно из IMC: все клавиши переназначаются. */
+USTRUCT(BlueprintType)
+struct FClanhallSlotInput
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> Action;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (Categories = "Slot"))
+	FGameplayTag Slot;
+};
+
 /**
  *  A simple player-controllable third person character
  *  Implements a controllable orbiting camera
@@ -62,23 +78,26 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
-	// --- Активные навыки Knight (Q/E/R/F) через GA_PhysicalSkill + DataAsset ---
+	// --- Ввод «клавиша выбирает, кнопка запускает» (`Controls.md`, «Ввод») ---
 
-	/** Q — Shield Slam */
+	/** Клавиши выбора: зажатая клавиша выбирает слот, ЛКМ запускает приём в нём, ПКМ - слог
+	 *  (магия - P6). Раскладка по умолчанию - Q/E/R/F/1/2/3/4 → Slot.Q/E/R/F/Z/X/C/V. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* ActiveSkillQAction;
+	TArray<FClanhallSlotInput> SlotInputs;
 
-	/** E — Power Strike */
+	/** ЛКМ - запуск приёма в выбранном слоте. Без выбранного слота ничего не делает. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* ActiveSkillEAction;
+	TObjectPtr<UInputAction> LaunchAction;
 
-	/** R — Shield Charge */
+	/** ПКМ - произнести слог выбранного слота. В P5 ничего не делает: магия - P6. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* ActiveSkillRAction;
+	TObjectPtr<UInputAction> CastAction;
 
-	/** F — Retribution */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* ActiveSkillFAction;
+	/** Зажатые сейчас слоты в порядке нажатия; выбран последний. */
+	TArray<FGameplayTag> HeldSlots;
+
+	/** Выбранный слот - последняя нажатая из зажатых клавиш выбора; невалиден - ничего не выбрано. */
+	FGameplayTag SelectedSlot;
 
 	/** Класс отскока/ухода, гранится в BeginPlay вместо UGA_Dodge::StaticClass() напрямую -
 	 *  только так его EditDefaultsOnly-поля (дистанции, монтажи) открываются в редакторе: у
@@ -142,13 +161,19 @@ protected:
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
-	/** Q/E/R/F - активка своего слота. Ввод «клавиша выбирает, кнопка запускает»
-	 *  (`Controls.md`) приходит в P5. */
-	void OnActiveSkillQ();
-	void OnActiveSkillE();
+	/** Клавиша выбора нажата - её слот становится выбранным. */
+	void OnSlotPressed(FGameplayTag Slot);
 
-	void OnActiveSkillR();
-	void OnActiveSkillF();
+	/** Клавиша выбора отпущена - выбор переходит к последней из ещё зажатых, нет таких - выбора нет. */
+	void OnSlotReleased(FGameplayTag Slot);
+
+	/** ЛКМ - приём выбранного слота активного оружия; без выбора - ничего (`Controls.md`). */
+	void OnLaunchPressed();
+
+	/** ПКМ - слог; в P5 только Verbose-лог. */
+	void OnCastPressed();
+
+	void SetSelectedSlot(FGameplayTag NewSlot);
 
 	/** Shift нажат - запускает бег. */
 	void OnSprintPressed();
@@ -177,6 +202,13 @@ protected:
 	void TickBodyTurn();
 
 public:
+
+	/** Слот, выбранный зажатой клавишей, - для подсветки на панели. */
+	UFUNCTION(BlueprintPure, Category = "Input")
+	FGameplayTag GetSelectedSlot() const { return SelectedSlot; }
+
+	UPROPERTY(BlueprintAssignable, Category = "Input")
+	FOnClanhallSelectedSlotChanged OnSelectedSlotChanged;
 
 	/** Активирует DodgeAbilityHandle событием, с направлением в EventMagnitude - см.
 	 *  UGA_Dodge::ActivateAbility (`CombatSystem.md`). */

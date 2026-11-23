@@ -135,10 +135,21 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Look);
 
 		// Активные навыки Knight (GA_PhysicalSkill) — Q/E/R/F.
-		EnhancedInputComponent->BindAction(ActiveSkillQAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillQ);
-		EnhancedInputComponent->BindAction(ActiveSkillEAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillE);
-		EnhancedInputComponent->BindAction(ActiveSkillRAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillR);
-		EnhancedInputComponent->BindAction(ActiveSkillFAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillF);
+		for (const FClanhallSlotInput& SlotInput : SlotInputs)
+		{
+			if (!SlotInput.Action || !SlotInput.Slot.IsValid())
+			{
+				UE_LOG(LogClanhall, Warning, TEXT("'%s': запись SlotInputs без Action или Slot - клавиша выбора не привязана."), *GetNameSafe(this));
+				continue;
+			}
+			// Started и Completed с самим слотом в payload: одна пара обработчиков на все клавиши.
+			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnSlotPressed, SlotInput.Slot);
+			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnSlotReleased, SlotInput.Slot);
+			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnSlotReleased, SlotInput.Slot);
+		}
+
+		EnhancedInputComponent->BindAction(LaunchAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLaunchPressed);
+		EnhancedInputComponent->BindAction(CastAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnCastPressed);
 
 		// Пробел: прыжок / рывок, решает сам обработчик (`CombatSystem.md`).
 		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSpacePressed);
@@ -379,39 +390,49 @@ void AClanhallCharacter::TickBodyTurn()
 }
 
 // ---------------------------------------------------------------------------
-// Активные навыки (Q/E/R/F). Контрнавык (`AbilitySystem.md`, «Контрнавык») больше не требует
-// модификатора — распознаётся резолвером внутри GA_PhysicalSkill::ActivateAbility
-// по совпадению CounterTag с открытым окном цели.
+// Ввод «клавиша выбирает, кнопка запускает» (`Controls.md`, «Ввод»). Контрнавык модификатора
+// не требует — распознаётся по контакту в GA_PhysicalSkill::ResolveHitOn по совпадению
+// CounterTag с открытым окном цели.
 // ---------------------------------------------------------------------------
 
-void AClanhallCharacter::OnActiveSkillQ()
+void AClanhallCharacter::SetSelectedSlot(FGameplayTag NewSlot)
 {
-	if (AbilitySystemComponent)
+	if (NewSlot == SelectedSlot)
 	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_Q.GetTag()));
+		return;
 	}
+	SelectedSlot = NewSlot;
+	OnSelectedSlotChanged.Broadcast(SelectedSlot);
 }
 
-void AClanhallCharacter::OnActiveSkillE()
+void AClanhallCharacter::OnSlotPressed(FGameplayTag Slot)
 {
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_E.GetTag()));
-	}
+	// Зажато несколько - выбрана последняя нажатая. Повторный Started той же клавиши (не должен
+	// приходить, но дешёво) переносит её в конец, а не дублирует.
+	HeldSlots.Remove(Slot);
+	HeldSlots.Add(Slot);
+	SetSelectedSlot(Slot);
 }
 
-void AClanhallCharacter::OnActiveSkillR()
+void AClanhallCharacter::OnSlotReleased(FGameplayTag Slot)
 {
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_R.GetTag()));
-	}
+	HeldSlots.Remove(Slot);
+	SetSelectedSlot(HeldSlots.Num() > 0 ? HeldSlots.Last() : FGameplayTag());
 }
 
-void AClanhallCharacter::OnActiveSkillF()
+void AClanhallCharacter::OnLaunchPressed()
 {
-	if (AbilitySystemComponent)
+	// Голая кнопка мыши без зажатой клавиши выбора ничего не делает: боя без оружия нет
+	// (`Controls.md`, «Ввод»; `MainCharacter.md`, «Голыми руками»).
+	if (!SelectedSlot.IsValid() || !AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(ClanhallGameplayTags::Slot_F.GetTag()));
+		return;
 	}
+	AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(SelectedSlot));
+}
+
+void AClanhallCharacter::OnCastPressed()
+{
+	// Слоги на ПКМ - магия, P6. Бинд заведён сейчас, чтобы раскладка была целой.
+	UE_LOG(LogClanhall, Verbose, TEXT("%s: ПКМ - слоги появятся вместе с магией."), *GetName());
 }
