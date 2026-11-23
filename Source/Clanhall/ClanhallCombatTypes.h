@@ -57,3 +57,14 @@ enum class EClanhallLethalMode : uint8
 	Always        UMETA(DisplayName = "Always"),
 	FromBackOnly  UMETA(DisplayName = "From Back Only")
 };
+
+/** Механика школы оружия (`AbilitySystem.md`, «Механика школы оружия») - поле класса оружия, а не
+ *  приёма. В прототипе две: ножны длинного меча и спина кинжала; остальные школы добавятся с
+ *  классами. */
+UENUM(BlueprintType)
+enum class EClanhallSchoolMechanic : uint8
+{
+	None      UMETA(DisplayName = "None"),
+	Scabbard  UMETA(DisplayName = "Scabbard Strike"),
+	Backstab  UMETA(DisplayName = "Backstab")
+};

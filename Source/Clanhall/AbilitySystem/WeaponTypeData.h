@@ -7,6 +7,7 @@
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
 #include "Fragments/WeaponFragment.h"
+#include "ClanhallCombatTypes.h"
 #include "WeaponTypeData.generated.h"
 
 class UAbilityData;
@@ -33,6 +34,11 @@ public:
 	 *  которая её положила, третий уровень навыка сравнивает школы (`MarksSystem.md`). */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "School"))
 	FGameplayTag School;
+
+	/** Механика школы внутри приёмов (`AbilitySystem.md`, «Механика школы оружия»): ножны - первый
+	 *  приём после паузы быстрее и сильнее; спина - атакующие приёмы бьют мимо AP только со спины. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType")
+	EClanhallSchoolMechanic SchoolMechanic = EClanhallSchoolMechanic::None;
 
 	/** Множитель к базовым скоростям бойца (JogSpeed/WalkSpeed/SprintSpeed), не см/с -
 	 *  абсолютное число непереносимо между бойцами с разной базой (`WeaponSystem.md`,
@@ -95,6 +101,12 @@ public:
 	 *  (`AbilitySystem.md`, «Физические активные навыки»). */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (Categories = "Slot"))
 	TMap<FGameplayTag, TObjectPtr<UAbilityData>> Skills;
+
+#if WITH_EDITOR
+	/** Школа со спиной: атакующий приём без bBackstab или со смертельным не только со спины -
+	 *  предупреждение («не со спины кинжал - обычное оружие»). */
+	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
+#endif
 
 	/** Возвращает первый фрагмент типа T, или nullptr если у этого типа оружия такого нет. */
 	template <typename T>

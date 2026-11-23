@@ -102,6 +102,19 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Marks", meta = (ClampMin = "0.0"))
 	float MarkL3Beats = 120.0f;
 
+	/** Ножны длинного меча (`AbilitySystem.md`, «Механика школы оружия»): сколько долей оружие не
+	 *  использовалось, чтобы первый приём шёл из ножен. Заглушка. */
+	UPROPERTY(config, EditAnywhere, Category = "Schools", meta = (ClampMin = "0.0"))
+	float ScabbardBeats = 6.0f;
+
+	/** Приём из ножен быстрее: длина умножается на это (< 1). Заглушка. */
+	UPROPERTY(config, EditAnywhere, Category = "Schools", meta = (ClampMin = "0.1", ClampMax = "1.0"))
+	float ScabbardDurationFactor = 0.7f;
+
+	/** Приём из ножен сильнее: урон умножается на это (> 1). Заглушка. */
+	UPROPERTY(config, EditAnywhere, Category = "Schools", meta = (ClampMin = "1.0"))
+	float ScabbardDamageMultiplier = 1.3f;
+
 	static const UClanhallCombatSettings& Get() { return *GetDefault<UClanhallCombatSettings>(); }
 };
 

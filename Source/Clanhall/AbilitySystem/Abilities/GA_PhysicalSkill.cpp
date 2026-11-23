@@ -346,6 +346,13 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// (`WeaponSystem.md`, «Свап оружия»). Время приёма этого оружия - для ножен.
 	if (AClanhallHumanoidBase* Humanoid = Cast<AClanhallHumanoidBase>(Avatar))
 	{
+		// Ножны - по времени с последнего приёма этого оружия, а не по тому, на теле ли меч: у
+		// противника, который оружие не убирает, ножны работают так же. Читать до NotifySkillStarted,
+		// он перепишет время.
+		const UWeaponTypeData* Type = Humanoid->GetWeaponType();
+		bFromScabbard = Type && Type->SchoolMechanic == EClanhallSchoolMechanic::Scabbard
+			&& Humanoid->GetSecondsSinceSelectedWeaponUsed() >= ClanhallBeats::ToSeconds(UClanhallCombatSettings::Get().ScabbardBeats);
+
 		bDrawnByThisSkill = Humanoid->DrawSelectedWeapon();
 		Humanoid->NotifySkillStarted();
 	}
@@ -396,6 +403,18 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		{
 			ApplyChosenLevel(Avatar->FindComponentByClass<UClanhallMarkComponent>(), Avatar);
 		}
+	}
+
+	// Удар из ножен - мощность приёма, а не уровень: короче и сильнее поверх выбранной версии
+	// (`AbilitySystem.md`, «Механика школы оружия»).
+	if (bFromScabbard)
+	{
+		const UClanhallCombatSettings& Settings = UClanhallCombatSettings::Get();
+		DurationBeats *= Settings.ScabbardDurationFactor;
+		HitDamageMultiplier *= Settings.ScabbardDamageMultiplier;
+#if !UE_BUILD_SHIPPING
+		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, FString::Printf(TEXT("%s - from scabbard"), *Data->DisplayName.ToString()));
+#endif
 	}
 
 	// Длина приёма - данные, а не клип (`AbilitySystem.md`, «Приёмы оружия»): монтаж подгоняется

@@ -115,6 +115,9 @@ private:
 	 *  меча такое выхватывание и есть удар из ножен. */
 	bool bDrawnByThisSkill = false;
 
+	/** Приём идёт из ножен (механика школы `Scabbard`): короче и сильнее. Для отладки, позже VFX. */
+	bool bFromScabbard = false;
+
 	/** Время мира активации - для одновременной активации контра. */
 	double ActivationTime = -1.0;
 
