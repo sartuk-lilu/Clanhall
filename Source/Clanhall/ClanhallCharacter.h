@@ -5,9 +5,7 @@
 #include "CoreMinimal.h"
 #include "Logging/LogMacros.h"
 #include "ClanhallHumanoidBase.h"
-// Полное определение, не forward-declare: EClanhallInputMode - возвращаемый тип
-// UFUNCTION(BlueprintPure) ниже, UHT для рефлексируемых типов требует видеть определение,
-// не полагаться на то, что оно придёт транзитивно через ClanhallHumanoidBase.h.
+// Полное определение, не forward-declare: EClanhallEvadeDirection - тип параметра TriggerEvade.
 #include "ClanhallCombatTypes.h"
 #include "ClanhallCharacter.generated.h"
 
@@ -64,14 +62,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
-	// --- Боевая стойка (`CombatSystem.md`): ЛКМ зажат = стойка ---
-
-	/** ЛКМ — вход/выход из боевой стойки */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* StanceAction;
-
-	FGameplayAbilitySpecHandle StanceAbilityHandle;
-
 	// --- Активные навыки Knight (Q/E/R/F) через GA_PhysicalSkill + DataAsset ---
 
 	/** Q — Shield Slam */
@@ -107,22 +97,13 @@ protected:
 
 	// --- Shift: бег (`CombatSystem.md`) ---
 
-	/** Shift - бег в режиме защиты (ничего не зажато). В режиме атаки не делает ничего:
-	 *  стойка статична. */
+	/** Shift - бег. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* SprintAction;
 
-	/** Физическое состояние клавиши Shift, независимо от режима и State.Sprinting. Started
-	 *  на SprintAction приходит один раз на нажатие - если Shift зажат ещё со входа в стойку
-	 *  (CancelSprint снял тег на входе), при выходе из стойки новый Started не придёт, и без
-	 *  этого флага игрок "залипал" бы на ходьбе до перенажатия Shift. OnStanceReleased
-	 *  перепроверяет флаг и запускает бег сам. */
-	bool bSprintKeyHeld = false;
-
 	// --- Пробел: прыжок / рывок (`CombatSystem.md`) ---
 
-	/** Пробел - в режиме защиты: прыжок, либо (с зажатым Shift) длинный рывок вперёд.
-	 *  В режиме атаки не делает ничего - защиты в стойке нет. */
+	/** Пробел - прыжок, либо (с зажатым Shift) длинный рывок вперёд. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* SpaceAction;
 
@@ -150,7 +131,7 @@ protected:
 	/** Считает доворот корпуса - см. TickBodyTurn. */
 	virtual void Tick(float DeltaSeconds) override;
 
-	/** Прыжок запрещён, пока игрок в боевой стойке (State.InStance) — см. GA_CombatStance. */
+	/** Прыжок запрещён, пока доигрывает начатая активка (State.SkillCommitted). */
 	virtual bool CanJumpInternal_Implementation() const override;
 
 protected:
@@ -161,36 +142,27 @@ protected:
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
-	/** ЛКМ нажат — активировать GA_CombatStance */
-	void OnStancePressed();
-
-	/** ЛКМ отпущен - CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `CombatSystem.md`) */
-	void OnStanceReleased();
-
-	/** Q - вне стойки уход влево (TriggerEvade), в стойке активка слота Q. */
+	/** Q/E/R/F - активка своего слота. Ввод «клавиша выбирает, кнопка запускает»
+	 *  (`Controls.md`) приходит в P5. */
 	void OnActiveSkillQ();
-
-	/** E - вне стойки уход вправо (TriggerEvade), в стойке активка слота E. */
 	void OnActiveSkillE();
 
 	void OnActiveSkillR();
 	void OnActiveSkillF();
 
-	/** Shift нажат - в режиме защиты запускает бег. В режиме атаки не делает ничего:
-	 *  стойка статична, бежать можно только отпустив ЛКМ (`CombatSystem.md`). */
+	/** Shift нажат - запускает бег. */
 	void OnSprintPressed();
 
 	/** Shift отпущен - гасит бег, если он был активен. */
 	void OnSprintReleased();
 
-	/** Пробел нажат. В режиме защиты: на бегу - длинный рывок вперёд (TriggerEvade), иначе
-	 *  прыжок. В режиме атаки не делает ничего - защиты в стойке нет (`CombatSystem.md`). */
+	/** Пробел нажат: на бегу - длинный рывок вперёд (TriggerEvade), иначе прыжок. */
 	void OnSpacePressed();
 
 	/** Пробел отпущен - StopJumping(). */
 	void OnSpaceReleased();
 
-	/** Ctrl нажат - активирует UGA_Duck. Только в режиме защиты. */
+	/** Ctrl нажат - активирует UGA_Duck. */
 	void OnDuckPressed();
 
 	void StartSprint();
@@ -198,21 +170,13 @@ protected:
 
 	/** Считает YawDelta между камерой и корпусом и по нему включает/выключает движковый
 	 *  bUseControllerDesiredRotation (доворот) на CharacterMovementComponent. Доворот - общее
-	 *  правило локомоции, не привилегия стойки (`LocomotionStructure.md`). На бегу ротацией
+	 *  правило локомоции (`LocomotionStructure.md`). На бегу ротацией
 	 *  заведует bOrientRotationToMovement, сюда тик не заходит. Стоя - по гистерезису
 	 *  TurnThreshold/TurnSettleAngle, со взводом bTurningInPlace для ABP (подшаг); двигаясь
-	 *  (не в стойке, не бегом) доворот идёт постоянно, без порога. */
+	 *  (не бегом) доворот идёт постоянно, без порога. */
 	void TickBodyTurn();
 
 public:
-
-	/** Гасит бег - вызывается из UGA_CombatStance::ActivateAbility при входе в стойку с зажатым
-	 *  Shift: скорость стойки обязана победить скорость бега. */
-	void CancelSprint();
-
-	/** Режим ввода текущего кадра - см. EClanhallInputMode. */
-	UFUNCTION(BlueprintPure, Category = "Input")
-	EClanhallInputMode GetInputMode() const;
 
 	/** Активирует DodgeAbilityHandle событием, с направлением в EventMagnitude - см.
 	 *  UGA_Dodge::ActivateAbility (`CombatSystem.md`). */

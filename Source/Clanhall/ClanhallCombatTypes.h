@@ -6,18 +6,6 @@
 #include "UObject/ObjectMacros.h"
 #include "ClanhallCombatTypes.generated.h"
 
-/** Режим ввода: одна и та же клавиша значит разное в зависимости от зажатой кнопки мыши
- *  (`CombatSystem.md`). Cast зарезервирован под магию на ПКМ и сегодня
- *  недостижим - ПКМ ни к чему не привязана. Заведён сразу, чтобы приход магии не потребовал
- *  переразводки всех гейтов ввода. */
-UENUM(BlueprintType)
-enum class EClanhallInputMode : uint8
-{
-	Free    UMETA(DisplayName = "Free"),
-	Attack  UMETA(DisplayName = "Attack"),
-	Cast    UMETA(DisplayName = "Cast")
-};
-
 /** Трек метки (`MarksSystem.md`, «Концепция»): физический трек кладут и снимают только
  *  физические активки, магический — только заклинания. Один боец несёт по одной метке
  *  на каждый трек одновременно, независимо друг от друга. */
@@ -28,7 +16,7 @@ enum class EClanhallMarkTrack : uint8
 	Magic
 };
 
-/** Направление защитного действия вне стойки (`CombatSystem.md`, «Отскок»). Смещение
+/** Направление уклонения (`CombatSystem.md`, «Уклонение»). Смещение
  *  капсулы, не направление ввода - уводит тело от корпуса, а не от камеры (см.
  *  AClanhallCharacter::TriggerEvade). */
 UENUM(BlueprintType)

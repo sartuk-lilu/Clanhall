@@ -1,12 +1,10 @@
-// Присед - Ctrl вне стойки (`CombatSystem.md`). Наследуется от UGameplayAbility напрямую, той
-// же причиной, что UGA_Dodge: не наносит урона, ActivationRequiredTags(State.InStance) на
-// UGA_ClanhallAbilityBase присед вне стойки прямо противопоказан.
+// Присед - Ctrl (`CombatSystem.md`). Наследуется от UGameplayAbility напрямую, той же причиной,
+// что UGA_Dodge: не наносит урона.
 //
 // Присед - окно, а не удержание: игрок нажимает Ctrl и должен попасть в замах - капсула
 // опускается через DuckWindupTime, остаётся опущенной DuckWindowDuration, потом поднимается
-// сама. Все остальные механики проекта работают окнами (парирование, окно чтения серии,
-// Recovery), удержание выбивалось бы из ряда - AClanhallCharacter не биндит Completed на
-// DuckAction вовсе.
+// сама. Механики проекта работают окнами (окно контра, хвосты восстановления), удержание
+// выбивалось бы из ряда - AClanhallCharacter не биндит Completed на DuckAction вовсе.
 //
 // Капсулу опускает движковый Character->Crouch(), не SetCapsuleSize - движок сам разбирается
 // со смещением меша, коллизией и проверкой «есть ли место разогнуться». Требует
@@ -20,7 +18,7 @@
 // EndHitboxesFromMontage в UGA_PhysicalSkill::EndAbility. UnCrouch() безвреден,
 // если капсула и так поднята - CharacterMovementComponent::bWantsToCrouch = false, не более.
 //
-// Грант - в AClanhallCharacter::BeginPlay, рядом со стойкой и уходом.
+// Грант - в AClanhallCharacter::BeginPlay, рядом с уходом.
 
 #pragma once
 

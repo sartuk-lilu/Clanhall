@@ -32,8 +32,7 @@ void AClanhallHumanoidBase::PostInitializeComponents()
 		? CharacterSheet->Loadout[0] : nullptr;
 
 	// Множитель скорости оружия применяется при экипировке ко всем трём базовым скоростям
-	// разом (`WeaponSystem.md`) - не в момент входа в стойку, тяжёлое оружие медленное
-	// всегда. Считаем от базового JogSpeed бойца, не от текущего MaxWalkSpeed:
+	// разом (`WeaponSystem.md`) - тяжёлое оружие медленное всегда. Считаем от базового JogSpeed бойца, не от текущего MaxWalkSpeed:
 	// повторный вызов при будущем свапе оружия иначе умножил бы второй раз.
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{

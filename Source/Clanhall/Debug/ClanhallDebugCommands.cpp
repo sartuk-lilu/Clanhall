@@ -7,8 +7,7 @@
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
-#include "ClanhallCombatTypes.h"
-#include "ClanhallCharacter.h"
+#include "ClanhallCharacterBase.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -291,17 +290,6 @@ static void HandleListStats(EDebugMsgKey Key)
 	PrintResult(Key, FString::Printf(TEXT("Valid stats: %s"), *FString::Join(Names, TEXT(", "))), FColor::Green);
 }
 
-static const TCHAR* InputModeToString(EClanhallInputMode Mode)
-{
-	switch (Mode)
-	{
-	case EClanhallInputMode::Free:   return TEXT("Free");
-	case EClanhallInputMode::Attack: return TEXT("Attack");
-	case EClanhallInputMode::Cast:   return TEXT("Cast");
-	default:                         return TEXT("?");
-	}
-}
-
 // Читает UClanhallCombatStateComponent на игроке: без этой команды граница боя невидима,
 // а от неё зависит цена дальнего отскока и работоспособность вне-боевого лечения
 // (`CombatSystem.md`, «Боевое состояние»).
@@ -322,21 +310,18 @@ static void HandleShowCombatState(UWorld* World)
 		return;
 	}
 
-	// InputMode - только у AClanhallCharacter (игрок); Sprinting и TurningInPlace - общие
-	// для любого AClanhallCharacterBase. Без них редакторная проверка локомоции превращается
-	// в угадайку.
-	const AClanhallCharacter* Character = Cast<AClanhallCharacter>(Pawn);
-	const FString ModeStr = Character ? InputModeToString(Character->GetInputMode()) : TEXT("n/a");
+	// Sprinting и TurningInPlace - общие для любого AClanhallCharacterBase. Без них редакторная
+	// проверка локомоции превращается в угадайку.
 	const AClanhallCharacterBase* CharacterBase = Cast<AClanhallCharacterBase>(Pawn);
 	const FString SprintingStr = CharacterBase ? (CharacterBase->IsSprinting() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");
 	const FString TurningStr = CharacterBase ? (CharacterBase->IsTurningInPlace() ? TEXT("yes") : TEXT("no")) : TEXT("n/a");
 
 	const FString Message = FString::Printf(
-		TEXT("%s | enemies in radius: %d | exit timer: %.1fs | InputMode: %s | Sprinting: %s | TurningInPlace: %s"),
+		TEXT("%s | enemies in radius: %d | exit timer: %.1fs | Sprinting: %s | TurningInPlace: %s"),
 		CombatState->IsInCombat() ? TEXT("IN COMBAT") : TEXT("out of combat"),
 		CombatState->GetTrackedEnemyCount(),
 		CombatState->GetExitTimeRemaining(),
-		*ModeStr, *SprintingStr, *TurningStr);
+		*SprintingStr, *TurningStr);
 
 	PrintResult(Key, Message, CombatState->IsInCombat() ? FColor::Red : FColor::Green);
 }

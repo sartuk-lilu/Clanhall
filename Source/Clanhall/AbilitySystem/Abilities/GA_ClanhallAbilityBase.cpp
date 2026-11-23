@@ -9,10 +9,6 @@
 
 UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 {
-	// Все физические действия (WASD и активные навыки) работают только в боевой стойке.
-	// Вне стойки те же клавиши двигают персонажа — TryActivateAbility просто откажет.
-	ActivationRequiredTags.AddTag(ClanhallGameplayTags::State_InStance.GetTag());
-
 	// Активка в фазе коммита (State.SkillCommitted, висит на UGA_PhysicalSkill от активации
 	// до EndAbility) блокирует вторую активку — «начатую активку нельзя оборвать» (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());

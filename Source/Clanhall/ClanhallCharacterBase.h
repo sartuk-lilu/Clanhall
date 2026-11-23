@@ -70,8 +70,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxMP = 200.0f;
 
-	/** Скорость обычной ходьбы (страйф, вперёд, передние диагонали) - общая локомоция, не
-	 *  привилегия стойки: доворот корпуса по камере теперь работает везде (`LocomotionStructure.md`).
+	/** Скорость обычной ходьбы (страйф, вперёд, передние диагонали) - общая локомоция: доворот
+	 *  корпуса по камере работает везде (`LocomotionStructure.md`).
 	 *  Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float JogSpeed = 500.0f;
@@ -149,7 +149,7 @@ public:
 	/** Предикат состояния бега вместо прямого чтения State.Sprinting с ASC. Живёт на базе,
 	 *  а не у игрока: тело - запрос тега с AbilitySystemComponent, а компонент здесь же.
 	 *  Читают ABP (переменная bSprinting), AClanhallCharacter::TickBodyTurn, DoMove и
-	 *  CancelSprint, а также Clanhall.Player.ShowCombatState. */
+	 *  OnSpacePressed, а также Clanhall.Player.ShowCombatState. */
 	UFUNCTION(BlueprintPure, Category = "Combat|Movement")
 	bool IsSprinting() const;
 
