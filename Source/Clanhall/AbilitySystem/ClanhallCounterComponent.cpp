@@ -46,7 +46,7 @@ void UClanhallCounterComponent::ConsumeCounter()
 		ASC->CancelAbilityHandle(CounteredHandle);
 
 #if !UE_BUILD_SHIPPING
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван, заряды сгорели"));
+		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван"));
 #endif
 	}
 

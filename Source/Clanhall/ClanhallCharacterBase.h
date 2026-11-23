@@ -18,13 +18,6 @@ class UClanhallMarkComponent;
 class UClanhallHitboxComponent;
 class UClanhallCounterComponent;
 class UClanhallCombatStateComponent;
-class UGameplayAbility;
-
-/** Denied-фидбек: TryActivateAbility отказал именно по нехватке Charges (не по
- *  State.SkillCommitted/State.Stunned — `CharacterHierarchy.md`, «Denied-фидбек»). Точка подключения для HUD
- *  (звук + вспышка WBP_ChargesPanel), сама реакция сюда не входит — тот же паттерн, что
- *  UClanhallCounterComponent::OnCounterConsumed. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallChargesDenied);
 
 UCLASS(abstract)
 class AClanhallCharacterBase : public ACharacter, public IAbilitySystemInterface
@@ -64,7 +57,7 @@ protected:
 
 	/** Стартовые значения ресурсов (`CombatSystem.md`, «Ресурсы персонажа»; `CharacterHierarchy.md`,
 	 *  «Стартовые значения атрибутов на базе») — хардкод-плейсхолдеры прототипа,
-	 *  переопределяются per-class в defaults Blueprint-наследника (у Часового свои AP/HP/MP/Charges).
+	 *  переопределяются per-class в defaults Blueprint-наследника.
 	 *  Раньше жили только в AClanhallCharacter::BeginPlay —
 	 *  экземпляр без этого пути (AClanhallHumanoidBoss, пустой конструктор) оставался с нулевыми
 	 *  атрибутами. */
@@ -76,12 +69,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
 	float DefaultMaxMP = 200.0f;
-
-	/** (`CombatSystem.md`, «Ресурсы персонажа»): базовый банк — 6 (было 4), не косметическая
-	 *  правка — при базе 4 ранг 3 открывает Z/X ценой 6 при банке 4, навык физически
-	 *  недоступен. Потолок 16 — UClanhallAttributeSet::ClampAttribute. */
-	UPROPERTY(EditDefaultsOnly, Category = "Attributes")
-	float DefaultMaxCharges = 6.0f;
 
 	/** Скорость обычной ходьбы (страйф, вперёд, передние диагонали) - общая локомоция, не
 	 *  привилегия стойки: доворот корпуса по камере теперь работает везде (`LocomotionStructure.md`).
@@ -131,11 +118,6 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	// ~end IAbilitySystemInterface
 
-	/** Транслирует получателям (HUD), что этому бойцу отказали в активации именно из-за
-	 *  нехватки Charges. */
-	UPROPERTY(BlueprintAssignable, Category = "AbilitySystem")
-	FOnClanhallChargesDenied OnChargesDenied;
-
 	/** Читает AClanhallCharacter::BeginPlay и DoMove (кап хода спиной) и
 	 *  AClanhallHumanoidBase::PostInitializeComponents (множитель оружия). */
 	float GetJogSpeed() const { return JogSpeed; }
@@ -173,9 +155,4 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
-private:
-	/** Слушает UAbilitySystemComponent::AbilityFailedCallbacks и ретранслирует в OnChargesDenied,
-	 *  только когда причина отказа — Denied.Charges (`CharacterHierarchy.md`, «Denied-фидбек»). */
-	void HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason);
 };

@@ -36,14 +36,6 @@ public:
 	UGE_ModifyMP();
 };
 
-UCLASS()
-class CLANHALL_API UGE_ModifyCharges : public UGameplayEffect
-{
-	GENERATED_BODY()
-public:
-	UGE_ModifyCharges();
-};
-
 namespace ClanhallGameplayEffects
 {
 	/** Собирает FGameplayEffectSpec из EffectClass, выставляет его единственную SetByCaller-магнитуду

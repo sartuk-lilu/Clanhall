@@ -1,6 +1,5 @@
 #include "GA_Dodge.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
-#include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
 #include "AbilitySystemComponent.h"
@@ -23,26 +22,6 @@ UGA_Dodge::UGA_Dodge()
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 }
 
-bool UGA_Dodge::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
-{
-	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
-	{
-		return false;
-	}
-
-	AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
-	if (!Avatar)
-	{
-		return false;
-	}
-
-	// Цена (только рывок вперёд, только в бою) зависит от направления, которое известно лишь
-	// на активации - CanActivateAbility событие (TriggerEventData) не получает, движковая
-	// сигнатура его не несёт. Проверка и списание живут в ActivateAbility, где направление уже
-	// известно; отказ там идёт тем же Denied.Charges через ручной NotifyAbilityFailed.
-	return true;
-}
-
 void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
@@ -57,32 +36,6 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 	}
 
 	const EClanhallEvadeDirection Direction = static_cast<EClanhallEvadeDirection>(FMath::RoundToInt(TriggerEventData->EventMagnitude));
-	const bool bInCombat = ASC->HasMatchingGameplayTag(ClanhallGameplayTags::State_InCombat.GetTag());
-	const bool bChargedDash = (Direction == EClanhallEvadeDirection::ForwardDash) && bInCombat;
-
-	// Цена - только у рывка вперёд в бою, списывается тем же механизмом, что в
-	// UGA_PhysicalSkill: на активации и безвозвратно (`EconomySystem.md`, «Почему кулдаунов нет»).
-	// Боковой уход не стоит зарядов никогда; рывок вне боя цену не проверяет вовсе - не «цена
-	// ноль», а «шага списания нет» (`CombatSystem.md`, «Боевое состояние»).
-	if (bChargedDash && LongDashChargeCost > 0)
-	{
-		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
-		if (!Attributes || Attributes->GetCharges() < static_cast<float>(LongDashChargeCost))
-		{
-			// Отказ идёт здесь, а не из CanActivateAbility (см. комментарий там) - это уже
-			// ПОСЛЕ Super::ActivateAbility, то есть после PreActivate, где движок вешает
-			// ActivationOwnedTags. У UGA_Dodge их сегодня нет, поэтому моргания не видно, но
-			// если когда-нибудь появятся - тег повесится и снимется в один кадр вместе с этим
-			// EndAbility(bWasCancelled=true). Безвредно как есть, учитывать при добавлении тегов.
-			FGameplayTagContainer FailureTags;
-			FailureTags.AddTag(ClanhallGameplayTags::Denied_Charges.GetTag());
-			ASC->NotifyAbilityFailed(Handle, this, FailureTags);
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-			return;
-		}
-
-		ClanhallGameplayEffects::ApplyModifyEffect(ASC, ASC, UGE_ModifyCharges::StaticClass(), -static_cast<float>(LongDashChargeCost));
-	}
 
 	float Distance = 0.0f;
 	UAnimMontage* TravelMontage = nullptr;

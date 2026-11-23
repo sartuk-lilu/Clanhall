@@ -1,4 +1,4 @@
-// Базовые ресурсы персонажа: AP, HP, MP, Charges.
+// Базовые ресурсы персонажа: AP, HP, MP.
 // Канон: (`CombatSystem.md`, «Ресурсы персонажа»).
 
 #pragma once
@@ -42,8 +42,7 @@ public:
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxHP);
 
 	// --- MP (Mana Points): восполняется подтверждённым попаданием физической активки, раз за
-	// применение (UAbilityData::ManaGain, `AbilitySystem.md`, «Физические активные навыки») —
-	// WASD-удары маны не дают ---
+	// применение (UAbilityData::ManaGain) ---
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MP, Category = "Clanhall|MP")
 	FGameplayAttributeData MP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MP);
@@ -51,18 +50,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxMP, Category = "Clanhall|MP")
 	FGameplayAttributeData MaxMP;
 	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxMP);
-
-	// --- Charges: ресурс активных навыков (Q/E=2, R/F=4, Z/X=6, C/V=8) — единственный гейт
-	// применения, кулдауна в проекте не осталось нигде. MaxCharges клампится на 16 — число
-	// ячеек сетки 4×4 в WBP_ChargesPanel, техническая граница отрисовки
-	// (`CombatSystem.md`, «Charges — Очки Активных Навыков»). ---
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Charges, Category = "Clanhall|Charges")
-	FGameplayAttributeData Charges;
-	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, Charges);
-
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxCharges, Category = "Clanhall|Charges")
-	FGameplayAttributeData MaxCharges;
-	ATTRIBUTE_ACCESSORS(UClanhallAttributeSet, MaxCharges);
 
 protected:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
@@ -81,12 +68,8 @@ protected:
 	void OnRep_MP(const FGameplayAttributeData& OldValue);
 	UFUNCTION()
 	void OnRep_MaxMP(const FGameplayAttributeData& OldValue);
-	UFUNCTION()
-	void OnRep_Charges(const FGameplayAttributeData& OldValue);
-	UFUNCTION()
-	void OnRep_MaxCharges(const FGameplayAttributeData& OldValue);
 
 private:
-	/** Держит AP/HP/MP/Charges в [0, Max] при любом источнике изменения. */
+	/** Держит AP/HP/MP в [0, Max] при любом источнике изменения. */
 	void ClampAttribute(const FGameplayAttribute& Attribute, float& NewValue) const;
 };

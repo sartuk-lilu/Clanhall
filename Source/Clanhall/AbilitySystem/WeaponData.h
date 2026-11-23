@@ -46,11 +46,6 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, Category = "Weapon")
 	TArray<TObjectPtr<UWeaponFragment>> Fragments;
 
-	/** ChargeIncome здесь НЕ переопределяется, и поля под него нет.
-	 *  Легендарный меч, дающий больше зарядов за тот же удар, — тот самый арбитраж, ради
-	 *  убийства которого написан инвариант экономики (`EconomySystem.md`, «Инвариант экономики
-	 *  оружия»). Не заводить поле-переопределение «на всякий случай». */
-
 	/** Возвращает первый фрагмент типа T, или nullptr если у этого экземпляра такого нет. */
 	template <typename T>
 	T* FindFragment() const

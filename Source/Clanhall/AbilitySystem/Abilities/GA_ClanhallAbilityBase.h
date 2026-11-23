@@ -35,7 +35,6 @@ protected:
 	/** (`CombatSystem.md`, «AP — Armor Points»): снимает AP цели, 50% снятого возвращается атакующему в AP,
 	 *  переполнение (урон больше остатка AP) идёт прямиком в HP. Возвращает true, если урон
 	 *  был нанесён — это и есть "confirmed hit", который гейтит метки/синергии/ManaGain
-	 *  у активок (GA_PhysicalSkill). Charges списываются безусловно на активации, независимо
-	 *  от confirmed hit. */
+	 *  у активок (GA_PhysicalSkill). */
 	bool ResolveStandardDamage(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, float RawDamage) const;
 };

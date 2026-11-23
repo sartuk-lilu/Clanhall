@@ -56,8 +56,6 @@ void AClanhallCharacterBase::BeginPlay()
 		AttributeSet->InitHP(DefaultMaxHP);
 		AttributeSet->InitMaxMP(DefaultMaxMP);
 		AttributeSet->InitMP(DefaultMaxMP);
-		AttributeSet->InitMaxCharges(DefaultMaxCharges);
-		AttributeSet->InitCharges(DefaultMaxCharges);
 	}
 
 	if (AbilitySystemComponent)
@@ -69,18 +67,6 @@ void AClanhallCharacterBase::BeginPlay()
 		{
 			AbilitySystemComponent->AddLooseGameplayTag(RoleTag);
 		}
-
-		// Denied-фидбек (`CharacterHierarchy.md`, «Denied-фидбек»): AbilityFailedCallbacks — обычный C++ мультикаст, не
-		// BlueprintAssignable, поэтому ретранслируем в OnChargesDenied для Blueprint HUD.
-		AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &AClanhallCharacterBase::HandleAbilityFailed);
-	}
-}
-
-void AClanhallCharacterBase::HandleAbilityFailed(const UGameplayAbility* Ability, const FGameplayTagContainer& FailureReason)
-{
-	if (FailureReason.HasTagExact(ClanhallGameplayTags::Denied_Charges.GetTag()))
-	{
-		OnChargesDenied.Broadcast();
 	}
 }
 

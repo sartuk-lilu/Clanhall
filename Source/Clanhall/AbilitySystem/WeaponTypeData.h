@@ -15,7 +15,6 @@ class UAbilityData;
  *  баланс, страховка от нуля. Живут здесь, а не разъезжаются по файлам. */
 namespace ClanhallWeaponDefaults
 {
-	constexpr int32 ChargeIncome = 1;
 	constexpr float ArmorPenetration = 0.0f;
 	constexpr float WeaponSpeedMultiplier = 1.0f;
 }
@@ -26,11 +25,6 @@ class CLANHALL_API UWeaponTypeData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	/** Доход в Charges за подтверждённый WASD-удар, начиная со второго в серии
-	 *  (`EconomySystem.md`, «Заряды: доход»). Дефолт совпадает с ClanhallWeaponDefaults::ChargeIncome. */
-	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "1"))
-	int32 ChargeIncome = ClanhallWeaponDefaults::ChargeIncome;
-
 	/** Множитель к базовым скоростям бойца (JogSpeed/WalkSpeed/SprintSpeed), не см/с -
 	 *  абсолютное число непереносимо между бойцами с разной базой (`WeaponSystem.md`,
 	 *  «Оружие как актор»). Применяется при экипировке ко всем трём разом

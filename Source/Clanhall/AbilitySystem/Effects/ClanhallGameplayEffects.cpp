@@ -7,7 +7,7 @@
 
 namespace
 {
-	// Общий шаблон для всех четырёх классов: один Instant Additive-модификатор,
+	// Общий шаблон для всех трёх классов: один Instant Additive-модификатор,
 	// магнитуда которого выставляется вызывающим кодом через SetByCaller.
 	FGameplayModifierInfo MakeSetByCallerModifier(const FGameplayAttribute& Attribute)
 	{
@@ -38,12 +38,6 @@ UGE_ModifyMP::UGE_ModifyMP()
 {
 	DurationPolicy = EGameplayEffectDurationType::Instant;
 	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetMPAttribute()));
-}
-
-UGE_ModifyCharges::UGE_ModifyCharges()
-{
-	DurationPolicy = EGameplayEffectDurationType::Instant;
-	Modifiers.Add(MakeSetByCallerModifier(UClanhallAttributeSet::GetChargesAttribute()));
 }
 
 void ClanhallGameplayEffects::ApplyModifyEffect(UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> EffectClass, float Magnitude)

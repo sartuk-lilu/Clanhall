@@ -8,10 +8,10 @@
 // направление приходит событием через FGameplayEventData::EventMagnitude (см.
 // AClanhallCharacter::TriggerEvade).
 // Форма выбирается ПО направлению: боковой уход (Left/Right) - короткое чистое
-// репозиционирование, зарядов не стоит никогда; рывок вперёд (ForwardDash, доступен только на
-// бегу - см. AClanhallCharacter::OnSpacePressed) - заряд, только если есть State.InCombat, вне
-// боя разменивать нечем. Кадров неуязвимости нет ни у одной формы: уход/рывок уводит тело из
-// зоны контакта физически, и это вся его защита.
+// репозиционирование; рывок вперёд (ForwardDash, доступен только на бегу - см.
+// AClanhallCharacter::OnSpacePressed). Цена - доли, отдельной перезарядки нет (`CombatSystem.md`,
+// «Уклонение»). Кадров неуязвимости нет ни у одной формы: уход/рывок уводит тело из зоны
+// контакта физически, и это вся его защита.
 //
 // Грант - в AClanhallCharacter::BeginPlay, рядом со стойкой и приседом. У противников ухода
 // пока нет - стойки как способности у них тоже нет; сам класс при этом пишется
@@ -33,12 +33,6 @@ class CLANHALL_API UGA_Dodge : public UGameplayAbility
 public:
 	UGA_Dodge();
 
-	/** Не может знать направление (оно приходит в TriggerEventData, а сигнатура
-	 *  CanActivateAbility событие не несёт) - гейтит только то, что известно заранее: общие
-	 *  блокировки. Цена рывка вперёд в бою проверяется и списывается в ActivateAbility, где
-	 *  направление уже известно (см. комментарий там). */
-	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
-
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
 protected:
@@ -58,12 +52,6 @@ protected:
 	/** За сколько секунд проходится рывок. Плейсхолдер. */
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
 	float LongDashDuration = 0.25f;
-
-	/** Цена рывка вперёд - единственная платная форма ухода, и только в бою. Списывается тем же
-	 *  механизмом, что в UGA_PhysicalSkill: на активации и безвозвратно
-	 *  (`EconomySystem.md`, «Почему кулдаунов нет»). Плейсхолдер. */
-	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
-	int32 LongDashChargeCost = 1;
 
 	/** Косметический монтаж бокового ухода влево - механика не зависит от него (`CLAUDE.md`,
 	 *  «Механика работает без анимационных ассетов»). nullptr — законное состояние. */

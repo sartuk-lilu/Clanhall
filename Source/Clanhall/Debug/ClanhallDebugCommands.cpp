@@ -46,8 +46,6 @@ static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
 		{ TEXT("MaxHP"),       UClanhallAttributeSet::GetMaxHPAttribute() },
 		{ TEXT("MP"),          UClanhallAttributeSet::GetMPAttribute() },
 		{ TEXT("MaxMP"),       UClanhallAttributeSet::GetMaxMPAttribute() },
-		{ TEXT("Charges"),     UClanhallAttributeSet::GetChargesAttribute() },
-		{ TEXT("MaxCharges"),  UClanhallAttributeSet::GetMaxChargesAttribute() },
 	};
 	return Map;
 }
@@ -218,16 +216,14 @@ static void HandleShowStats(UWorld* World, bool bTargetEnemy)
 	}
 
 	const FString Message = FString::Printf(
-		TEXT("%s AP %s/%s · HP %s/%s · MP %s/%s · Charges %s/%s"),
+		TEXT("%s AP %s/%s · HP %s/%s · MP %s/%s"),
 		bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetAPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxAPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetHPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxHPAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMPAttribute())),
-		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxMPAttribute())),
-		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetChargesAttribute())),
-		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxChargesAttribute())));
+		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMaxMPAttribute())));
 
 	PrintResult(Key, Message, FColor::Cyan);
 }

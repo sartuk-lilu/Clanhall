@@ -28,17 +28,6 @@ void UClanhallAttributeSet::ClampAttribute(const FGameplayAttribute& Attribute, 
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, MaxMP.GetCurrentValue());
 	}
-	else if (Attribute == GetChargesAttribute())
-	{
-		NewValue = FMath::Clamp(NewValue, 0.0f, MaxCharges.GetCurrentValue());
-	}
-	else if (Attribute == GetMaxChargesAttribute())
-	{
-		// Потолок = число ячеек сетки 4×4 в WBP_ChargesPanel: техническая граница отрисовки,
-		// не баланс. Дизайнерское значение банка живёт в данных бойца (DefaultMaxCharges) и в
-		// `CombatSystem.md`, «Charges — Очки Активных Навыков».
-		NewValue = FMath::Clamp(NewValue, 0.0f, 16.0f);
-	}
 }
 
 void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
@@ -62,14 +51,6 @@ void UClanhallAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCa
 	{
 		SetMP(FMath::Clamp(GetMP(), 0.0f, GetMaxMP()));
 	}
-	else if (ChangedAttribute == GetChargesAttribute())
-	{
-		SetCharges(FMath::Clamp(GetCharges(), 0.0f, GetMaxCharges()));
-	}
-	else if (ChangedAttribute == GetMaxChargesAttribute())
-	{
-		SetMaxCharges(FMath::Clamp(GetMaxCharges(), 0.0f, 16.0f));
-	}
 }
 
 void UClanhallAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -82,8 +63,6 @@ void UClanhallAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxHP, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MP, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxMP, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, Charges, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UClanhallAttributeSet, MaxCharges, COND_None, REPNOTIFY_Always);
 }
 
 void UClanhallAttributeSet::OnRep_AP(const FGameplayAttributeData& OldValue)
@@ -114,14 +93,4 @@ void UClanhallAttributeSet::OnRep_MP(const FGameplayAttributeData& OldValue)
 void UClanhallAttributeSet::OnRep_MaxMP(const FGameplayAttributeData& OldValue)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, MaxMP, OldValue);
-}
-
-void UClanhallAttributeSet::OnRep_Charges(const FGameplayAttributeData& OldValue)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, Charges, OldValue);
-}
-
-void UClanhallAttributeSet::OnRep_MaxCharges(const FGameplayAttributeData& OldValue)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UClanhallAttributeSet, MaxCharges, OldValue);
 }

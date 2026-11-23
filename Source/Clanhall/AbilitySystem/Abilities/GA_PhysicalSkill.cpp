@@ -132,25 +132,7 @@ bool UGA_PhysicalSkill::CanActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return false;
 	}
 
-	// Единственный гейт применения активки — Charges. Кулдауна в проекте не осталось нигде
-	// (`CombatSystem.md`, «Ресурсы персонажа»; `EconomySystem.md`, «Почему кулдаунов нет»).
-	const float EffectiveCost = static_cast<float>(Data->ChargeCost);
-	if (EffectiveCost > 0.0f)
-	{
-		const UClanhallAttributeSet* Attributes = ASC->GetSet<UClanhallAttributeSet>();
-		if (!Attributes || Attributes->GetCharges() < EffectiveCost)
-		{
-			// Причина отказа — специально для Denied-фидбека на HUD (`DataAssetAndFragments.md`, «Denied-фидбек (только делегат)»):
-			// отдельный тег, не спутать с отказом по State.SkillCommitted/State.Stunned,
-			// которые отсеиваются Super::CanActivateAbility ещё до этой точки.
-			if (OptionalRelevantTags)
-			{
-				OptionalRelevantTags->AddTag(ClanhallGameplayTags::Denied_Charges.GetTag());
-			}
-			return false;
-		}
-	}
-
+	// Гейт применения — перезарядка приёма (`EconomySystem.md`), приходит в P5.
 	return true;
 }
 
@@ -211,11 +193,6 @@ void UGA_PhysicalSkill::ResolveMarkLogic(const UAbilityData* Data, UAbilitySyste
 					bSelfSynergySpent = true;
 				}
 
-				// Синергия зарядов не платит (FMarkSynergy::ChargeGain удалён вместе с правилом
-				// о генерации зарядов синергией, `MarksSystem.md`, «Активация синергии»). Заряды — валюта темпа: единственные источники
-				// дохода — подтверждённый WASD-удар и парирование (`CombatSystem.md`, «Ресурсы персонажа»), оба
-				// дают ровно +1 и не масштабируются размером толпы. Награда за мультицель
-				// живёт в уроне и метках (левая колонка, `MarksSystem.md`, «Мультицель: ресурс vs состояние»), не в зарядах.
 				break;
 			}
 		}
@@ -253,15 +230,6 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// тела защищающегося, состояние защищающегося проверяется в момент касания.
 	AActor* Target = FindMeleeTarget(Avatar);
 
-	// Активка коммитится в момент нажатия: заряды уходят всегда, включая промах и контр —
-	// цена решения «придержать навык на контратаку» и есть эти заряды.
-	// Цена одна и та же в проверке и в списании: `UAbilityData::ChargeCost`, без модификаторов.
-	const float EffectiveCost = static_cast<float>(Data->ChargeCost);
-	if (EffectiveCost > 0.0f)
-	{
-		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -EffectiveCost);
-	}
-
 	// Монтаж запускаем ДО подписки на Event.Hitbox.*.
 	UAnimInstance* AnimInst = nullptr;
 	float MontagePlayLength = 0.0f;
@@ -278,7 +246,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	}
 
 	// Рывок — данные навыка, не свойство клипа (`AnimationSetup.md`, «Перемещение навыка — данные, не свойство клипа»).
-	// Запускается ПОСЛЕ списания ресурсов и ПОСЛЕ Montage_Play, ДО ветвления на контактный/
+	// Запускается ПОСЛЕ Montage_Play, ДО ветвления на контактный/
 	// фолбэк путь — обязан работать на обоих путях.
 	StartDashIfNeeded(Data, Avatar, MontagePlayLength);
 
@@ -524,9 +492,8 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 	if (const UClanhallAttributeSet* SelfAttributes = SourceASC->GetSet<UClanhallAttributeSet>())
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Orange, FString::Printf(
-			TEXT("%s hit | AP %.0f/%.0f  Charges %.0f/%.0f"),
-			*Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP(),
-			SelfAttributes->GetCharges(), SelfAttributes->GetMaxCharges()));
+			TEXT("%s hit | AP %.0f/%.0f"),
+			*Data->DisplayName.ToString(), SelfAttributes->GetAP(), SelfAttributes->GetMaxAP()));
 	}
 #endif
 }
