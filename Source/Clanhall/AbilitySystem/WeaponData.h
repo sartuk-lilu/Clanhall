@@ -26,10 +26,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	TSubclassOf<AClanhallWeaponActor> WeaponClass;
 
-	/** Плоская надбавка к профилю урона типа. Потребителя в C++ пока не имеет — урон резолвится
-	 *  через UComboData::FindDamageByDirection, DT-атрибута в UClanhallAttributeSet нет вовсе.
-	 *  Поле заводится сейчас, потому что без него экземпляр оружия — пустая обёртка вокруг
-	 *  ссылки на тип, и смысл расщепления не проверяется. */
+	/** Плоская надбавка к урону приёмов. Потребителя в C++ пока не имеет. Поле заводится сейчас,
+	 *  потому что без него экземпляр оружия — пустая обёртка вокруг ссылки на тип, и смысл
+	 *  расщепления не проверяется. */
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	float DamageBonus = 0.0f;
 
@@ -47,7 +46,7 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, Category = "Weapon")
 	TArray<TObjectPtr<UWeaponFragment>> Fragments;
 
-	/** ChargeIncome и SeriesLength здесь НЕ переопределяются, и полей под них нет.
+	/** ChargeIncome здесь НЕ переопределяется, и поля под него нет.
 	 *  Легендарный меч, дающий больше зарядов за тот же удар, — тот самый арбитраж, ради
 	 *  убийства которого написан инвариант экономики (`EconomySystem.md`, «Инвариант экономики
 	 *  оружия»). Не заводить поле-переопределение «на всякий случай». */

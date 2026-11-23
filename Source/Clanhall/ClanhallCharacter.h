@@ -17,7 +17,6 @@ class UInputAction;
 struct FInputActionValue;
 class UClanhallTargetingComponent;
 class UClanhallBossSensorComponent;
-class UAnimSequence;
 class UGA_Dodge;
 class UGA_Duck;
 
@@ -65,27 +64,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
-	// --- Боевая стойка (`CombatSystem.md`): ЛКМ зажат = стойка, WASD = удары вместо движения ---
+	// --- Боевая стойка (`CombatSystem.md`): ЛКМ зажат = стойка ---
 
 	/** ЛКМ — вход/выход из боевой стойки */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	UInputAction* StanceAction;
-
-	/** W в стойке — Overhead */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* AttackOverheadAction;
-
-	/** D в стойке — Right Slash */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* AttackRightSlashAction;
-
-	/** A в стойке — Left Slash */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* AttackLeftSlashAction;
-
-	/** S в стойке — Low Sweep */
-	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	UInputAction* AttackLowSweepAction;
 
 	FGameplayAbilitySpecHandle StanceAbilityHandle;
 
@@ -184,11 +167,6 @@ protected:
 	/** ЛКМ отпущен - CancelAbilityHandle на GA_CombatStance (мгновенный выход, см. `CombatSystem.md`) */
 	void OnStanceReleased();
 
-	void OnAttackOverhead();
-	void OnAttackRightSlash();
-	void OnAttackLeftSlash();
-	void OnAttackLowSweep();
-
 	/** Q - вне стойки уход влево (TriggerEvade), в стойке активка слота Q. */
 	void OnActiveSkillQ();
 
@@ -263,13 +241,4 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-
-	/** Loop-поза боевой стойки текущего оружия (UComboData::StanceAnim). Статичная и берёт ACharacter,
-	 *  а не член AClanhallCharacter: в Event Blueprint Update Animation обычно уже есть закэшированная
-	 *  и провалидированная (IsValid) переменная Character как ACharacter — так не нужен второй Cast
-	 *  To Clanhall Character поверх неё, каст на AClanhallHumanoidBase делается внутри. nullptr, если
-	 *  Character не этого класса или ComboData не назначен. Оставлена именно на этом классе —
-	 *  функция BlueprintPure читает ABP игрока по имени класса, перенос сломал бы ноду в графе. */
-	UFUNCTION(BlueprintPure, Category = "Combat|WASD")
-	static UAnimSequence* GetStanceAnim(const ACharacter* Character);
 };

@@ -13,23 +13,12 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	// Вне стойки те же клавиши двигают персонажа — TryActivateAbility просто откажет.
 	ActivationRequiredTags.AddTag(ClanhallGameplayTags::State_InStance.GetTag());
 
-	// Блокирует новые атаки на время лок-аута после Recovery — накрывает и WASD-удары
-	// (GA_DirectionalAttack_*), и физактивки Q/E/R/F (GA_PhysicalSkill), обе наследуются отсюда.
-	// UGA_CombatStance наследуется от UGameplayAbility напрямую, поэтому этот тег она берёт
-	// себе явно, в собственном конструкторе: вход в стойку на время Recovery заблокирован,
-	// ВЫХОД остаётся свободным всегда (идёт через CancelAbilityHandle).
-	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_ComboRecovery.GetTag());
-
-	// E2.4: активка в фазе коммита (State.SkillCommitted, висит на UGA_PhysicalSkill от активации
-	// до Event.Hitbox.Closed) блокирует и вторую активку, и WASD-способности — «начатую активку
-	// нельзя оборвать» (`CombatSystem.md`, «Боевая стойка и переключение режимов»). Выход из стойки тег не трогает: тот идёт через
-	// CancelAbilityHandle на способности стойки, не через TryActivateAbility.
+	// Активка в фазе коммита (State.SkillCommitted, висит на UGA_PhysicalSkill от активации
+	// до EndAbility) блокирует вторую активку — «начатую активку нельзя оборвать» (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 
-	// Оглушение (полное парирование серии — ClanhallComboComponent,
-	// либо успешный контрнавык — ClanhallCounterComponent) блокирует новые физдействия. Раньше
-	// это гейтила только умирающая GA_EnemyWASDSeries, то есть только у врага; тег теперь
-	// симметричен (вешается и на игрока), и блокировка обязана быть тоже.
+	// Оглушение (успешный контрнавык — ClanhallCounterComponent) блокирует новые физдействия.
+	// Тег симметричен (вешается и на игрока, и на противника), блокировка тоже.
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());
 }
 

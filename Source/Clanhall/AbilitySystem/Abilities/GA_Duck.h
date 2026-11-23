@@ -17,7 +17,7 @@
 // DuckWindowDuration: способность может завершиться раньше срока (смерть, отмена,
 // CancelAbilities, смена уровня), и без этой страховки капсула застряла бы опущенной до
 // конца сессии - тот же класс залипшего состояния, от которого в проекте уже стоит
-// ForceEndHitboxes в UClanhallComboComponent::OnAttackMontageEnded. UnCrouch() безвреден,
+// EndHitboxesFromMontage в UGA_PhysicalSkill::EndAbility. UnCrouch() безвреден,
 // если капсула и так поднята - CharacterMovementComponent::bWantsToCrouch = false, не более.
 //
 // Грант - в AClanhallCharacter::BeginPlay, рядом со стойкой и уходом.
@@ -36,9 +36,6 @@ class CLANHALL_API UGA_Duck : public UGameplayAbility
 
 public:
 	UGA_Duck();
-
-	/** Живой удар-монтаж блокирует присед - та же причина и тот же предикат, что у UGA_Dodge. */
-	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 
 	/** Активация -> WaitDelay(DuckWindupTime) -> Crouch() -> WaitDelay(DuckWindowDuration) ->
 	 *  UnCrouch() -> Recovery-монтаж и тег, если монтаж стартовал -> EndAbility. */

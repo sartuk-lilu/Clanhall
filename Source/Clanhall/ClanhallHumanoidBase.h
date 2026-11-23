@@ -1,19 +1,13 @@
-// Второй слой иерархии бойцов (`CharacterHierarchy.md`, «Три слоя», «Граница слоёв») — те, кто дерётся на данных игрока: комбо-дерево WASD,
-// парирование и активные навыки. Не для мобов/монстров — у
-// тех будут свои навыки и свои монтажи, их точка входа —
-// AClanhallCharacterBase напрямую.
+// Второй слой иерархии бойцов (`CharacterHierarchy.md`, «Три слоя», «Граница слоёв») — те, кто
+// дерётся на данных игрока: лист персонажа, оружие и его приёмы. Не для мобов/монстров — у
+// тех будут свои навыки и свои монтажи, их точка входа — AClanhallCharacterBase напрямую.
 //
-// Грант WASD-ударов и активок живёт здесь, а не в AClanhallCharacter: и игрок, и
-// AClanhallHumanoidBoss дерутся одним и тем же набором данных (UCharacterSheetData),
-// поэтому обслуживающий их код общий. Ввод (Enhanced Input / AI) остаётся снаружи —
-// HandleAttackInput на UClanhallComboComponent уже нейтрален к источнику.
+// Грант приёмов живёт здесь, а не в AClanhallCharacter: и игрок, и AClanhallHumanoidBoss
+// дерутся одним и тем же набором данных (UCharacterSheetData), поэтому обслуживающий их код
+// общий. Ввод (Enhanced Input / AI) остаётся снаружи.
 //
-// Класс бойца — один ассет (`WeaponSystem.md`, «Ассеты вместо `UClassKitData`»): лист персонажа и слоты
-// активных навыков раньше были шестью отдельными именованными полями на бойце (по одному
-// на каждый скилл Knight), из-за чего забыть заполнить/перенести одно поле означало
-// молчаливый рассинхрон — ровно так однажды остались нулевыми дефолты WASD-классов
-// у AClanhallHumanoidBoss. Теперь на бойце одно поле CharacterSheet, GetComboData()/GetWeaponType()
-// читают его.
+// Класс бойца — один ассет (`WeaponSystem.md`, «Ассеты вместо `UClassKitData`»): на бойце одно
+// поле CharacterSheet, GetWeaponType() читает его.
 
 #pragma once
 
@@ -21,17 +15,13 @@
 #include "ClanhallCharacterBase.h"
 #include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
-#include "ClanhallCombatTypes.h"
 #include "ClanhallHumanoidBase.generated.h"
 
-class UClanhallComboComponent;
 class UClanhallParryComponent;
 class UCharacterSheetData;
-class UComboData;
 class UWeaponTypeData;
 class UWeaponData;
 class AClanhallWeaponActor;
-class UGA_DirectionalAttackBase;
 
 UCLASS(abstract)
 class AClanhallHumanoidBase : public AClanhallCharacterBase
@@ -39,12 +29,6 @@ class AClanhallHumanoidBase : public AClanhallCharacterBase
 	GENERATED_BODY()
 
 protected:
-	/** Ворота ввода, не буфер (`CombatSystem.md`, «Направления атаки (WASD)»): сам владеет активацией WASD-ударов и решает,
-	 *  когда вызвать TryActivateAbility на GA_DirectionalAttack_*. И Enhanced Input (игрок),
-	 *  и AI зовут один и тот же HandleAttackInput. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UClanhallComboComponent> ComboComponent;
-
 	/** Флаг bStepParried, TryParry(). Стороне-нейтрален (`Parrying.md`, «`UClanhallParryComponent`») —
 	 *  работает одинаково у игрока и у AI. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
@@ -72,19 +56,6 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<AClanhallWeaponActor> SpawnedOffhand;
 
-	/** Не UPROPERTY (`CharacterHierarchy.md`, «Грант в BeginPlay»): значение одинаково у всех китов — это
-	 *  плумбинг GAS, не контент класса. Не видно ни редактору, ни Blueprint — переопределить
-	 *  дефолт может только C++-наследник в своём конструкторе, если когда-то понадобится. */
-	TSubclassOf<UGA_DirectionalAttackBase> AttackOverheadClass;
-	TSubclassOf<UGA_DirectionalAttackBase> AttackRightSlashClass;
-	TSubclassOf<UGA_DirectionalAttackBase> AttackLeftSlashClass;
-	TSubclassOf<UGA_DirectionalAttackBase> AttackLowSweepClass;
-
-	FGameplayAbilitySpecHandle AttackOverheadHandle;
-	FGameplayAbilitySpecHandle AttackRightSlashHandle;
-	FGameplayAbilitySpecHandle AttackLeftSlashHandle;
-	FGameplayAbilitySpecHandle AttackLowSweepHandle;
-
 	/** Хэндлы активок по слоту (Slot.*), гранятся
 	 *  в BeginPlay из GetWeaponType()->Skills через два гейта владения — один цикл на любой
 	 *  класс, а не четыре именованных поля (`CharacterHierarchy.md`, «Грант в BeginPlay»;
@@ -108,18 +79,11 @@ public:
 	 *  Clanhall.Player.ShowWeaponEconomy важно различать, ГДЕ цепочка оборвалась. */
 	const UWeaponData* GetCurrentWeapon() const { return CurrentWeapon; }
 
-	/** Данные комбо текущего оружия — читает UClanhallComboComponent через GetComboData(). */
-	const UComboData* GetComboData() const;
-
 	/** Множитель скорости активного оружия - GetWeaponType()->WeaponSpeedMultiplier, фолбэк
 	 *  ClanhallWeaponDefaults::WeaponSpeedMultiplier на разрыве цепочки (`WeaponSystem.md`).
 	 *  Читает PostInitializeComponents (применение к базовым скоростям при экипировке) и
 	 *  AClanhallCharacter (BeginPlay, StartSprint/StopSprint). */
 	float GetWeaponSpeedMultiplier() const;
-
-	/** Хэндл направленного удара по W/A/S/D — UClanhallComboComponent сам решает, когда его
-	 *  активировать (`CombatStanceAndWASDAttacks.md`: инверсия потока активации). */
-	FGameplayAbilitySpecHandle GetAttackHandle(EClanhallAttackDirection Direction) const;
 
 	/** Хэндл активного навыка по слоту (Slot.Q/E/R/F/...) — не найден на момент
 	 *  BeginPlay (слот закрыт рангом, навык не выучен, или в GetWeaponType()->Skills вовсе
@@ -136,7 +100,7 @@ protected:
 	 *  состояние, фолбэки работают как раньше. */
 	virtual void PostInitializeComponents() override;
 
-	/** Грант WASD-ударов из CharacterSheet и активок из GetWeaponType()->Skills, через два
+	/** Грант активок из GetWeaponType()->Skills, через два
 	 *  гейта владения — общий для игрока и AClanhallHumanoidBoss (`CharacterHierarchy.md`,
 	 *  «Грант в BeginPlay»; `WeaponSystem.md`, «Владение оружием»). Спавнит и крепит акторы
 	 *  текущего оружия и оффхенда. */

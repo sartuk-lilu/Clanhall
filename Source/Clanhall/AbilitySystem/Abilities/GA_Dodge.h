@@ -5,8 +5,8 @@
 // вне стойки (защиты в стойке нет).
 //
 // Один хэндл на все три направления (Left/Right/ForwardDash, EClanhallEvadeDirection) -
-// направление приходит событием через FGameplayEventData::EventMagnitude, тем же способом,
-// что удары серии в UClanhallComboComponent::ActivateStep (см. AClanhallCharacter::TriggerEvade).
+// направление приходит событием через FGameplayEventData::EventMagnitude (см.
+// AClanhallCharacter::TriggerEvade).
 // Форма выбирается ПО направлению: боковой уход (Left/Right) - короткое чистое
 // репозиционирование, зарядов не стоит никогда; рывок вперёд (ForwardDash, доступен только на
 // бегу - см. AClanhallCharacter::OnSpacePressed) - заряд, только если есть State.InCombat, вне
@@ -35,8 +35,8 @@ public:
 
 	/** Не может знать направление (оно приходит в TriggerEventData, а сигнатура
 	 *  CanActivateAbility событие не несёт) - гейтит только то, что известно заранее: общие
-	 *  блокировки и живой удар-монтаж. Цена рывка вперёд в бою проверяется и списывается в
-	 *  ActivateAbility, где направление уже известно (см. комментарий там). */
+	 *  блокировки. Цена рывка вперёд в бою проверяется и списывается в ActivateAbility, где
+	 *  направление уже известно (см. комментарий там). */
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;

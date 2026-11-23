@@ -30,9 +30,9 @@ public:
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 	virtual FString GetNotifyName_Implementation() const override;
 
-	/** Есть ли на монтаже хотя бы один Hitbox-нотифай. Нужен GA_DirectionalAttackBase, чтобы
+	/** Есть ли на монтаже хотя бы один Hitbox-нотифай. Нужен UGA_PhysicalSkill, чтобы
 	 *  выбрать режим резолва: контактный (ждём Event.Hitbox.Hit) или мгновенный фолбэк.
-	 *  Фолбэк — то, что сохраняет инвариант «дерево комбо тестируется до нарезки анимаций». */
+	 *  Фолбэк — то, что даёт тестировать механику навыка до нарезки анимаций. */
 	static bool MontageHasHitbox(const UAnimMontage* Montage);
 
 	/** Принадлежит ли объект-нотифай (Source зоны поражения) дорожкам этого монтажа. Ключ

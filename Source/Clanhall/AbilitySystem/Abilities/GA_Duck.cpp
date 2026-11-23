@@ -1,6 +1,5 @@
 #include "GA_Duck.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
-#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "AbilitySystemComponent.h"
@@ -15,32 +14,10 @@ UGA_Duck::UGA_Duck()
 	// Общий с уходом/рывком тег хвоста восстановления - защищает класс действий от спама
 	// (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag());
-}
 
-bool UGA_Duck::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
-{
-	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
-	{
-		return false;
-	}
-
-	AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
-	if (!Avatar)
-	{
-		return false;
-	}
-
-	// Удар коммитится (`CombatSystem.md`) - живой удар-монтаж блокирует присед, тот же
-	// предикат, что у UGA_Dodge::CanActivateAbility.
-	if (const UClanhallComboComponent* Combo = Avatar->FindComponentByClass<UClanhallComboComponent>())
-	{
-		if (Combo->IsSequenceActive())
-		{
-			return false;
-		}
-	}
-
-	return true;
+	// Начатый приём доигрывает целиком (`CombatSystem.md`) - присед посреди него закрыт, тот же
+	// тег, что у UGA_Dodge.
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 }
 
 void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -95,7 +72,7 @@ void UGA_Duck::FinishWithRecovery()
 	UAbilitySystemComponent* ASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
 
 	// Монтаж не стартовал - лок не вешаем, невидимого лока в системе не бывает ни при каких
-	// условиях (по образцу UClanhallComboComponent::EndSequenceWithRecovery).
+	// условиях.
 	if (AnimInst && DuckRecoveryMontage && ASC)
 	{
 		const float PlayedDuration = AnimInst->Montage_Play(DuckRecoveryMontage);
@@ -114,7 +91,7 @@ void UGA_Duck::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamepl
 	// не дошёл до Crouch() -> UnCrouch() безвреден (bWantsToCrouch и так false). Прервали между
 	// Crouch() и UnCrouch() (смерть, отмена, CancelAbilities, смена уровня) -> без этой строки
 	// капсула осталась бы опущенной до конца сессии - тот же класс залипшего состояния, что
-	// ForceEndHitboxes лечит у зон поражения (`UClanhallComboComponent::OnAttackMontageEnded`).
+	// EndHitboxesFromMontage лечит у зон поражения (UGA_PhysicalSkill::EndAbility).
 	if (ACharacter* Character = ActorInfo ? Cast<ACharacter>(ActorInfo->AvatarActor.Get()) : nullptr)
 	{
 		Character->UnCrouch();

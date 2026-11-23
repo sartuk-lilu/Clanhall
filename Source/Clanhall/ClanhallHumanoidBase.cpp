@@ -1,17 +1,14 @@
 #include "ClanhallHumanoidBase.h"
 #include "Clanhall.h"
 #include "AbilitySystemComponent.h"
-#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallParryComponent.h"
 #include "AbilitySystem/CharacterSheetData.h"
 #include "AbilitySystem/WeaponData.h"
 #include "AbilitySystem/WeaponTypeData.h"
 #include "AbilitySystem/Fragments/WeaponFragments.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
-#include "AbilitySystem/Fragments/ComboData.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Abilities/GA_PhysicalSkill.h"
-#include "AbilitySystem/Abilities/GA_DirectionalAttacks.h"
 #include "ClanhallWeaponActor.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -19,20 +16,7 @@
 
 AClanhallHumanoidBase::AClanhallHumanoidBase()
 {
-	// (`CombatStanceAndWASDAttacks.md`): ворота ввода + владелец активации WASD-ударов.
-	ComboComponent = CreateDefaultSubobject<UClanhallComboComponent>(TEXT("ComboComponent"));
 	ParryComponent = CreateDefaultSubobject<UClanhallParryComponent>(TEXT("ParryComponent"));
-
-	// WASD-классы дефолтно равны C++ классам — общий конструктор для игрока и
-	// AClanhallHumanoidBoss: раньше жили в конструкторе
-	// AClanhallCharacter, из-за чего у пустого конструктора Boss они оставались nullptr, и
-	// GiveAbility грантовал WASD-удары с null-классом — серии у босса не было вообще. Не
-	// UPROPERTY намеренно — значение одинаково у всех китов, это плумбинг GAS, не контент класса
-	// (`CharacterHierarchy.md`, «Грант в BeginPlay»).
-	AttackOverheadClass   = UGA_DirectionalAttack_Overhead::StaticClass();
-	AttackRightSlashClass = UGA_DirectionalAttack_RightSlash::StaticClass();
-	AttackLeftSlashClass  = UGA_DirectionalAttack_LeftSlash::StaticClass();
-	AttackLowSweepClass   = UGA_DirectionalAttack_LowSweep::StaticClass();
 }
 
 void AClanhallHumanoidBase::PostInitializeComponents()
@@ -69,13 +53,12 @@ void AClanhallHumanoidBase::BeginPlay()
 	}
 
 	// Отсутствие данных не должно ломать бой (`WeaponSystem.md`, «Шаблон и живой лист») — боец
-	// без листа дерётся на фолбэках, а не встаёт с нулевым доходом. Один варнинг на бойца,
-	// здесь и только здесь: варнить в местах чтения означало бы залить лог на каждом ударе.
+	// без листа живёт на фолбэках. Один варнинг на бойца, здесь и только здесь: варнить в местах
+	// чтения означало бы залить лог на каждом ударе.
 	if (!CurrentWeapon || !CurrentWeapon->Type)
 	{
 		UE_LOG(LogClanhall, Warning, TEXT("%s: цепочка CurrentWeapon -> Type неполна — "
-			"бой идёт на фолбэках (ChargeIncome %d, SeriesLength %d), комбо-дерева нет."),
-			*GetName(), ClanhallWeaponDefaults::ChargeIncome, ClanhallWeaponDefaults::SeriesLength);
+			"приёмов оружия нет, скорость на фолбэке."), *GetName());
 	}
 
 	// Спавн и крепление визуала текущего оружия и оффхенда, если он есть у экземпляра
@@ -90,13 +73,6 @@ void AClanhallHumanoidBase::BeginPlay()
 			SpawnedOffhand = SpawnAndAttachWeapon(Offhand->OffhandClass);
 		}
 	}
-
-	// Грант способностей 4 направлений WASD-удара (`CombatSystem.md`, «Боевая стойка и переключение режимов», «Направления атаки (WASD)»). Классы дефолтно
-	// заполнены соответствующим C++ GA (см. конструктор), BP-наследник может переопределить.
-	AttackOverheadHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackOverheadClass,   1, INDEX_NONE, this));
-	AttackRightSlashHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackRightSlashClass, 1, INDEX_NONE, this));
-	AttackLeftSlashHandle  = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLeftSlashClass,  1, INDEX_NONE, this));
-	AttackLowSweepHandle   = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(AttackLowSweepClass,   1, INDEX_NONE, this));
 
 	// Один класс GA_PhysicalSkill гранится по числу записей в
 	// GetWeaponType()->Skills (`CharacterHierarchy.md`, «Грант в BeginPlay»; `WeaponSystem.md`,
@@ -253,28 +229,10 @@ const UWeaponTypeData* AClanhallHumanoidBase::GetWeaponType() const
 	return CurrentWeapon ? CurrentWeapon->Type : nullptr;
 }
 
-const UComboData* AClanhallHumanoidBase::GetComboData() const
-{
-	const UWeaponTypeData* WeaponType = GetWeaponType();
-	return WeaponType ? WeaponType->ComboData : nullptr;
-}
-
 float AClanhallHumanoidBase::GetWeaponSpeedMultiplier() const
 {
 	const UWeaponTypeData* WeaponType = GetWeaponType();
 	return WeaponType ? WeaponType->WeaponSpeedMultiplier : ClanhallWeaponDefaults::WeaponSpeedMultiplier;
-}
-
-FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetAttackHandle(EClanhallAttackDirection Direction) const
-{
-	switch (Direction)
-	{
-	case EClanhallAttackDirection::Overhead:   return AttackOverheadHandle;
-	case EClanhallAttackDirection::RightSlash: return AttackRightSlashHandle;
-	case EClanhallAttackDirection::LeftSlash:  return AttackLeftSlashHandle;
-	case EClanhallAttackDirection::LowSweep:   return AttackLowSweepHandle;
-	default:                                   return FGameplayAbilitySpecHandle();
-	}
 }
 
 FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const

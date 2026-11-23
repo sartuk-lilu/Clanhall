@@ -1,7 +1,6 @@
 #include "GA_Dodge.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
-#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
 #include "AbilitySystemComponent.h"
@@ -18,6 +17,10 @@ UGA_Dodge::UGA_Dodge()
 	// тег защищает сам класс уход/рывок/присед от спама, общий для всех трёх
 	// (`CombatSystem.md`).
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_EvadeRecovery.GetTag());
+
+	// Начатый приём доигрывает целиком (`CombatSystem.md`) - уход посреди него закрыт. Тот же
+	// тег, которым активка блокирует вторую активку (UGA_ClanhallAbilityBase).
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
 }
 
 bool UGA_Dodge::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
@@ -31,18 +34,6 @@ bool UGA_Dodge::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 	if (!Avatar)
 	{
 		return false;
-	}
-
-	// Удар коммитится (`CombatSystem.md`) - живой удар-монтаж блокирует любой уход. Предикат
-	// точный: окно чтения серии находится ВНУТРИ удар-монтажа, поэтому «серия активна» и есть
-	// «удар живой». Хвост Recovery уже не серия - убежать во время него законно, тег
-	// State.ComboRecovery гасит атаки, а не побег.
-	if (const UClanhallComboComponent* Combo = Avatar->FindComponentByClass<UClanhallComboComponent>())
-	{
-		if (Combo->IsSequenceActive())
-		{
-			return false;
-		}
 	}
 
 	// Цена (только рывок вперёд, только в бою) зависит от направления, которое известно лишь
@@ -156,7 +147,7 @@ void UGA_Dodge::OnDodgeFinished()
 	UAbilitySystemComponent* ASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
 
 	// Монтаж не стартовал - лок не вешаем, невидимого лока в системе не бывает ни при каких
-	// условиях (по образцу UClanhallComboComponent::EndSequenceWithRecovery).
+	// условиях.
 	if (AnimInst && EvadeRecoveryMontage && ASC)
 	{
 		const float PlayedDuration = AnimInst->Montage_Play(EvadeRecoveryMontage);

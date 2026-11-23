@@ -2,8 +2,8 @@
 // когда оказалось, что временные состояния устроены точно так же (тег на
 // время), просто другой GameplayTag и другая длительность. Какой тег и насколько — решает
 // вызывающий код: DynamicGrantedTags для тега, SetByCaller для длительности.
-// Используется UClanhallMarkComponent (метки, фикс. 5 сек) и UClanhallComboComponent
-// (State.ComboRecovery, по длине анимации). КД навыков в проекте не осталось нигде
+// Используется UClanhallMarkComponent (метки, фикс. 5 сек), UGA_Dodge и UGA_Duck
+// (State.EvadeRecovery, по длине анимации). КД навыков в проекте не осталось нигде
 // (`EconomySystem.md`, «Почему кулдаунов нет») — этот эффект для них больше не применяется.
 
 #pragma once

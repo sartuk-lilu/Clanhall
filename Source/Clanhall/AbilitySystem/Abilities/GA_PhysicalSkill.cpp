@@ -7,7 +7,6 @@
 #include "ClanhallCombatTypes.h"
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallCounterComponent.h"
-#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
@@ -264,10 +263,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyCharges::StaticClass(), -EffectiveCost);
 	}
 
-	// Порядок критичен: серию гасим и монтаж запускаем ДО подписки на Event.Hitbox.*.
-	// CancelSequenceForExternalMontage() зовёт ForceEndHitboxes(), а тот при непустом списке
-	// зон шлёт Event.Hitbox.Closed — подпишись мы раньше, активка получила бы его сама и
-	// закончилась до открытия собственной зоны (тот же баг, что D2 закрыл для чейна).
+	// Монтаж запускаем ДО подписки на Event.Hitbox.*.
 	UAnimInstance* AnimInst = nullptr;
 	float MontagePlayLength = 0.0f;
 	if (Data->CastMontage)
@@ -277,10 +273,6 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			AnimInst = Char->GetMesh() ? Char->GetMesh()->GetAnimInstance() : nullptr;
 			if (AnimInst)
 			{
-				if (UClanhallComboComponent* Combo = Char->FindComponentByClass<UClanhallComboComponent>())
-				{
-					Combo->CancelSequenceForExternalMontage();
-				}
 				MontagePlayLength = AnimInst->Montage_Play(Data->CastMontage);
 			}
 		}
@@ -296,8 +288,8 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	// Первичный терминатор — конец каст-монтажа всегда, когда монтаж стартовал, независимо от
 	// режима резолва урона: длительность отыгрыша анимации не зависит от того, размечены ли на
 	// монтаже зоны контакта. Обе строки стоят до ветвления по bResolveOnContact ниже, иначе навык
-	// с назначенным, но ещё не размеченным монтажом заканчивался бы мгновенно, и WASD-удар
-	// обрывал бы его анимацию на любом кадре (`AnimationSetup.md`, «Способность ждёт позднейший из двух терминаторов»).
+	// с назначенным, но ещё не размеченным монтажом заканчивался бы мгновенно, и следующее
+	// действие обрывало бы его анимацию на любом кадре (`AnimationSetup.md`, «Способность ждёт позднейший из двух терминаторов»).
 	if (bMontageStarted)
 	{
 		SourceASC->AddLooseGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag());
@@ -438,9 +430,8 @@ void UGA_PhysicalSkill::EndAbility(const FGameplayAbilitySpecHandle Handle, cons
 	// Уборка за съеденным NotifyEnd: зона, чей NotifyEnd не пришёл, продолжила бы свипаться и
 	// слать Event.Hitbox.Hit после конца способности. Точечно по своему монтажу, а не
 	// EndAllHitboxes(): EndAbility приходит асинхронно (при UDashFragment — из OnDashFinished,
-	// много позже конца монтажа), и зонами к этому моменту может владеть уже следующий шаг комбо;
-	// вдобавок GA_DirectionalAttackBase слушает Event.Hitbox.Closed, и снос чужих зон оборвал бы
-	// живой WASD-удар. Нормальный путь (NotifyEnd пришёл) уже закрыл зону — вызов будет холостым.
+	// много позже конца монтажа), и зонами к этому моменту может владеть уже следующее действие.
+	// Нормальный путь (NotifyEnd пришёл) уже закрыл зону — вызов будет холостым.
 	if (AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr)
 	{
 		if (UClanhallHitboxComponent* Hitboxes = Avatar->FindComponentByClass<UClanhallHitboxComponent>())
@@ -522,8 +513,7 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 		}
 	}
 
-	// Мана — раз за применение, сколько бы целей ни задело. Мана больше не капает с обычных
-	// WASD-ударов — единственный источник теперь подтверждённое попадание физической активки.
+	// Мана — раз за применение, сколько бы целей ни задело.
 	if (!bManaApplied && Data->ManaGain > 0.0f)
 	{
 		ClanhallGameplayEffects::ApplyModifyEffect(SourceASC, SourceASC, UGE_ModifyMP::StaticClass(), Data->ManaGain);

@@ -18,8 +18,6 @@
 #include "AbilitySystem/Abilities/GA_CombatStance.h"
 #include "AbilitySystem/Abilities/GA_Dodge.h"
 #include "AbilitySystem/Abilities/GA_Duck.h"
-#include "AbilitySystem/Fragments/ComboData.h"
-#include "AbilitySystem/ClanhallComboComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "Abilities/GameplayAbilityTypes.h"
@@ -75,10 +73,6 @@ AClanhallCharacter::AClanhallCharacter()
 	TargetingComponent = CreateDefaultSubobject<UClanhallTargetingComponent>(TEXT("TargetingComponent"));
 	// HUD: радиус + Unit.Role.Boss — драйвер Enemy Frame (`HUD.md`).
 	BossSensorComponent = CreateDefaultSubobject<UClanhallBossSensorComponent>(TEXT("BossSensorComponent"));
-
-	// WASD-классы дефолтятся в AClanhallHumanoidBase — общий конструктор для игрока
-	// и AClanhallHumanoidBoss (`CharacterHierarchy.md`, «Три слоя»). Здесь их больше нет намеренно:
-	// у пустого конструктора AClanhallHumanoidBoss эти поля оставались бы nullptr.
 }
 
 void AClanhallCharacter::BeginPlay()
@@ -90,12 +84,7 @@ void AClanhallCharacter::BeginPlay()
 
 	if (AbilitySystemComponent)
 	{
-		// Плейсхолдер категорий STR/DEX (тег Weapon.Type.*) снесён вместе с остатком шкалы
-		// Balance (CLAUDE.md, «Идёт переработка боевой системы») — доход зарядов и потолок
-		// серии теперь читаются с UWeaponTypeData через CharacterSheet -> Weapon -> Type
-		// (`WeaponSystem.md`).
-
-		// Грант способности боевой стойки (`CombatSystem.md`, «Боевая стойка и переключение режимов»). WASD-удары и активки Q/E/R/F
+		// Грант способности боевой стойки (`CombatSystem.md`, «Боевая стойка и переключение режимов»). Активки Q/E/R/F
 		// гранятся выше по иерархии — см. AClanhallHumanoidBase::BeginPlay.
 		StanceAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UGA_CombatStance::StaticClass(), 1, INDEX_NONE, this));
 
@@ -164,14 +153,6 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::OnStancePressed);
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnStanceReleased);
 		EnhancedInputComponent->BindAction(StanceAction, ETriggerEvent::Canceled, this, &AClanhallCharacter::OnStanceReleased);
-
-		// Directional WASD-attacks (`CombatSystem.md`, «Направления атаки (WASD)») — те же клавиши, что и Move,
-		// но отдельные дискретные действия: срабатывают один раз на нажатие, а не каждый кадр.
-		// GA_DirectionalAttackBase сам отказывает, если игрок не в стойке (ActivationRequiredTags).
-		EnhancedInputComponent->BindAction(AttackOverheadAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnAttackOverhead);
-		EnhancedInputComponent->BindAction(AttackRightSlashAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnAttackRightSlash);
-		EnhancedInputComponent->BindAction(AttackLeftSlashAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnAttackLeftSlash);
-		EnhancedInputComponent->BindAction(AttackLowSweepAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnAttackLowSweep);
 
 		// Активные навыки Knight (GA_PhysicalSkill) — Q/E/R/F.
 		EnhancedInputComponent->BindAction(ActiveSkillQAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnActiveSkillQ);
@@ -305,13 +286,6 @@ void AClanhallCharacter::OnStanceReleased()
 		AbilitySystemComponent->CancelAbilityHandle(StanceAbilityHandle);
 	}
 
-	// Выход из стойки - всегда, вне ворот. Живой удар-монтаж коммитится и доигрывает сам
-	// (`CombatSystem.md`), здесь только помечается закрывающимся.
-	if (ComboComponent)
-	{
-		ComboComponent->OnStanceExit();
-	}
-
 	// Shift мог быть зажат ещё до входа в стойку (или нажат прямо в ней, где не действует) -
 	// GA_CombatStance::ActivateAbility снял тег бега через CancelSprint, но физическая клавиша
 	// не отпускалась, значит Started для SprintAction больше не придёт. Без этой перепроверки
@@ -321,12 +295,6 @@ void AClanhallCharacter::OnStanceReleased()
 		StartSprint();
 	}
 }
-
-// (`CombatStanceAndWASDAttacks.md`): WASD больше не активирует направленный удар напрямую —
-// решение (опенер / продолжение по данным дерева / мусор вне окна) целиком у ComboComponent,
-// он же сам вызывает TryActivateAbility, когда ввод валиден. Парирование обрабатывает
-// UClanhallHitboxComponent при хите врага зоной с bParryable == true (State.Parrying на ASC
-// врага, не игрока).
 
 void AClanhallCharacter::OnSprintPressed()
 {
@@ -512,45 +480,6 @@ void AClanhallCharacter::TickBodyTurn()
 			Movement->bUseControllerDesiredRotation = false;
 		}
 	}
-}
-
-void AClanhallCharacter::OnAttackOverhead()
-{
-	if (ComboComponent)
-	{
-		ComboComponent->HandleAttackInput(EClanhallAttackDirection::Overhead);
-	}
-}
-
-void AClanhallCharacter::OnAttackRightSlash()
-{
-	if (ComboComponent)
-	{
-		ComboComponent->HandleAttackInput(EClanhallAttackDirection::RightSlash);
-	}
-}
-
-void AClanhallCharacter::OnAttackLeftSlash()
-{
-	if (ComboComponent)
-	{
-		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LeftSlash);
-	}
-}
-
-void AClanhallCharacter::OnAttackLowSweep()
-{
-	if (ComboComponent)
-	{
-		ComboComponent->HandleAttackInput(EClanhallAttackDirection::LowSweep);
-	}
-}
-
-UAnimSequence* AClanhallCharacter::GetStanceAnim(const ACharacter* Character)
-{
-	const AClanhallHumanoidBase* Humanoid = Cast<AClanhallHumanoidBase>(Character);
-	const UComboData* Data = Humanoid ? Humanoid->GetComboData() : nullptr;
-	return Data ? Data->StanceAnim : nullptr;
 }
 
 // ---------------------------------------------------------------------------

@@ -7,16 +7,11 @@
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
-#include "AbilitySystem/WeaponData.h"
-#include "AbilitySystem/WeaponTypeData.h"
-#include "AbilitySystem/Fragments/ComboData.h"
 #include "ClanhallCombatTypes.h"
-#include "ClanhallHumanoidBase.h"
 #include "ClanhallCharacter.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
-#include "Animation/AnimMontage.h"
 #include "CoreMinimal.h"
 #include "Engine/Engine.h"
 #include "GameplayEffectTypes.h"
@@ -39,7 +34,6 @@ enum class EDebugMsgKey : int32
 	PlayerAddMark,
 	EnemyAddMark,
 	ListStats,
-	PlayerShowWeaponEconomy,
 	PlayerShowCombatState,
 };
 
@@ -301,18 +295,6 @@ static void HandleListStats(EDebugMsgKey Key)
 	PrintResult(Key, FString::Printf(TEXT("Valid stats: %s"), *FString::Join(Names, TEXT(", "))), FColor::Green);
 }
 
-static AClanhallHumanoidBase* ResolvePlayerHumanoid(UWorld* World, EDebugMsgKey Key)
-{
-	APawn* Pawn = ResolvePlayerPawn(World, Key);
-	AClanhallHumanoidBase* Humanoid = Pawn ? Cast<AClanhallHumanoidBase>(Pawn) : nullptr;
-	if (!Humanoid)
-	{
-		PrintError(Key, TEXT("Player pawn is not an AClanhallHumanoidBase"));
-		return nullptr;
-	}
-	return Humanoid;
-}
-
 static const TCHAR* InputModeToString(EClanhallInputMode Mode)
 {
 	switch (Mode)
@@ -322,192 +304,6 @@ static const TCHAR* InputModeToString(EClanhallInputMode Mode)
 	case EClanhallInputMode::Cast:   return TEXT("Cast");
 	default:                         return TEXT("?");
 	}
-}
-
-static TCHAR DirectionToChar(EClanhallAttackDirection Direction)
-{
-	switch (Direction)
-	{
-	case EClanhallAttackDirection::Overhead:   return TEXT('W');
-	case EClanhallAttackDirection::RightSlash: return TEXT('D');
-	case EClanhallAttackDirection::LeftSlash:  return TEXT('A');
-	case EClanhallAttackDirection::LowSweep:   return TEXT('S');
-	default:                                   return TEXT('?');
-	}
-}
-
-static bool TryParseDirection(TCHAR Ch, EClanhallAttackDirection& OutDirection)
-{
-	switch (FChar::ToUpper(Ch))
-	{
-	case TEXT('W'): OutDirection = EClanhallAttackDirection::Overhead;   return true;
-	case TEXT('D'): OutDirection = EClanhallAttackDirection::RightSlash; return true;
-	case TEXT('A'): OutDirection = EClanhallAttackDirection::LeftSlash;  return true;
-	case TEXT('S'): OutDirection = EClanhallAttackDirection::LowSweep;   return true;
-	default:        return false;
-	}
-}
-
-static float GetMontagePlayLength(const UAnimMontage* Montage)
-{
-	return Montage ? Montage->GetPlayLength() : 0.0f;
-}
-
-// Разбор направлений, резолв цепочки CurrentWeapon -> Type -> ComboData и печать
-// инварианта экономики оружия (`EconomySystem.md`, «Инвариант экономики оружия»). Своей
-// логики поверх систем не пишем — только чтение UWeaponTypeData/UComboData и вывод.
-static void HandleShowWeaponEconomy(UWorld* World, const TArray<FString>& Args)
-{
-	const EDebugMsgKey Key = EDebugMsgKey::PlayerShowWeaponEconomy;
-
-	if (Args.Num() < 1 || Args[0].IsEmpty())
-	{
-		PrintError(Key, TEXT("Usage: Clanhall.Player.ShowWeaponEconomy <directions, e.g. WDAS>"));
-		return;
-	}
-
-	AClanhallHumanoidBase* Humanoid = ResolvePlayerHumanoid(World, Key);
-	if (!Humanoid)
-	{
-		return;
-	}
-
-	// Цепочка неполна -> сказать явно, ГДЕ обрыв, а не просто "нет данных".
-	const UWeaponData* Weapon = Humanoid->GetCurrentWeapon();
-	if (!Weapon)
-	{
-		PrintError(Key, TEXT("Chain broken: no CurrentWeapon (empty CharacterSheet->Loadout?)"));
-		return;
-	}
-
-	const UWeaponTypeData* WeaponType = Weapon->Type;
-	if (!WeaponType)
-	{
-		PrintError(Key, TEXT("Chain broken: Weapon has no Type"));
-		return;
-	}
-
-	const UComboData* Combo = WeaponType->ComboData;
-	if (!Combo)
-	{
-		PrintError(Key, TEXT("Chain broken: WeaponType has no ComboData"));
-		return;
-	}
-
-	// ClampMin="1" на UWeaponTypeData::SeriesLength гейтит только ввод в редакторе, не
-	// программную установку (тот же случай, что раньше был у ClassRank). SeriesLength <= 0 ниже
-	// обнулил бы Requested через SetNum, и Requested[0] сразу за пределами массива — считать
-	// нечего, выходим раньше него.
-	if (WeaponType->SeriesLength <= 0)
-	{
-		PrintError(Key, FString::Printf(TEXT("WeaponType->SeriesLength is %d (<=0) — nothing to compute."), WeaponType->SeriesLength));
-		return;
-	}
-
-	// Разбор направлений: неизвестный символ -> ошибка с перечнем допустимых, выход.
-	TArray<EClanhallAttackDirection> Requested;
-	for (int32 CharIndex = 0; CharIndex < Args[0].Len(); ++CharIndex)
-	{
-		const TCHAR Ch = Args[0][CharIndex];
-		EClanhallAttackDirection Direction;
-		if (!TryParseDirection(Ch, Direction))
-		{
-			PrintError(Key, FString::Printf(TEXT("Unknown direction '%c'. Valid: W, A, S, D"), Ch));
-			return;
-		}
-		Requested.Add(Direction);
-	}
-
-	TArray<FString> Lines;
-
-	// Аргумент длиннее SeriesLength -> посчитать по первым SeriesLength шагам, хвост отброшен явно.
-	if (Requested.Num() > WeaponType->SeriesLength)
-	{
-		Lines.Add(FString::Printf(TEXT("Series capped by SeriesLength %d — trailing %d input(s) dropped."),
-			WeaponType->SeriesLength, Requested.Num() - WeaponType->SeriesLength));
-		Requested.SetNum(WeaponType->SeriesLength);
-	}
-
-	// Идём по шагам, резолвя опенер/переходы; nullptr в слоте — законное состояние
-	// («этим оружием такая связка невозможна») — останавливаемся и считаем по тому, что успели.
-	TArray<EClanhallAttackDirection> Resolved;
-	TArray<float> StepDurations;
-
-	UAnimMontage* OpenerMontage = Combo->FindOpenerMontage(Requested[0]);
-	if (!OpenerMontage)
-	{
-		PrintError(Key, FString::Printf(TEXT("Chain breaks at step 1: no opener for %c — nothing to compute."), DirectionToChar(Requested[0])));
-		return;
-	}
-	Resolved.Add(Requested[0]);
-	StepDurations.Add(GetMontagePlayLength(OpenerMontage));
-	Lines.Add(FString::Printf(TEXT("  %c (opener)  %.2f s"), DirectionToChar(Requested[0]), StepDurations.Last()));
-
-	for (int32 i = 1; i < Requested.Num(); ++i)
-	{
-		const EClanhallAttackDirection From = Resolved.Last();
-		const EClanhallAttackDirection To = Requested[i];
-		UAnimMontage* TransitionMontage = Combo->FindTransitionMontage(From, To);
-		if (!TransitionMontage)
-		{
-			Lines.Add(FString::Printf(TEXT("Chain breaks at step %d: no transition %c->%c — computing on the %d step(s) before it."),
-				i + 1, DirectionToChar(From), DirectionToChar(To), Resolved.Num()));
-			break;
-		}
-		Resolved.Add(To);
-		StepDurations.Add(GetMontagePlayLength(TransitionMontage));
-		Lines.Add(FString::Printf(TEXT("  %c->%c        %.2f s"), DirectionToChar(From), DirectionToChar(To), StepDurations.Last()));
-	}
-
-	const UAnimMontage* RecoveryMontage = Combo->FindRecoveryMontage(Resolved.Last());
-	const float RecoveryDuration = GetMontagePlayLength(RecoveryMontage);
-	Lines.Add(FString::Printf(TEXT("  recovery %c  %.2f s"), DirectionToChar(Resolved.Last()), RecoveryDuration));
-
-	float DurationWithoutRecovery = 0.0f;
-	for (const float StepDuration : StepDurations)
-	{
-		DurationWithoutRecovery += StepDuration;
-	}
-	const float DurationWithRecovery = DurationWithoutRecovery + RecoveryDuration;
-
-	// Доход начиная со ВТОРОГО удара серии (`EconomySystem.md`, «Заряды: доход») — раз за
-	// взмах, шагов - 1 взмахов с доходом.
-	const int32 Income = WeaponType->ChargeIncome * FMath::Max(0, Resolved.Num() - 1);
-	const float IncomePerSecNoRecovery = DurationWithoutRecovery > 0.0f ? Income / DurationWithoutRecovery : 0.0f;
-	const float IncomePerSecWithRecovery = DurationWithRecovery > 0.0f ? Income / DurationWithRecovery : 0.0f;
-
-	FString Message = FString::Printf(TEXT("Weapon: %s   Type: %s\nSeriesLength %d   ChargeIncome %d\n"),
-		*Weapon->GetName(), *WeaponType->GetName(), WeaponType->SeriesLength, WeaponType->ChargeIncome);
-
-	// Множитель больше не про стойку - применяется при экипировке ко всем трём базовым
-	// скоростям разом (`WeaponSystem.md`; `AClanhallHumanoidBase::PostInitializeComponents`).
-	// Walk (кап хода спиной) не хранится отдельным полем движения - печатаем эффективное
-	// значение WalkSpeed * multiplier, оно совпадает с тем, что реально получается из
-	// (JogSpeed * multiplier) * (WalkSpeed / JogSpeed) в DoMove.
-	Message += FString::Printf(TEXT("WeaponSpeedMultiplier %.2f -> Jog %.0f   Walk(back cap) %.0f   Sprint %.0f\n"),
-		WeaponType->WeaponSpeedMultiplier,
-		Humanoid->GetJogSpeed() * WeaponType->WeaponSpeedMultiplier,
-		Humanoid->GetWalkSpeed() * WeaponType->WeaponSpeedMultiplier,
-		Humanoid->GetSprintSpeed() * WeaponType->WeaponSpeedMultiplier);
-
-	FString RequestedSequence;
-	for (const EClanhallAttackDirection Direction : Requested)
-	{
-		RequestedSequence += FString::Printf(TEXT("%c"), DirectionToChar(Direction));
-	}
-	Message += FString::Printf(TEXT("Sequence %s: %d step(s)\n"), *RequestedSequence, Resolved.Num());
-
-	for (const FString& Line : Lines)
-	{
-		Message += Line + TEXT("\n");
-	}
-
-	Message += FString::Printf(TEXT("Duration: %.2f s without recovery, %.2f s with recovery\n"), DurationWithoutRecovery, DurationWithRecovery);
-	Message += FString::Printf(TEXT("Income: ChargeIncome x (steps - 1) = %d x %d = %d charges\n"),
-		WeaponType->ChargeIncome, FMath::Max(0, Resolved.Num() - 1), Income);
-	Message += FString::Printf(TEXT("Income/sec: %.2f without recovery, %.2f with recovery"), IncomePerSecNoRecovery, IncomePerSecWithRecovery);
-
-	PrintResult(Key, Message, FColor::Cyan);
 }
 
 // Читает UClanhallCombatStateComponent на игроке: без этой команды граница боя невидима,
@@ -603,14 +399,6 @@ static FAutoConsoleCommandWithWorldAndArgs CVarListStats(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* /*World*/)
 	{
 		HandleListStats(EDebugMsgKey::ListStats);
-	}));
-
-static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowWeaponEconomy(
-	TEXT("Clanhall.Player.ShowWeaponEconomy"),
-	TEXT("Print series duration, charge income and income/sec for a direction sequence on the player's weapon. Usage: Clanhall.Player.ShowWeaponEconomy <directions, e.g. WDAS>"),
-	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
-	{
-		HandleShowWeaponEconomy(World, Args);
 	}));
 
 static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowCombatState(

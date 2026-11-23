@@ -1,9 +1,5 @@
-// Чем этим оружием можно драться (`WeaponSystem.md`, «Тип оружия ↔ экземпляр»). Бывший
-// UClassKitData: ComboData переезжает сюда без изменений, доход и потолок серии — прежде
-// свойства класса/ранга — стали полями типа оружия (`EconomySystem.md`, «Заряды: доход»,
-// «Длина серии»). Header-only, по образцу UAbilityData.
-//
-// Дефолты SeriesLength/ChargeIncome ниже совпадают с фолбэком на отсутствие данных
+// Чем этим оружием можно драться (`WeaponSystem.md`, «Тип оружия ↔ экземпляр»): его приёмы,
+// скорость и пробитие. Дефолты полей совпадают с фолбэком на отсутствие данных
 // (ClanhallWeaponDefaults) — так новый ассет сразу играбелен, а не мёртв.
 
 #pragma once
@@ -13,17 +9,13 @@
 #include "Fragments/WeaponFragment.h"
 #include "WeaponTypeData.generated.h"
 
-class UComboData;
 class UAbilityData;
 
 /** Именованные фолбэки на отсутствие данных в цепочке CharacterSheet -> Weapon -> Type — не
- *  баланс, страховка от нуля. SeriesLength = 0 означает «драться нельзя», ChargeIncome = 0 —
- *  «этим оружием заряды не заработать», оба состояния в дизайне отсутствуют. Живут здесь, а не
- *  разъезжаются по трём файлам. */
+ *  баланс, страховка от нуля. Живут здесь, а не разъезжаются по файлам. */
 namespace ClanhallWeaponDefaults
 {
 	constexpr int32 ChargeIncome = 1;
-	constexpr int32 SeriesLength = 2;
 	constexpr float ArmorPenetration = 0.0f;
 	constexpr float WeaponSpeedMultiplier = 1.0f;
 }
@@ -34,16 +26,6 @@ class CLANHALL_API UWeaponTypeData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	/** Дерево ходов и профиль урона WASD-серии — общий на тип оружия. Переезжает
-	 *  из UClassKitData без изменений. */
-	UPROPERTY(EditAnywhere, Category = "WeaponType")
-	TObjectPtr<UComboData> ComboData;
-
-	/** Потолок длины WASD-серии, ВСЕГО ударов, а не «плюс один». Дефолт совпадает
-	 *  с ClanhallWeaponDefaults::SeriesLength — пустой ассет сразу играбелен. */
-	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "1"))
-	int32 SeriesLength = ClanhallWeaponDefaults::SeriesLength;
-
 	/** Доход в Charges за подтверждённый WASD-удар, начиная со второго в серии
 	 *  (`EconomySystem.md`, «Заряды: доход»). Дефолт совпадает с ClanhallWeaponDefaults::ChargeIncome. */
 	UPROPERTY(EditAnywhere, Category = "WeaponType", meta = (ClampMin = "1"))
