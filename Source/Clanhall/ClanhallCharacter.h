@@ -189,6 +189,9 @@ protected:
 	 *  значением из BP. */
 	virtual void BeginPlay() override;
 
+	/** Переназначенные клавиши приёмов - в сохранение HUD (`Controls.md`, «Панель и клавиши приёмов»). */
+	virtual void OnSkillSlotsAssigned() override;
+
 	/** Считает доворот корпуса - см. TickBodyTurn. */
 	virtual void Tick(float DeltaSeconds) override;
 

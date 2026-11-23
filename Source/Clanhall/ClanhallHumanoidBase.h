@@ -18,6 +18,7 @@
 #include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "Engine/TimerHandle.h"
+#include "ClanhallSlotAssignment.h"
 #include "ClanhallHumanoidBase.generated.h"
 
 class UCharacterSheetData;
@@ -25,8 +26,10 @@ class UWeaponTypeData;
 class UWeaponData;
 class AClanhallWeaponActor;
 class UGA_Taunt;
+class UAbilityData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallWeaponSelected, int32, LoadoutIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClanhallSkillSlotsChanged);
 
 /** Спавненные акторы одного оружия лоадаута: основная рука и оффхенд (может не быть). */
 USTRUCT()
@@ -76,6 +79,14 @@ protected:
 	 *  GetActiveSkillHandle читает карту выбранного оружия. Класс оружия - ключ, потому что
 	 *  набор приёмов принадлежит классу (`WeaponSystem.md`, «Класс ↔ лист персонажа»). */
 	TMap<const UWeaponTypeData*, TMap<FGameplayTag, FGameplayAbilitySpecHandle>> SkillHandlesByWeaponType;
+
+	/** Те же хэндлы по идентичности приёма (CounterTag) - для переназначенных клавиш и панели. */
+	TMap<const UWeaponTypeData*, TMap<FGameplayTag, FGameplayAbilitySpecHandle>> SkillHandlesByIdentity;
+
+	/** Клавиши, переназначенные игроком (`Controls.md`, «Панель и клавиши приёмов»): класс
+	 *  оружия -> слот -> идентичность приёма. Есть запись класса - карта полная и данные класса
+	 *  не читаются; нет - слоты как в UWeaponTypeData::Skills. У противника пусто. */
+	TMap<const UWeaponTypeData*, TMap<FGameplayTag, FGameplayTag>> SlotOverrides;
 
 	/** Время мира последнего приёма каждого оружия лоадаута - для удара из ножен
 	 *  (`AbilitySystem.md`, «Механика школы оружия»). Отрицательное - ни разу. */
@@ -127,8 +138,34 @@ public:
 	 *  нет записи, нет оружия), TryActivateAbility просто откажет. */
 	FGameplayAbilitySpecHandle GetActiveSkillHandle(FGameplayTag AbilitySlotTag) const;
 
-	/** Хэндл приёма конкретного оружия лоадаута по слоту - для панели (все ряды видны сразу). */
+	/** Хэндл приёма конкретного оружия лоадаута по слоту - для панели (все ряды видны сразу).
+	 *  Переназначенные клавиши читаются первыми. */
 	FGameplayAbilitySpecHandle GetSkillHandleForWeapon(int32 LoadoutIndex, FGameplayTag AbilitySlotTag) const;
+
+	/** Приёмы ряда оружия на панели: приёмы класса ∩ выученные листом (`WeaponSystem.md`, «Класс ↔
+	 *  лист персонажа»), в порядке данных класса. */
+	UFUNCTION(BlueprintPure, Category = "Combat|Skills")
+	TArray<UAbilityData*> GetLearnedSkillsOfWeapon(int32 LoadoutIndex) const;
+
+	/** Клавиша приёма в ряду оружия. Пусто - приём на панели без клавиши (законно). */
+	UFUNCTION(BlueprintPure, Category = "Combat|Skills")
+	FGameplayTag GetSkillSlot(int32 LoadoutIndex, FGameplayTag SkillIdentity) const;
+
+	/** Назначить клавишу приёму ряда (`Controls.md`, «Панель и клавиши приёмов»). Приём уходит со
+	 *  старой клавиши; клавиша, занятая другим приёмом ряда, освобождается - тот остаётся на панели
+	 *  без клавиши. Возвращает, принято ли. */
+	UFUNCTION(BlueprintCallable, Category = "Combat|Skills")
+	bool AssignSlot(int32 LoadoutIndex, FGameplayTag SkillIdentity, FGameplayTag Slot);
+
+	/** Переназначения - для сохранения. */
+	TArray<FClanhallSlotAssignment> ExportSlotOverrides() const;
+
+	/** Восстановить переназначения. Записи классов не из лоадаута и невыученных приёмов
+	 *  пропускаются: сохранение могло пережить смену данных. Звать после гранта приёмов. */
+	void ImportSlotOverrides(const TArray<FClanhallSlotAssignment>& Assignments);
+
+	UPROPERTY(BlueprintAssignable, Category = "Combat|Skills")
+	FOnClanhallSkillSlotsChanged OnSkillSlotsChanged;
 
 	/** Клавиша оружия - одно действие: убрать то, что в руках, и выбрать новое
 	 *  (`WeaponSystem.md`, «Свап оружия»). В руках было оружие - доля State.WeaponSwap; руки пусты -
@@ -172,6 +209,9 @@ protected:
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	/** Клавиши переназначены - игрок сохраняет, противник ничего. */
+	virtual void OnSkillSlotsAssigned() {}
+
 
 private:
 	/** Спавнит актор оружия. nullptr, если класс не задан — законное состояние (оружие без визуала). */
@@ -188,6 +228,12 @@ private:
 	void GrantSkillsOfWeaponType(const UWeaponTypeData* WeaponType);
 
 	void SetSelectedWeaponIndex(int32 LoadoutIndex);
+
+	/** Класс оружия лоадаута по индексу, nullptr на любом разрыве цепочки. */
+	const UWeaponTypeData* GetLoadoutWeaponType(int32 LoadoutIndex) const;
+
+	/** Карта переназначений класса; первое переназначение копирует в неё слоты из данных. */
+	TMap<FGameplayTag, FGameplayTag>& EnsureSlotOverrides(const UWeaponTypeData* WeaponType);
 
 	void HolsterByTimer();
 

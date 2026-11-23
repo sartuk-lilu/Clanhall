@@ -20,6 +20,7 @@
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "ClanhallCombatSettings.h"
+#include "UI/ClanhallUILibrary.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Engine/Engine.h"
 
@@ -78,6 +79,13 @@ AClanhallCharacter::AClanhallCharacter()
 void AClanhallCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Клавиши, переназначенные в прошлых сессиях. Приёмы уже гранчены (AClanhallHumanoidBase::BeginPlay).
+	TArray<FClanhallSlotAssignment> SavedSlots;
+	if (UClanhallUILibrary::LoadSkillSlots(SavedSlots))
+	{
+		ImportSlotOverrides(SavedSlots);
+	}
 
 	// Стартовые значения ресурсов инициализирует AClanhallCharacterBase::BeginPlay (Default*
 	// поля) — общий путь для игрока и AI (`CombatSystem.md`, «Ресурсы персонажа»).
@@ -548,4 +556,9 @@ void AClanhallCharacter::OnCastPressed()
 {
 	// Слоги на ПКМ - магия, P6. Бинд заведён сейчас, чтобы раскладка была целой.
 	UE_LOG(LogClanhall, Verbose, TEXT("%s: ПКМ - слоги появятся вместе с магией."), *GetName());
+}
+
+void AClanhallCharacter::OnSkillSlotsAssigned()
+{
+	UClanhallUILibrary::SaveSkillSlots(ExportSlotOverrides());
 }

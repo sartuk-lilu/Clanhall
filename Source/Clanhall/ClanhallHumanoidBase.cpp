@@ -158,7 +158,9 @@ void AClanhallHumanoidBase::GrantSkillsOfWeaponType(const UWeaponTypeData* Weapo
 		// UAbilityData может лежать сразу в двух классах оружия, слот же принадлежит гранту.
 		FGameplayAbilitySpec Spec(UGA_PhysicalSkill::StaticClass(), 1, INDEX_NONE, Skill.Value);
 		Spec.GetDynamicSpecSourceTags().AddTag(Skill.Key);
-		Handles.Add(Skill.Key, AbilitySystemComponent->GiveAbility(Spec));
+		const FGameplayAbilitySpecHandle Granted = AbilitySystemComponent->GiveAbility(Spec);
+		Handles.Add(Skill.Key, Granted);
+		SkillHandlesByIdentity.FindOrAdd(WeaponType).Add(Skill.Value->CounterTag, Granted);
 		++NumGranted;
 	}
 
@@ -432,12 +434,169 @@ FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetActiveSkillHandle(FGameplay
 	return GetSkillHandleForWeapon(SelectedWeaponIndex, AbilitySlotTag);
 }
 
-FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetSkillHandleForWeapon(int32 LoadoutIndex, FGameplayTag AbilitySlotTag) const
+const UWeaponTypeData* AClanhallHumanoidBase::GetLoadoutWeaponType(int32 LoadoutIndex) const
 {
 	if (!CharacterSheet || !CharacterSheet->Loadout.IsValidIndex(LoadoutIndex) || !CharacterSheet->Loadout[LoadoutIndex])
 	{
+		return nullptr;
+	}
+	return CharacterSheet->Loadout[LoadoutIndex]->Type.Get();
+}
+
+FGameplayAbilitySpecHandle AClanhallHumanoidBase::GetSkillHandleForWeapon(int32 LoadoutIndex, FGameplayTag AbilitySlotTag) const
+{
+	const UWeaponTypeData* Type = GetLoadoutWeaponType(LoadoutIndex);
+	if (!Type)
+	{
 		return FGameplayAbilitySpecHandle();
 	}
-	const TMap<FGameplayTag, FGameplayAbilitySpecHandle>* Handles = SkillHandlesByWeaponType.Find(CharacterSheet->Loadout[LoadoutIndex]->Type.Get());
+
+	// Игрок переназначал клавиши этого класса - карта переопределений полная, данные не читаются.
+	if (const TMap<FGameplayTag, FGameplayTag>* Overrides = SlotOverrides.Find(Type))
+	{
+		const FGameplayTag Identity = Overrides->FindRef(AbilitySlotTag);
+		const TMap<FGameplayTag, FGameplayAbilitySpecHandle>* ByIdentity = SkillHandlesByIdentity.Find(Type);
+		return (Identity.IsValid() && ByIdentity) ? ByIdentity->FindRef(Identity) : FGameplayAbilitySpecHandle();
+	}
+
+	const TMap<FGameplayTag, FGameplayAbilitySpecHandle>* Handles = SkillHandlesByWeaponType.Find(Type);
 	return Handles ? Handles->FindRef(AbilitySlotTag) : FGameplayAbilitySpecHandle();
+}
+
+TArray<UAbilityData*> AClanhallHumanoidBase::GetLearnedSkillsOfWeapon(int32 LoadoutIndex) const
+{
+	TArray<UAbilityData*> Result;
+	const UWeaponTypeData* Type = GetLoadoutWeaponType(LoadoutIndex);
+	const TMap<FGameplayTag, FGameplayAbilitySpecHandle>* ByIdentity = Type ? SkillHandlesByIdentity.Find(Type) : nullptr;
+	if (!ByIdentity)
+	{
+		return Result;
+	}
+	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : Type->Skills)
+	{
+		if (Skill.Value && ByIdentity->Contains(Skill.Value->CounterTag))
+		{
+			Result.AddUnique(Skill.Value.Get());
+		}
+	}
+	return Result;
+}
+
+FGameplayTag AClanhallHumanoidBase::GetSkillSlot(int32 LoadoutIndex, FGameplayTag SkillIdentity) const
+{
+	const UWeaponTypeData* Type = GetLoadoutWeaponType(LoadoutIndex);
+	if (!Type || !SkillIdentity.IsValid())
+	{
+		return FGameplayTag();
+	}
+	if (const TMap<FGameplayTag, FGameplayTag>* Overrides = SlotOverrides.Find(Type))
+	{
+		for (const TPair<FGameplayTag, FGameplayTag>& Entry : *Overrides)
+		{
+			if (Entry.Value == SkillIdentity)
+			{
+				return Entry.Key;
+			}
+		}
+		return FGameplayTag();
+	}
+	const TMap<FGameplayTag, FGameplayAbilitySpecHandle>* Handles = SkillHandlesByWeaponType.Find(Type);
+	for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : Type->Skills)
+	{
+		if (Skill.Value && Skill.Value->CounterTag == SkillIdentity && Handles && Handles->Contains(Skill.Key))
+		{
+			return Skill.Key;
+		}
+	}
+	return FGameplayTag();
+}
+
+TMap<FGameplayTag, FGameplayTag>& AClanhallHumanoidBase::EnsureSlotOverrides(const UWeaponTypeData* WeaponType)
+{
+	if (TMap<FGameplayTag, FGameplayTag>* Existing = SlotOverrides.Find(WeaponType))
+	{
+		return *Existing;
+	}
+	TMap<FGameplayTag, FGameplayTag>& Fresh = SlotOverrides.Add(WeaponType);
+	if (const TMap<FGameplayTag, FGameplayAbilitySpecHandle>* Handles = SkillHandlesByWeaponType.Find(WeaponType))
+	{
+		for (const TPair<FGameplayTag, TObjectPtr<UAbilityData>>& Skill : WeaponType->Skills)
+		{
+			if (Skill.Value && Handles->Contains(Skill.Key))
+			{
+				Fresh.Add(Skill.Key, Skill.Value->CounterTag);
+			}
+		}
+	}
+	return Fresh;
+}
+
+bool AClanhallHumanoidBase::AssignSlot(int32 LoadoutIndex, FGameplayTag SkillIdentity, FGameplayTag Slot)
+{
+	const UWeaponTypeData* Type = GetLoadoutWeaponType(LoadoutIndex);
+	const TMap<FGameplayTag, FGameplayAbilitySpecHandle>* ByIdentity = Type ? SkillHandlesByIdentity.Find(Type) : nullptr;
+	if (!ByIdentity || !ByIdentity->Contains(SkillIdentity) || !Slot.IsValid() || Slot == ClanhallGameplayTags::Slot.GetTag())
+	{
+		return false;
+	}
+
+	TMap<FGameplayTag, FGameplayTag>& Overrides = EnsureSlotOverrides(Type);
+	for (auto It = Overrides.CreateIterator(); It; ++It)
+	{
+		if (It->Value == SkillIdentity)
+		{
+			It.RemoveCurrent();
+		}
+	}
+	// Add перезаписывает: прежний приём этой клавиши остаётся на панели без клавиши.
+	Overrides.Add(Slot, SkillIdentity);
+
+	OnSkillSlotsChanged.Broadcast();
+	OnSkillSlotsAssigned();
+	return true;
+}
+
+TArray<FClanhallSlotAssignment> AClanhallHumanoidBase::ExportSlotOverrides() const
+{
+	TArray<FClanhallSlotAssignment> Result;
+	for (const TPair<const UWeaponTypeData*, TMap<FGameplayTag, FGameplayTag>>& TypeEntry : SlotOverrides)
+	{
+		if (!TypeEntry.Key)
+		{
+			continue;
+		}
+		for (const TPair<FGameplayTag, FGameplayTag>& Entry : TypeEntry.Value)
+		{
+			FClanhallSlotAssignment& Assignment = Result.AddDefaulted_GetRef();
+			Assignment.WeaponType = FSoftObjectPath(TypeEntry.Key);
+			Assignment.Slot = Entry.Key;
+			Assignment.Skill = Entry.Value;
+		}
+	}
+	return Result;
+}
+
+void AClanhallHumanoidBase::ImportSlotOverrides(const TArray<FClanhallSlotAssignment>& Assignments)
+{
+	bool bImported = false;
+	for (const FClanhallSlotAssignment& Assignment : Assignments)
+	{
+		if (!Assignment.Slot.IsValid())
+		{
+			continue;
+		}
+		for (const TPair<const UWeaponTypeData*, TMap<FGameplayTag, FGameplayAbilitySpecHandle>>& TypeEntry : SkillHandlesByIdentity)
+		{
+			if (TypeEntry.Key && FSoftObjectPath(TypeEntry.Key) == Assignment.WeaponType && TypeEntry.Value.Contains(Assignment.Skill))
+			{
+				// Сохранённая карта класса полная - собирается как есть, без копии данных.
+				SlotOverrides.FindOrAdd(TypeEntry.Key).Add(Assignment.Slot, Assignment.Skill);
+				bImported = true;
+			}
+		}
+	}
+	if (bImported)
+	{
+		OnSkillSlotsChanged.Broadcast();
+	}
 }

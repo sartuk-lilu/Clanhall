@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameFramework/SaveGame.h"
+#include "ClanhallSlotAssignment.h"
 #include "ClanhallHUDSaveGame.generated.h"
 
 /** Хранит позиции перетаскиваемых рамок HUD между сессиями (`HUD.md`). */
@@ -15,4 +16,7 @@ public:
 
 	/** Позиция Enemy Frame. Дефолт — правее центра. */
 	UPROPERTY() FVector2D EnemyFramePosition  = FVector2D(1870.0f, 700.0f);
+
+	/** Клавиши приёмов, переназначенные игроком (`Controls.md`, «Панель и клавиши приёмов»). */
+	UPROPERTY() TArray<FClanhallSlotAssignment> SkillSlots;
 };

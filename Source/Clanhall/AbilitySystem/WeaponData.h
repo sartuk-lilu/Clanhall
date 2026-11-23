@@ -9,6 +9,7 @@
 #include "WeaponData.generated.h"
 
 class UWeaponTypeData;
+class UTexture2D;
 class AClanhallWeaponActor;
 
 UCLASS()
@@ -17,6 +18,10 @@ class CLANHALL_API UWeaponData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+	/** Иконка ряда на панели приёмов (`Controls.md`, «Панель и клавиши приёмов»). */
+	UPROPERTY(EditAnywhere, Category = "Weapon|Presentation")
+	TObjectPtr<UTexture2D> Icon;
+
 	/** Чем этим экземпляром можно драться — прямая ссылка на объект, не тег. */
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	TObjectPtr<UWeaponTypeData> Type;
