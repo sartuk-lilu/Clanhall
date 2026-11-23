@@ -115,6 +115,18 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Schools", meta = (ClampMin = "1.0"))
 	float ScabbardDamageMultiplier = 1.3f;
 
+	/** Потолок накопленных кристаллов, целых (`EconomySystem.md`, «Кристалл»). Не подтверждено. */
+	UPROPERTY(config, EditAnywhere, Category = "Crystal", meta = (ClampMin = "1"))
+	int32 CrystalCap = 3;
+
+	/** Длина применения кристалла в долях - всё это время боец открыт. Заглушка. */
+	UPROPERTY(config, EditAnywhere, Category = "Crystal", meta = (ClampMin = "0.0"))
+	float CrystalUseBeats = 2.0f;
+
+	/** Сколько AP восполняет кристалл - доля MaxAP. Заглушка. */
+	UPROPERTY(config, EditAnywhere, Category = "Crystal", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float CrystalAPRestore = 0.5f;
+
 	static const UClanhallCombatSettings& Get() { return *GetDefault<UClanhallCombatSettings>(); }
 };
 

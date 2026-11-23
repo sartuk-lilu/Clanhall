@@ -19,6 +19,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(School_Magic, "School.Magic", "Magic school");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Common, "Ability.Common", "Common actions, not weapon skills");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Common_Taunt, "Ability.Common.Taunt", "Taunt - common action with its own cooldown");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Common_Crystal, "Ability.Common.Crystal", "Crystal use - common action, restores AP");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Ability_Lancer, "Ability.Lancer", "Корень навыков Lancer");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Casting, "State.Casting", "Идёт набор слогов обычного заклинания (ПКМ зажат)");
@@ -29,6 +30,7 @@ namespace ClanhallGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Stunned, "State.Stunned", "Short stun with skill cancel from a counter skill, same for everyone; loss of control");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Knockdown, "State.Knockdown", "Сбит с ног синергией метки");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_ComboRecovery, "State.ComboRecovery", "Lockout after a WASD series. Mechanic removed in P4; tag kept until Reference Viewer check");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_UsingCrystal, "State.UsingCrystal", "Using a crystal: the fighter is open, actions are closed, movement is not");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_Taunting, "State.Taunting", "Taunting: the fighter is open; a confirmed hit breaks the taunt");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_TauntParried, "State.TauntParried", "Hit stopped by a much stronger taunting fighter: animation without control, no damage window");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(State_TauntParrying, "State.TauntParrying", "Stopping a much weaker fighter's hit with a taunt: animation without control");

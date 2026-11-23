@@ -6,6 +6,8 @@
 #include "AbilitySystem/ClanhallCounterComponent.h"
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallSkillCooldownComponent.h"
+#include "AbilitySystem/ClanhallCrystalComponent.h"
+#include "AbilitySystem/Abilities/GA_UseCrystal.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -32,6 +34,9 @@ AClanhallCharacterBase::AClanhallCharacterBase()
 	CombatStateComponent = CreateDefaultSubobject<UClanhallCombatStateComponent>(TEXT("CombatStateComponent"));
 
 	SkillCooldownComponent = CreateDefaultSubobject<UClanhallSkillCooldownComponent>(TEXT("SkillCooldownComponent"));
+
+	CrystalComponent = CreateDefaultSubobject<UClanhallCrystalComponent>(TEXT("CrystalComponent"));
+	CrystalAbilityClass = UGA_UseCrystal::StaticClass();
 
 	// Без этого Crouch() молча ничего не делает (`CombatSystem.md`) - UGA_Duck опускает
 	// капсулу движковым Crouch(), не SetCapsuleSize.
@@ -80,6 +85,12 @@ void AClanhallCharacterBase::BeginPlay()
 
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UClanhallAttributeSet::GetMoveSpeedMultiplierAttribute())
 			.AddUObject(this, &AClanhallCharacterBase::OnMoveSpeedMultiplierChanged);
+
+		// Кристалл - общее действие любого бойца (`EconomySystem.md`, «Кристалл»).
+		if (CrystalAbilityClass)
+		{
+			CrystalAbilityHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(CrystalAbilityClass, 1, INDEX_NONE, this));
+		}
 	}
 }
 
@@ -128,6 +139,15 @@ void AClanhallCharacterBase::HandleOutOfHealth(AActor* Killer)
 		AbilitySystemComponent->CancelAllAbilities();
 		AbilitySystemComponent->AddLooseGameplayTag(ClanhallGameplayTags::State_Dead.GetTag());
 	}
+	// Доля кристалла - убийце (`EconomySystem.md`, «Кристалл»).
+	if (Killer && Killer != this && CrystalShareOnKill > 0.0f)
+	{
+		if (UClanhallCrystalComponent* KillerCrystal = Killer->FindComponentByClass<UClanhallCrystalComponent>())
+		{
+			KillerCrystal->AddShare(CrystalShareOnKill);
+		}
+	}
+
 	OnDied.Broadcast(Killer);
 }
 

@@ -160,6 +160,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	TObjectPtr<UInputAction> TauntAction;
 
+	/** Применение кристалла - общее действие на своей клавише (`EconomySystem.md`, «Кристалл»). */
+	UPROPERTY(EditAnywhere, Category = "Input|Combat")
+	TObjectPtr<UInputAction> CrystalAction;
+
 	/** Вектор движения этого кадра (X - вправо, Y - вперёд) - из Move, обнуляется на отпускании.
 	 *  Уклонение читает его: GetLastMovementInputVector обнуляется после потребления. */
 	FVector2D CurrentMoveInput = FVector2D::ZeroVector;
@@ -237,6 +241,9 @@ protected:
 
 	/** Насмешка - UGA_Taunt через хэндл гуманоида. */
 	void OnTauntPressed();
+
+	/** Кристалл - UGA_UseCrystal через хэндл базы. */
+	void OnCrystalPressed();
 
 	/** Ctrl нажат - активирует UGA_Duck. */
 	void OnDuckPressed();

@@ -23,6 +23,7 @@ UGA_Duck::UGA_Duck()
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Stunned.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParried.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParrying.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_UsingCrystal.GetTag());
 }
 
 void UGA_Duck::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

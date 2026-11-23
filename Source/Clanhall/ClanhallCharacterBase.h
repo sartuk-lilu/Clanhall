@@ -10,6 +10,7 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "AbilitySystem/ClanhallDamage.h"
 #include "ClanhallCharacterBase.generated.h"
 
@@ -20,6 +21,8 @@ class UClanhallHitboxComponent;
 class UClanhallCounterComponent;
 class UClanhallCombatStateComponent;
 class UClanhallSkillCooldownComponent;
+class UClanhallCrystalComponent;
+class UGA_UseCrystal;
 struct FOnAttributeChangeData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallHitReceived, const FClanhallHitResult&, Hit);
@@ -61,6 +64,21 @@ protected:
 	 *  перезаряжается по тем же правилам. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UClanhallSkillCooldownComponent> SkillCooldownComponent;
+
+	/** Кристалл (`EconomySystem.md`, «Кристалл») - симметрично: у босса свои кристаллы. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallCrystalComponent> CrystalComponent;
+
+	/** Сколько доли кристалла получает убийца этого бойца: слабый 0.1, сильный 0.5
+	 *  (`Gameloop/Parameters.md`, «Кристалл»). 0 - ничего. */
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Crystal", meta = (ClampMin = "0.0"))
+	float CrystalShareOnKill = 0.0f;
+
+	/** Класс применения кристалла. Дефолт - сам C++-класс; Blueprint-наследник открывает монтаж. */
+	UPROPERTY(EditDefaultsOnly, Category = "Combat|Crystal")
+	TSubclassOf<UGA_UseCrystal> CrystalAbilityClass;
+
+	FGameplayAbilitySpecHandle CrystalAbilityHandle;
 
 	/** Unit.Role.* — вешается на ASC в BeginPlay (`CharacterHierarchy.md`, «Unit.Role.*»). Незаполненный тег — легальное состояние
 	 *  (актор не участвует в ролевой логике HUD/AI), так у игрока по умолчанию. */
@@ -159,8 +177,11 @@ public:
 	 *  (вздрагивание без отмены - `CombatSystem.md`, «Контроль») и OnArmorBroken. */
 	void NotifyHitReceived(const FClanhallHitResult& Hit);
 
-	/** HP дошёл до нуля (зовёт UClanhallAttributeSet). Повторный вызов - ничего. */
+	/** HP дошёл до нуля (зовёт UClanhallAttributeSet). Повторный вызов - ничего. Убийца получает
+	 *  долю кристалла этого бойца. */
 	void HandleOutOfHealth(AActor* Killer);
+
+	FGameplayAbilitySpecHandle GetCrystalHandle() const { return CrystalAbilityHandle; }
 
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	bool IsDead() const { return bDead; }

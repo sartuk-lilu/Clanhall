@@ -168,6 +168,7 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnJumpPressed);
 		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnJumpReleased);
 		EnhancedInputComponent->BindAction(TauntAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnTauntPressed);
+		EnhancedInputComponent->BindAction(CrystalAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnCrystalPressed);
 
 		// Shift: бег.
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSprintPressed);
@@ -335,6 +336,14 @@ void AClanhallCharacter::OnTauntPressed()
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(GetTauntHandle());
+	}
+}
+
+void AClanhallCharacter::OnCrystalPressed()
+{
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbility(GetCrystalHandle());
 	}
 }
 

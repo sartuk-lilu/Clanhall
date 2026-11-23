@@ -9,6 +9,7 @@
 #include "AbilitySystem/MarkData.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallSkillCooldownComponent.h"
+#include "AbilitySystem/ClanhallCrystalComponent.h"
 #include "ClanhallCombatTypes.h"
 #include "ClanhallHumanoidBase.h"
 
@@ -47,6 +48,9 @@ enum class EDebugMsgKey : int32
 	EnemySetPower,
 	PlayerShowMarks,
 	EnemyShowMarks,
+	PlayerAddCrystal,
+	EnemyAddCrystal,
+	EnemyUseCrystal,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -246,6 +250,12 @@ static void HandleShowStats(UWorld* World, bool bTargetEnemy)
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetDamageDealtMultiplierAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetDamageTakenMultiplierAttribute())),
 		*FormatValue(ASC->GetNumericAttribute(UClanhallAttributeSet::GetMoveSpeedMultiplierAttribute())));
+
+	// Кристалл (`EconomySystem.md`, «Кристалл»): накоплено, целых и доля следующего.
+	if (const UClanhallCrystalComponent* Crystal = ASC->GetAvatarActor() ? ASC->GetAvatarActor()->FindComponentByClass<UClanhallCrystalComponent>() : nullptr)
+	{
+		Message += FString::Printf(TEXT(" · crystal %.2f"), Crystal->GetCrystal());
+	}
 
 	// Пороги урона по типам (`CombatSystem.md`, «Damage Threshold (DT)»).
 	if (const AClanhallCharacterBase* Fighter = Cast<AClanhallCharacterBase>(ASC->GetAvatarActor()))
@@ -507,6 +517,40 @@ static void HandleSetPower(UWorld* World, const TArray<FString>& Args, bool bTar
 	PrintResult(Key, FString::Printf(TEXT("%s power = %.2f"), *Fighter->GetName(), Fighter->GetPower()), FColor::Green);
 }
 
+static void HandleAddCrystal(UWorld* World, const TArray<FString>& Args, bool bTargetEnemy)
+{
+	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemyAddCrystal : EDebugMsgKey::PlayerAddCrystal;
+	if (Args.Num() < 1 || !FCString::IsNumeric(*Args[0]))
+	{
+		PrintError(Key, TEXT("Usage: Clanhall.<Player|Enemy>.AddCrystal <Share>, e.g. 1 or 0.1"));
+		return;
+	}
+	AActor* Actor = bTargetEnemy ? ResolveTargetActor(World, Key) : ResolvePlayerPawn(World, Key);
+	UClanhallCrystalComponent* Crystal = Actor ? Actor->FindComponentByClass<UClanhallCrystalComponent>() : nullptr;
+	if (!Crystal)
+	{
+		PrintError(Key, TEXT("No CrystalComponent"));
+		return;
+	}
+	Crystal->AddShare(FCString::Atof(*Args[0]));
+	PrintResult(Key, FString::Printf(TEXT("%s crystal = %.2f"), bTargetEnemy ? TEXT("[Enemy]") : TEXT("[Player]"), Crystal->GetCrystal()), FColor::Green);
+}
+
+static void HandleEnemyUseCrystal(UWorld* World)
+{
+	const EDebugMsgKey Key = EDebugMsgKey::EnemyUseCrystal;
+	AClanhallCharacterBase* Enemy = Cast<AClanhallCharacterBase>(ResolveTargetActor(World, Key));
+	UAbilitySystemComponent* ASC = Enemy ? Enemy->GetAbilitySystemComponent() : nullptr;
+	if (!ASC)
+	{
+		PrintError(Key, TEXT("Current target is not an AClanhallCharacterBase with ASC"));
+		return;
+	}
+	const bool bActivated = ASC->TryActivateAbility(Enemy->GetCrystalHandle());
+	PrintResult(Key, FString::Printf(TEXT("[Enemy] use crystal: %s"), bActivated ? TEXT("activated") : TEXT("refused (no whole crystal or state)")),
+		bActivated ? FColor::Green : FColor::Red);
+}
+
 static void HandleShowCooldowns(UWorld* World, bool bTargetEnemy)
 {
 	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemyShowCooldowns : EDebugMsgKey::PlayerShowCooldowns;
@@ -665,6 +709,30 @@ static FAutoConsoleCommandWithWorldAndArgs CVarEnemyShowMarks(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
 	{
 		HandleShowMarks(World, /*bTargetEnemy=*/true);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerAddCrystal(
+	TEXT("Clanhall.Player.AddCrystal"),
+	TEXT("Add a crystal share to the player (capped by CrystalCap). Usage: Clanhall.Player.AddCrystal <Share>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandleAddCrystal(World, Args, /*bTargetEnemy=*/false);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemyAddCrystal(
+	TEXT("Clanhall.Enemy.AddCrystal"),
+	TEXT("Add a crystal share to the current target (capped by CrystalCap). Usage: Clanhall.Enemy.AddCrystal <Share>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandleAddCrystal(World, Args, /*bTargetEnemy=*/true);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemyUseCrystal(
+	TEXT("Clanhall.Enemy.UseCrystal"),
+	TEXT("The current target uses a whole crystal."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		HandleEnemyUseCrystal(World);
 	}));
 
 #endif // !UE_BUILD_SHIPPING

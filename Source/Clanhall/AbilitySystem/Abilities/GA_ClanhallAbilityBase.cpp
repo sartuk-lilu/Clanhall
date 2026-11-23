@@ -23,6 +23,7 @@ UGA_ClanhallAbilityBase::UGA_ClanhallAbilityBase()
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_Taunting.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParried.GetTag());
 	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_TauntParrying.GetTag());
+	ActivationBlockedTags.AddTag(ClanhallGameplayTags::State_UsingCrystal.GetTag());
 
 	// Оглушение (State.Stunned — короткий стан от контрнавыка, UClanhallCounterComponent) блокирует
 	// новые физдействия. Контрнавык стана не выдаёт (`CounterAbility.md`, «Наказание сбитого»).

@@ -26,6 +26,7 @@ namespace ClanhallGameplayTags
 	// Общие действия, не приёмы оружия: идентичность для перезарядки и отмены по тегу.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common_Taunt);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common_Crystal);
 	// Корень приёмов длинного меча - заводится при реализации класса (`WeaponSystem.md`,
 	// «Исторические идентификаторы»). Кинжал - существующий Ability.Assassin.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_LongSword);
@@ -55,6 +56,9 @@ namespace ClanhallGameplayTags
 	// Насмешка (`CombatSystem.md`, «Насмешка»): идёт насмешка - боец открыт; подтверждённое
 	// попадание её срывает. Вешает UGA_Taunt через ActivationOwnedTags.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Taunting);
+	// Применение кристалла (`EconomySystem.md`, «Кристалл»): боец открыт, приёмы, уклонение и
+	// насмешка закрыты, движение - нет.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_UsingCrystal);
 	// Насмешка-парирование против гораздо более слабого: тот, чей удар остановлен (Parried), и тот,
 	// кто остановил (Parrying), оба в анимации без управления, окна под урон нет.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_TauntParried);
