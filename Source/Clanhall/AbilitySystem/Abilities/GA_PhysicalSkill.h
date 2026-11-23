@@ -11,16 +11,13 @@
 // AnimNotifyState_Hitbox (редакторная разметка, не код):
 //   - Контактный (монтаж есть и на нём расставлен AnimNotifyState_Hitbox): способность ждёт
 //     Event.Hitbox.Hit от UClanhallHitboxComponent и резолвит цель(и) в момент реального
-//     касания зоны. Одна зона может задеть несколько целей за применение (Shield Charge —
-//     капсула на пелвисе на весь рывок, `DataAssetAndFragments.md`, «Мультизонные удары») — см. правило мультицели ниже.
+//     касания зоны. Одна зона может задеть несколько целей за применение
+//     (`DataAssetAndFragments.md`, «Мультизонные удары») — см. правило мультицели ниже.
 //   - Мгновенный фолбэк (CastMontage == nullptr ИЛИ на нём не расставлена зона): резолв по
 //     FindMeleeTarget на активации, как до перехода на контактный резолв.
 //
-// Перемещение навыка (Shield Charge и подобные) приходит из UDashFragment через Root Motion
-// Source (StartDashIfNeeded), а не из root motion клипа — дистанция и длительность живут в
-// данных, не в анимации (`AnimationSetup.md`, «Перемещение навыка — данные, не свойство клипа»). Способность живёт до
-// позднейшего из двух терминаторов — конца каст-монтажа/фолбэка И конца рывка, см.
-// TryFinishAbility.
+// Рывков к цели нет (`CombatSystem.md`, «Уклонение»): навык не сокращает дистанцию сам.
+// Способность живёт до конца каст-монтажа, без монтажа — заканчивается в кадре активации.
 //
 // Инвариант «один резолвер на актора»: Event.Hitbox.Hit и Event.Hitbox.Closed летят на весь
 // ASC владельца без адресации. Система корректна ровно потому, что в любой момент времени
@@ -62,28 +59,12 @@ protected:
 	UFUNCTION()
 	void OnHitboxHitReceived(FGameplayEventData Payload);
 
-	/** Терминатор контактного/фолбэк пути (первичный, см. bPrimaryTerminatorFired). Делегат
-	 *  AnimInstance, не GameplayEvent — биндится через Montage_SetEndDelegate после
-	 *  Montage_Play(Data->CastMontage), срабатывает и на нормальном завершении, и на
-	 *  прерывании монтажа. */
+	/** Терминатор способности, когда каст-монтаж стартовал. Делегат AnimInstance, не
+	 *  GameplayEvent — биндится через Montage_SetEndDelegate после Montage_Play(Data->CastMontage),
+	 *  срабатывает и на нормальном завершении, и на прерывании монтажа. */
 	void OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
-	/** Терминатор рывка (см. bDashPending). Дублирован на оба финальных делегата задачи —
-	 *  оба означают конец Root Motion Source, различие (упёрся в стену/доехал) здесь не важно. */
-	UFUNCTION()
-	void OnDashFinished();
-
 private:
-	/** Запускает Root Motion Source рывка, если у навыка есть UDashFragment; иначе no-op.
-	 *  Аватар не ACharacter (нет CharacterMovementComponent) → рывок пропускается с варном.
-	 *  MontagePlayLength — длина каст-монтажа (0, если монтажа нет/не стартовал) для грубой
-	 *  проверки Dash->Duration против неё (`AnimationSetup.md`, «Перемещение навыка — данные, не свойство клипа»). */
-	void StartDashIfNeeded(const UAbilityData* Data, AActor* Avatar, float MontagePlayLength);
-
-	/** EndAbility вызывается только когда отработали ОБА терминатора — иначе фолбэк-путь без
-	 *  рывка убил бы задачу рывка в тот же кадр, а контактный путь оборвал бы рывок на середине
-	 *  (`AnimationSetup.md`, «Способность ждёт позднейший из двух терминаторов»). */
-	void TryFinishAbility();
 	/** SourceObject ищется через Handle, а не GetCurrentSourceObject() — у InstancedPerExecution
 	 *  абилки на момент CanActivateAbility ещё нет персистентного инстанса (см. движок,
 	 *  AbilitySystemComponent_Abilities.cpp: CanActivateAbility может вызываться на CDO). */
@@ -107,13 +88,6 @@ private:
 
 	/** Мана уже начислена за это применение: раз за применение, сколько бы целей ни задело. */
 	bool bManaApplied = false;
-
-	/** Первичный терминатор отработал: конец каст-монтажа (контактный путь) либо завершённый
-	 *  мгновенный резолв (фолбэк). */
-	bool bPrimaryTerminatorFired = false;
-
-	/** Рывок запущен и ещё не финишировал. */
-	bool bDashPending = false;
 
 	/** Каст-монтаж, который эта активка реально запустила (0, если Montage_Play не стартовал).
 	 *  Ключ идентичности для уборки залипших зон в EndAbility: сносим только своё, потому что

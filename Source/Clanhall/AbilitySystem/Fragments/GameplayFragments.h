@@ -47,22 +47,3 @@ public:
 	TArray<FMarkSynergy> Synergies;
 };
 
-/** У навыков, перемещающих владельца рывком вперёд (Shield Charge и подобные). Перемещение —
- *  данные навыка, а не свойство клипа: запекать дистанцию в анимацию нельзя (правка потребовала
- *  бы реэкспорта), и это сломало бы инвариант «механика работает без единой анимации» —
- *  при CastMontage == nullptr рывка не было бы вовсе (`AnimationSetup.md`, «Перемещение навыка — данные, не свойство клипа»).
- *  Фрагмент, а не поле заголовка: его отсутствие несёт смысл «навык не двигает персонажа»,
- *  невыразимый через Distance = 0 (CLAUDE.md, критерий «заголовок или фрагмент»). */
-UCLASS(meta = (DisplayName = "Dash"))
-class CLANHALL_API UDashFragment : public UAbilityFragment
-{
-	GENERATED_BODY()
-public:
-	/** Дистанция рывка вперёд, см. */
-	UPROPERTY(EditAnywhere, Category = "Dash", meta = (ClampMin = "0.0"))
-	float Distance = 300.0f;
-
-	/** За сколько секунд проходится дистанция. Держать близким к длине каст-монтажа. */
-	UPROPERTY(EditAnywhere, Category = "Dash", meta = (ClampMin = "0.01"))
-	float Duration = 0.35f;
-};

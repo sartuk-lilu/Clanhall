@@ -113,7 +113,7 @@ void AClanhallCharacter::Tick(float DeltaSeconds)
 bool AClanhallCharacter::CanJumpInternal_Implementation() const
 {
 	// Fullbody-активка занимает всё тело, включая ноги — та же причина, что в DoMove:
-	// иначе персонаж подпрыгивает посреди рывка.
+	// иначе персонаж подпрыгивает посреди приёма.
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
 		return false;
@@ -180,7 +180,7 @@ void AClanhallCharacter::Look(const FInputActionValue& Value)
 void AClanhallCharacter::DoMove(float Right, float Forward)
 {
 	// Активка занимает слот fullbody целиком — свободных ног нет. State.SkillCommitted висит
-	// весь каст-монтаж (и рывок) и снимается только в EndAbility.
+	// весь каст-монтаж и снимается только в EndAbility.
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(ClanhallGameplayTags::State_SkillCommitted.GetTag()))
 	{
 		return;
