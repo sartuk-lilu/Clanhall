@@ -7,8 +7,9 @@
 #include "AbilitySystem/ClanhallCombatStateComponent.h"
 #include "AbilitySystem/ClanhallMarkComponent.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
+#include "AbilitySystem/ClanhallSkillCooldownComponent.h"
 #include "ClanhallCombatTypes.h"
-#include "ClanhallCharacterBase.h"
+#include "ClanhallHumanoidBase.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -35,6 +36,9 @@ enum class EDebugMsgKey : int32
 	EnemyAddMark,
 	ListStats,
 	PlayerShowCombatState,
+	EnemyUseSkill,
+	PlayerShowCooldowns,
+	EnemyShowCooldowns,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -327,6 +331,68 @@ static void HandleShowCombatState(UWorld* World)
 	PrintResult(Key, Message, CombatState->IsInCombat() ? FColor::Red : FColor::Green);
 }
 
+// Манекену нечем драться без BT, а контр, метки и насмешка проверяются на его приёмах.
+// Слот - короткое имя (Q, E, R, F, Z, X, C, V), приём - из ряда его выбранного оружия.
+static void HandleEnemyUseSkill(UWorld* World, const TArray<FString>& Args)
+{
+	const EDebugMsgKey Key = EDebugMsgKey::EnemyUseSkill;
+	if (Args.Num() < 1)
+	{
+		PrintError(Key, TEXT("Usage: Clanhall.Enemy.UseSkill <Slot>, e.g. Q"));
+		return;
+	}
+
+	AClanhallHumanoidBase* Enemy = Cast<AClanhallHumanoidBase>(ResolveTargetActor(World, Key));
+	if (!Enemy)
+	{
+		PrintError(Key, TEXT("Current target is not an AClanhallHumanoidBase"));
+		return;
+	}
+
+	const FGameplayTag Slot = FGameplayTag::RequestGameplayTag(FName(*(TEXT("Slot.") + Args[0].ToUpper())), /*ErrorIfNotFound*/ false);
+	if (!Slot.IsValid())
+	{
+		PrintError(Key, FString::Printf(TEXT("Unknown slot '%s'"), *Args[0]));
+		return;
+	}
+
+	const FGameplayAbilitySpecHandle Handle = Enemy->GetActiveSkillHandle(Slot);
+	UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent();
+	if (!Handle.IsValid() || !ASC)
+	{
+		PrintError(Key, FString::Printf(TEXT("%s has no skill in %s"), *Enemy->GetName(), *Slot.ToString()));
+		return;
+	}
+
+	const bool bActivated = ASC->TryActivateAbility(Handle);
+	PrintResult(Key, FString::Printf(TEXT("[Enemy] %s: %s"), *Slot.ToString(), bActivated ? TEXT("activated") : TEXT("refused (cooldown, commit or state)")),
+		bActivated ? FColor::Green : FColor::Red);
+}
+
+static void HandleShowCooldowns(UWorld* World, bool bTargetEnemy)
+{
+	const EDebugMsgKey Key = bTargetEnemy ? EDebugMsgKey::EnemyShowCooldowns : EDebugMsgKey::PlayerShowCooldowns;
+	AActor* Actor = bTargetEnemy ? ResolveTargetActor(World, Key) : ResolvePlayerPawn(World, Key);
+	const UClanhallSkillCooldownComponent* Cooldowns = Actor ? Actor->FindComponentByClass<UClanhallSkillCooldownComponent>() : nullptr;
+	if (!Cooldowns)
+	{
+		PrintError(Key, TEXT("No SkillCooldownComponent"));
+		return;
+	}
+
+	FString Message = bTargetEnemy ? TEXT("[Enemy] cooldowns:") : TEXT("[Player] cooldowns:");
+	const TArray<FGameplayTag> Active = Cooldowns->GetActiveCooldowns();
+	if (Active.Num() == 0)
+	{
+		Message += TEXT(" all ready");
+	}
+	for (const FGameplayTag& Skill : Active)
+	{
+		Message += FString::Printf(TEXT("\n%s  %.1f / %.1f beats"), *Skill.ToString(), Cooldowns->GetRemainingBeats(Skill), Cooldowns->GetTotalBeats(Skill));
+	}
+	PrintResult(Key, Message, FColor::Cyan);
+}
+
 static FAutoConsoleCommandWithWorldAndArgs CVarPlayerSetStat(
 	TEXT("Clanhall.Player.SetStat"),
 	TEXT("Set an attribute on the player, clamped by UClanhallAttributeSet. Usage: Clanhall.Player.SetStat <Name> <Value>"),
@@ -389,6 +455,30 @@ static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowCombatState(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
 	{
 		HandleShowCombatState(World);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemyUseSkill(
+	TEXT("Clanhall.Enemy.UseSkill"),
+	TEXT("Activate the current target's skill in a slot of its selected weapon. Usage: Clanhall.Enemy.UseSkill <Slot>, e.g. Q"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandleEnemyUseSkill(World, Args);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerShowCooldowns(
+	TEXT("Clanhall.Player.ShowCooldowns"),
+	TEXT("Print remaining cooldown of every skill of the player, in beats."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		HandleShowCooldowns(World, /*bTargetEnemy=*/false);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarEnemyShowCooldowns(
+	TEXT("Clanhall.Enemy.ShowCooldowns"),
+	TEXT("Print remaining cooldown of every skill of the current target, in beats."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		HandleShowCooldowns(World, /*bTargetEnemy=*/true);
 	}));
 
 #endif // !UE_BUILD_SHIPPING
