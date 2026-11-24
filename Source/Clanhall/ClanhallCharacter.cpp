@@ -21,6 +21,7 @@
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
 #include "ClanhallCombatSettings.h"
 #include "UI/ClanhallUILibrary.h"
+#include "Debug/ClanhallDebugMessage.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Engine/Engine.h"
 
@@ -144,18 +145,18 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Look);
 
-		// Активные навыки Knight (GA_PhysicalSkill) — Q/E/R/F.
+		// Клавиши слотов - одни и те же для приёмов и слогов, смысл решает слой. W A S D в том же
+		// контексте ещё и движение: обе привязки срабатывают, Move сам молчит под слоем. Один
+		// контекст, а не IMC на слой: при смене контекста зажатая клавиша либо глушится вместе с
+		// кнопкой мыши, либо W, зажатая для бега, стреляет приёмом.
 		for (const FClanhallSlotInput& SlotInput : SlotInputs)
 		{
 			if (!SlotInput.Action || !SlotInput.Slot.IsValid())
 			{
-				UE_LOG(LogClanhall, Warning, TEXT("'%s': запись SlotInputs без Action или Slot - клавиша выбора не привязана."), *GetNameSafe(this));
+				UE_LOG(LogClanhall, Warning, TEXT("'%s': запись SlotInputs без Action или Slot - клавиша слота не привязана."), *GetNameSafe(this));
 				continue;
 			}
-			// Started и Completed с самим слотом в payload: одна пара обработчиков на все клавиши.
-			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnSlotPressed, SlotInput.Slot);
-			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnSlotReleased, SlotInput.Slot);
-			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnSlotReleased, SlotInput.Slot);
+			EnhancedInputComponent->BindAction(SlotInput.Action.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnSlotKeyPressed, SlotInput.Slot);
 		}
 
 		for (int32 Index = 0; Index < WeaponInputs.Num(); ++Index)
@@ -168,10 +169,16 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 			EnhancedInputComponent->BindAction(WeaponInputs[Index].Action.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnWeaponKeyPressed, Index);
 		}
 
-		EnhancedInputComponent->BindAction(LaunchAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLaunchPressed);
-		EnhancedInputComponent->BindAction(CastAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnCastPressed);
+		// Кнопки мыши - слои ввода (`Controls.md`, «Ввод»): удержание, а не нажатие.
+		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLayerPressed, EClanhallInputLayer::Body);
+		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Body);
+		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Body);
+		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLayerPressed, EClanhallInputLayer::Mouth);
+		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Mouth);
+		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Mouth);
 
-		// Пробел: уклонение «Пробел + направление» (`CombatSystem.md`, «Уклонение»); прыжок - своя клавиша.
+		// Пробел: уклонение «Пробел + направление» (`CombatSystem.md`, «Уклонение»), под ПКМ - выпуск
+		// фразы; прыжок - своя клавиша.
 		EnhancedInputComponent->BindAction(SpaceAction, ETriggerEvent::Started, this, &AClanhallCharacter::OnSpacePressed);
 		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnJumpPressed);
 		EnhancedInputComponent->BindAction(JumpAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnJumpReleased);
@@ -194,6 +201,13 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 void AClanhallCharacter::Move(const FInputActionValue& Value)
 {
+	// Под зажатой кнопкой мыши W A S D - клавиши слотов: персонаж стоит (`Controls.md`, «Ввод»).
+	// Это добровольная остановка, а не потеря управления - IsBodyBusy её не знает.
+	if (GetInputLayer() != EClanhallInputLayer::None)
+	{
+		return;
+	}
+
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 	CurrentMoveInput = MovementVector;
@@ -309,6 +323,19 @@ void AClanhallCharacter::OnSprintReleased()
 
 void AClanhallCharacter::OnSpacePressed()
 {
+	// Под ПКМ Пробел - выпуск фразы. Под ЛКМ - ничего: направления уклонения - W A S D, а под ЛКМ
+	// это клавиши приёмов, «Пробел + направление» не собрать (решение P5j, подтвердить в игре).
+	switch (GetInputLayer())
+	{
+	case EClanhallInputLayer::Mouth:
+		OnReleasePressed();
+		return;
+	case EClanhallInputLayer::Body:
+		return;
+	default:
+		break;
+	}
+
 	// «Пробел + направление» - отскок в эту сторону (`CombatSystem.md`, «Уклонение»). Направление
 	// нажатой клавиши, а мировое направление отскока потом берётся от корпуса. Нет направления -
 	// нет отскока: «назад по умолчанию» не существует.
@@ -357,6 +384,18 @@ void AClanhallCharacter::OnCrystalPressed()
 
 void AClanhallCharacter::OnDuckPressed()
 {
+	// Под ПКМ Ctrl - сброс фразы; под ЛКМ присед закрыт для единообразия с Пробелом.
+	switch (GetInputLayer())
+	{
+	case EClanhallInputLayer::Mouth:
+		OnPhraseResetPressed();
+		return;
+	case EClanhallInputLayer::Body:
+		return;
+	default:
+		break;
+	}
+
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbility(DuckAbilityHandle);
@@ -481,45 +520,75 @@ void AClanhallCharacter::TickBodyTurn()
 }
 
 // ---------------------------------------------------------------------------
-// Ввод «клавиша выбирает, кнопка запускает» (`Controls.md`, «Ввод»). Контрнавык модификатора
-// не требует — распознаётся по контакту в GA_PhysicalSkill::ResolveHitOn по совпадению
-// CounterTag с открытым окном цели.
+// Ввод удержанием кнопки мыши (`Controls.md`, «Ввод»). Контрнавык модификатора не требует -
+// распознаётся по контакту в GA_PhysicalSkill::ResolveHitOn по совпадению CounterTag с открытым
+// окном цели; момент нажатия клавиши под ЛКМ и есть момент приёма.
 // ---------------------------------------------------------------------------
 
-void AClanhallCharacter::SetSelectedSlot(FGameplayTag NewSlot)
+void AClanhallCharacter::OnLayerPressed(EClanhallInputLayer Layer)
 {
-	if (NewSlot == SelectedSlot)
+	const EClanhallInputLayer Before = GetInputLayer();
+	HeldLayers.Remove(Layer);
+	HeldLayers.Add(Layer);
+	HandleInputLayerChange(Before);
+}
+
+void AClanhallCharacter::OnLayerReleased(EClanhallInputLayer Layer)
+{
+	const EClanhallInputLayer Before = GetInputLayer();
+	HeldLayers.Remove(Layer);
+	HandleInputLayerChange(Before);
+}
+
+void AClanhallCharacter::HandleInputLayerChange(EClanhallInputLayer Before)
+{
+	const EClanhallInputLayer Now = GetInputLayer();
+	if (Now == Before)
 	{
 		return;
 	}
-	SelectedSlot = NewSlot;
-	OnSelectedSlotChanged.Broadcast(SelectedSlot);
-}
-
-void AClanhallCharacter::OnSlotPressed(FGameplayTag Slot)
-{
-	// Зажато несколько - выбрана последняя нажатая. Повторный Started той же клавиши (не должен
-	// приходить, но дешёво) переносит её в конец, а не дублирует.
-	HeldSlots.Remove(Slot);
-	HeldSlots.Add(Slot);
-	SetSelectedSlot(Slot);
-}
-
-void AClanhallCharacter::OnSlotReleased(FGameplayTag Slot)
-{
-	HeldSlots.Remove(Slot);
-	SetSelectedSlot(HeldSlots.Num() > 0 ? HeldSlots.Last() : FGameplayTag());
-}
-
-void AClanhallCharacter::OnLaunchPressed()
-{
-	// Голая кнопка мыши без зажатой клавиши выбора ничего не делает: боя без оружия нет
-	// (`Controls.md`, «Ввод»; `MainCharacter.md`, «Голыми руками»).
-	if (!SelectedSlot.IsValid() || !AbilitySystemComponent)
+	// Вход в слой - персонаж встаёт: уклонение под слоем не должно взять старое направление.
+	if (Before == EClanhallInputLayer::None)
 	{
-		return;
+		CurrentMoveInput = FVector2D::ZeroVector;
 	}
-	AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(SelectedSlot));
+	OnInputLayerChanged.Broadcast(Now);
+}
+
+void AClanhallCharacter::OnSlotKeyPressed(FGameplayTag Slot)
+{
+	// Клавиша, нажатая до кнопки мыши, приёмом не становится: её Started пришёл без слоя.
+	switch (GetInputLayer())
+	{
+	case EClanhallInputLayer::Body:
+		if (AbilitySystemComponent)
+		{
+			AbilitySystemComponent->TryActivateAbility(GetActiveSkillHandle(Slot));
+		}
+		break;
+	case EClanhallInputLayer::Mouth:
+		OnSyllableKey(Slot);
+		break;
+	default:
+		// Голая клавиша без кнопки мыши ничего не запускает (`Controls.md`, «Ввод»).
+		break;
+	}
+}
+
+void AClanhallCharacter::OnSyllableKey(FGameplayTag Slot)
+{
+	// Фраза, мана и выпуск - P6 (`MagicSystem.md`, «Каст»).
+	ClanhallDebug::Screen(FColor::Purple, FString::Printf(TEXT("syllable %s"), *Slot.ToString()));
+}
+
+void AClanhallCharacter::OnReleasePressed()
+{
+	ClanhallDebug::Screen(FColor::Purple, TEXT("phrase release"));
+}
+
+void AClanhallCharacter::OnPhraseResetPressed()
+{
+	ClanhallDebug::Screen(FColor::Purple, TEXT("phrase reset"));
 }
 
 void AClanhallCharacter::OnWeaponKeyPressed(int32 WeaponInputIndex)
@@ -550,12 +619,6 @@ void AClanhallCharacter::RefreshMovementSpeed()
 		return;
 	}
 	Movement->MaxWalkSpeed = (IsSprinting() ? GetSprintSpeed() : GetJogSpeed()) * GetWeaponSpeedMultiplier() * GetMoveSpeedMultiplier();
-}
-
-void AClanhallCharacter::OnCastPressed()
-{
-	// Слоги на ПКМ - магия, P6. Бинд заведён сейчас, чтобы раскладка была целой.
-	UE_LOG(LogClanhall, Verbose, TEXT("%s: ПКМ - слоги появятся вместе с магией."), *GetName());
 }
 
 void AClanhallCharacter::OnSkillSlotsAssigned()

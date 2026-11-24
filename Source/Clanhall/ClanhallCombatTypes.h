@@ -58,6 +58,16 @@ enum class EClanhallLethalMode : uint8
 	FromBackOnly  UMETA(DisplayName = "From Back Only")
 };
 
+/** Слой ввода (`Controls.md`, «Ввод»): зажатая кнопка мыши выбирает, кто действует, клавиша - что.
+ *  ЛКМ - тело (приёмы), ПКМ - рот (слоги); обе зажаты - главная последняя зажатая. */
+UENUM(BlueprintType)
+enum class EClanhallInputLayer : uint8
+{
+	None   UMETA(DisplayName = "None"),
+	Body   UMETA(DisplayName = "Body (skills)"),
+	Mouth  UMETA(DisplayName = "Mouth (syllables)")
+};
+
 /** Механика школы оружия (`AbilitySystem.md`, «Механика школы оружия») - поле класса оружия, а не
  *  приёма. В прототипе две: ножны длинного меча и спина кинжала; остальные школы добавятся с
  *  классами. */

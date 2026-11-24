@@ -41,10 +41,6 @@ struct CLANHALL_API FClanhallPanelSkill
 	UPROPERTY(BlueprintReadOnly, Category = "Panel")
 	float TotalCooldownBeats = 0.0f;
 
-	/** Клавиша приёма зажата на активном ряду - следующий клик ЛКМ запустит его. */
-	UPROPERTY(BlueprintReadOnly, Category = "Panel")
-	bool bSelected = false;
-
 	/** Каким уровнем приём выйдет сейчас (`MarksSystem.md`, «Уровни навыка»). */
 	UPROPERTY(BlueprintReadOnly, Category = "Panel")
 	int32 Level = 1;

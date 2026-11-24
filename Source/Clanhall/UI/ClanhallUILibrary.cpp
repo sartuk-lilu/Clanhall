@@ -95,8 +95,6 @@ TArray<FClanhallPanelRow> UClanhallUILibrary::GetSkillPanel(AClanhallHumanoidBas
 	}
 
 	const UClanhallSkillCooldownComponent* Cooldowns = Fighter->FindComponentByClass<UClanhallSkillCooldownComponent>();
-	const AClanhallCharacter* Player = Cast<AClanhallCharacter>(Fighter);
-	const FGameplayTag SelectedSlot = Player ? Player->GetSelectedSlot() : FGameplayTag();
 	const TArray<UWeaponData*> Loadout = Fighter->GetLoadout();
 
 	for (int32 Index = 0; Index < Loadout.Num(); ++Index)
@@ -116,7 +114,6 @@ TArray<FClanhallPanelRow> UClanhallUILibrary::GetSkillPanel(AClanhallHumanoidBas
 			Entry.Slot = Fighter->GetSkillSlot(Index, Skill->CounterTag);
 			Entry.TotalCooldownBeats = Skill->CooldownBeats;
 			Entry.RemainingCooldownBeats = Cooldowns ? Cooldowns->GetRemainingBeats(Skill->CounterTag) : 0.0f;
-			Entry.bSelected = Row.bSelected && Entry.Slot.IsValid() && Entry.Slot == SelectedSlot;
 			Entry.Level = PreviewSkillLevel(Fighter, Skill);
 		}
 	}

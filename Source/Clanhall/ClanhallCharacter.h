@@ -20,10 +20,11 @@ class UGA_Duck;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallSelectedSlotChanged, FGameplayTag, Slot);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnClanhallInputLayerChanged, EClanhallInputLayer, Layer);
 
-/** Клавиша выбора и слот, который она выбирает (`Controls.md`, «Ввод»). Слот - позиция панели,
- *  клавиша - что угодно из IMC: все клавиши переназначаются. */
+/** Клавиша слота и её позиция (`Controls.md`, «Ввод»). Клавиша - позиция, слой - смысл: под ЛКМ
+ *  она запускает приём этой позиции, под ПКМ вводит слог. Клавиша - что угодно из IMC: вторая
+ *  раскладка - другие клавиши у тех же действий. */
 USTRUCT(BlueprintType)
 struct FClanhallSlotInput
 {
@@ -96,20 +97,19 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
 
-	// --- Ввод «клавиша выбирает, кнопка запускает» (`Controls.md`, «Ввод») ---
+	// --- Ввод удержанием кнопки мыши (`Controls.md`, «Ввод») ---
 
-	/** Клавиши выбора: зажатая клавиша выбирает слот, ЛКМ запускает приём в нём, ПКМ - слог
-	 *  (магия - P6). Раскладка по умолчанию - Q/E/R/F/1/2/3/4 → Slot.Q/E/R/F/Z/X/C/V. */
+	/** Клавиши слотов: Q W E R / A S D F → Slot.Q/W/E/R/A/S/D/F. Что клавиша делает, решает слой. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
 	TArray<FClanhallSlotInput> SlotInputs;
 
-	/** ЛКМ - запуск приёма в выбранном слоте. Без выбранного слота ничего не делает. */
+	/** ЛКМ (удержание) - слой тела: клавиши слотов запускают приёмы, появляется прицел. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	TObjectPtr<UInputAction> LaunchAction;
+	TObjectPtr<UInputAction> BodyLayerAction;
 
-	/** ПКМ - произнести слог выбранного слота. В P5 ничего не делает: магия - P6. */
+	/** ПКМ (удержание) - слой рта: клавиши слотов вводят слоги, Пробел - выпуск, Ctrl - сброс. */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
-	TObjectPtr<UInputAction> CastAction;
+	TObjectPtr<UInputAction> MouthLayerAction;
 
 	/** Клавиши оружия: убрать то, что в руках, и выбрать новое (`WeaponSystem.md`, «Свап оружия»). */
 	UPROPERTY(EditAnywhere, Category = "Input|Combat")
@@ -119,11 +119,9 @@ protected:
 	int32 LastWeaponInputIndex = INDEX_NONE;
 	double LastWeaponInputTime = -1.0;
 
-	/** Зажатые сейчас слоты в порядке нажатия; выбран последний. */
-	TArray<FGameplayTag> HeldSlots;
-
-	/** Выбранный слот - последняя нажатая из зажатых клавиш выбора; невалиден - ничего не выбрано. */
-	FGameplayTag SelectedSlot;
+	/** Зажатые кнопки мыши в порядке нажатия; активный слой - последний (главная - последняя
+	 *  зажатая). */
+	TArray<EClanhallInputLayer> HeldLayers;
 
 	/** Класс отскока/ухода, гранится в BeginPlay вместо UGA_Dodge::StaticClass() напрямую -
 	 *  только так его EditDefaultsOnly-поля (дистанции, монтажи) открываются в редакторе: у
@@ -209,23 +207,27 @@ protected:
 	/** Тело занято - движение и прыжок закрыты: начатый приём, потеря управления, смерть. */
 	bool IsBodyBusy() const;
 
-	/** Клавиша выбора нажата - её слот становится выбранным. */
-	void OnSlotPressed(FGameplayTag Slot);
+	/** Клавиша слота нажата: под ЛКМ - приём этой позиции сразу, под ПКМ - слог, без слоя -
+	 *  ничего (W A S D при этом двигают через Move). */
+	void OnSlotKeyPressed(FGameplayTag Slot);
 
-	/** Клавиша выбора отпущена - выбор переходит к последней из ещё зажатых, нет таких - выбора нет. */
-	void OnSlotReleased(FGameplayTag Slot);
+	/** Кнопка мыши зажата / отпущена - стек слоёв. */
+	void OnLayerPressed(EClanhallInputLayer Layer);
+	void OnLayerReleased(EClanhallInputLayer Layer);
 
-	/** ЛКМ - приём выбранного слота активного оружия; без выбора - ничего (`Controls.md`). */
-	void OnLaunchPressed();
+	/** Активный слой сменился - вещать OnInputLayerChanged; вход в слой останавливает движение. */
+	void HandleInputLayerChange(EClanhallInputLayer Before);
 
-	/** ПКМ - слог; в P5 только Verbose-лог. */
-	void OnCastPressed();
+	/** Слог под ПКМ - заглушка до магии (P6): сообщение в LogClanhallCombat. */
+	void OnSyllableKey(FGameplayTag Slot);
+
+	/** ПКМ + Пробел - выпуск фразы, ПКМ + Ctrl - сброс фразы: заглушки до магии (P6). */
+	void OnReleasePressed();
+	void OnPhraseResetPressed();
 
 	/** Клавиша оружия нажата - выбор оружия лоадаута, двойное нажатие - DoubleTapLoadoutIndex. */
 	void OnWeaponKeyPressed(int32 WeaponInputIndex);
 
-
-	void SetSelectedSlot(FGameplayTag NewSlot);
 
 	/** Shift нажат - запускает бег. */
 	void OnSprintPressed();
@@ -267,12 +269,12 @@ public:
 	/** Скорость с учётом бега: на бегу база - SprintSpeed, иначе шаг. Оружие и метки - множители. */
 	virtual void RefreshMovementSpeed() override;
 
-	/** Слот, выбранный зажатой клавишей, - для подсветки на панели. */
+	/** Активный слой ввода - для прицела (ЛКМ) и подсветки панели приёмов или слогов. */
 	UFUNCTION(BlueprintPure, Category = "Input")
-	FGameplayTag GetSelectedSlot() const { return SelectedSlot; }
+	EClanhallInputLayer GetInputLayer() const { return HeldLayers.Num() > 0 ? HeldLayers.Last() : EClanhallInputLayer::None; }
 
 	UPROPERTY(BlueprintAssignable, Category = "Input")
-	FOnClanhallSelectedSlotChanged OnSelectedSlotChanged;
+	FOnClanhallInputLayerChanged OnInputLayerChanged;
 
 	/** Активирует DodgeAbilityHandle событием, с направлением в EventMagnitude - см.
 	 *  UGA_Dodge::ActivateAbility (`CombatSystem.md`). */

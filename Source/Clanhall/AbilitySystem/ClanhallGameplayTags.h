@@ -104,6 +104,12 @@ namespace ClanhallGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_X);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_C);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_V);
+	// Раскладка по умолчанию - Q W E R / A S D F (`Controls.md`, «Раскладка по умолчанию»).
+	// Z/X/C/V остаются для второй раскладки.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_W);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_A);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_S);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Slot_D);
 
 	// ---- Denied.* ----
 	// Причина отказа TryActivateAbility (OptionalRelevantTags у CanActivateAbility). Корень
