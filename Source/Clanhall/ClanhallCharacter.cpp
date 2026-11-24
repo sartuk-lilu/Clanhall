@@ -137,6 +137,16 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
+		// Кнопки мыши - слои ввода (`Controls.md`, «Ввод»): удержание, а не нажатие. Биндятся первыми:
+		// делегаты одного кадра идут в порядке биндинга, и кнопка мыши, нажатая в том же кадре, что
+		// клавиша слота или движение, обязана сменить слой раньше, чем их обработают.
+		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLayerPressed, EClanhallInputLayer::Body);
+		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Body);
+		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Body);
+		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLayerPressed, EClanhallInputLayer::Mouth);
+		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Mouth);
+		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Mouth);
+
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Move);
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Completed, this, &AClanhallCharacter::OnMoveReleased);
@@ -169,13 +179,6 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 			EnhancedInputComponent->BindAction(WeaponInputs[Index].Action.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnWeaponKeyPressed, Index);
 		}
 
-		// Кнопки мыши - слои ввода (`Controls.md`, «Ввод»): удержание, а не нажатие.
-		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLayerPressed, EClanhallInputLayer::Body);
-		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Body);
-		EnhancedInputComponent->BindAction(BodyLayerAction.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Body);
-		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Started, this, &AClanhallCharacter::OnLayerPressed, EClanhallInputLayer::Mouth);
-		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Completed, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Mouth);
-		EnhancedInputComponent->BindAction(MouthLayerAction.Get(), ETriggerEvent::Canceled, this, &AClanhallCharacter::OnLayerReleased, EClanhallInputLayer::Mouth);
 
 		// Пробел: уклонение «Пробел + направление» (`CombatSystem.md`, «Уклонение»), под ПКМ - выпуск
 		// фразы; прыжок - своя клавиша.
@@ -553,6 +556,18 @@ void AClanhallCharacter::HandleInputLayerChange(EClanhallInputLayer Before)
 		CurrentMoveInput = FVector2D::ZeroVector;
 	}
 	OnInputLayerChanged.Broadcast(Now);
+}
+
+void AClanhallCharacter::DebugHoldInputLayer(EClanhallInputLayer Layer)
+{
+	if (Layer == EClanhallInputLayer::None)
+	{
+		const EClanhallInputLayer Before = GetInputLayer();
+		HeldLayers.Reset();
+		HandleInputLayerChange(Before);
+		return;
+	}
+	OnLayerPressed(Layer);
 }
 
 void AClanhallCharacter::OnSlotKeyPressed(FGameplayTag Slot)

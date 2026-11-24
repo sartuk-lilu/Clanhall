@@ -12,6 +12,7 @@
 #include "AbilitySystem/ClanhallCrystalComponent.h"
 #include "ClanhallCombatTypes.h"
 #include "ClanhallHumanoidBase.h"
+#include "ClanhallCharacter.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -53,6 +54,7 @@ enum class EDebugMsgKey : int32
 	EnemyUseCrystal,
 	PlayerUseSkill,
 	PlayerSelectWeapon,
+	PlayerHoldLayer,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -774,6 +776,24 @@ static FAutoConsoleCommandWithWorldAndArgs CVarPlayerSelectWeapon(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		HandlePlayerSelectWeapon(World, Args);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerHoldLayer(
+	TEXT("Clanhall.Player.HoldLayer"),
+	TEXT("Hold an input layer as if a mouse button were held: Body (LMB), Mouth (RMB), None (release all). For scripted input checks."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		const EDebugMsgKey Key = EDebugMsgKey::PlayerHoldLayer;
+		AClanhallCharacter* Player = Cast<AClanhallCharacter>(ResolvePlayerPawn(World, Key));
+		if (!Player || Args.Num() < 1)
+		{
+			PrintError(Key, TEXT("Usage: Clanhall.Player.HoldLayer <Body|Mouth|None>"));
+			return;
+		}
+		const EClanhallInputLayer Layer = Args[0].Equals(TEXT("Body"), ESearchCase::IgnoreCase) ? EClanhallInputLayer::Body
+			: Args[0].Equals(TEXT("Mouth"), ESearchCase::IgnoreCase) ? EClanhallInputLayer::Mouth : EClanhallInputLayer::None;
+		Player->DebugHoldInputLayer(Layer);
+		PrintResult(Key, FString::Printf(TEXT("[Player] input layer: %s"), *UEnum::GetValueAsString(Player->GetInputLayer())), FColor::Green);
 	}));
 
 #endif // !UE_BUILD_SHIPPING

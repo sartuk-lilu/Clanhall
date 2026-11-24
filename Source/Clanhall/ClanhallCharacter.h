@@ -276,6 +276,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Input")
 	FOnClanhallInputLayerChanged OnInputLayerChanged;
 
+	/** Отладка: держать слой, как зажатую кнопку мыши; None - отпустить все. Проверка из скрипта
+	 *  редактора: впрыск ввода держит только один кадр, а слой - это удержание. */
+	void DebugHoldInputLayer(EClanhallInputLayer Layer);
+
 	/** Активирует DodgeAbilityHandle событием, с направлением в EventMagnitude - см.
 	 *  UGA_Dodge::ActivateAbility (`CombatSystem.md`). */
 	void TriggerEvade(EClanhallEvadeDirection Direction);
