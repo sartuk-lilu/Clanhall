@@ -23,6 +23,7 @@
 
 class UAbilitySystemComponent;
 class UMarkData;
+class UGameplayEffect;
 
 /** Лежащая на бойце метка - для HUD и отладки. */
 USTRUCT(BlueprintType)
@@ -93,6 +94,10 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMarkData>> HeldMarkAssets;
 
+	/** Эффекты, собранные из UMarkData::Modifiers, - один на ассет метки, живут с компонентом. */
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<UMarkData>, TObjectPtr<UGameplayEffect>> BuiltModifierEffects;
+
 	struct FPlacedMark
 	{
 		TObjectPtr<UMarkData> Mark;
@@ -101,6 +106,7 @@ private:
 		double PlacedAt = 0.0;
 		double ExpiresAt = 0.0;
 		FActiveGameplayEffectHandle EffectHandle;
+		FActiveGameplayEffectHandle ModifierHandle;
 	};
 
 	/** Первый уровень: слот дебаффа [0] и слот баффа [1]. */
@@ -115,6 +121,9 @@ private:
 	UAbilitySystemComponent* GetOwnerASC() const;
 	double Now() const;
 	double LifetimeSeconds(int32 Level) const;
+
+	/** Infinite-эффект из модификаторов метки; nullptr - модификаторов нет. */
+	UGameplayEffect* GetModifierEffect(UMarkData* Mark);
 
 	void Apply(FPlacedMark& Placed);
 	void Remove(FPlacedMark& Placed);

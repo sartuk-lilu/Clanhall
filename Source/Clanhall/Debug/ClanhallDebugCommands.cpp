@@ -51,6 +51,8 @@ enum class EDebugMsgKey : int32
 	PlayerAddCrystal,
 	EnemyAddCrystal,
 	EnemyUseCrystal,
+	PlayerUseSkill,
+	PlayerSelectWeapon,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -423,21 +425,18 @@ static void HandleShowCombatState(UWorld* World)
 	PrintResult(Key, Message, CombatState->IsInCombat() ? FColor::Red : FColor::Green);
 }
 
-// Манекену нечем драться без BT, а контр, метки и насмешка проверяются на его приёмах.
-// Слот - короткое имя (Q, E, R, F, Z, X, C, V), приём - из ряда его выбранного оружия.
-static void HandleEnemyUseSkill(UWorld* World, const TArray<FString>& Args)
+// Приём бойца в слоте его выбранного оружия. Слот - короткое имя (Q, E, R, F, Z, X, C, V).
+// Манекену нечем драться без BT; приём игрока - для проверок без клавиатуры (скрипт в редакторе).
+static void UseSkillInSlot(AClanhallHumanoidBase* Fighter, const TArray<FString>& Args, EDebugMsgKey Key, const TCHAR* Who)
 {
-	const EDebugMsgKey Key = EDebugMsgKey::EnemyUseSkill;
 	if (Args.Num() < 1)
 	{
-		PrintError(Key, TEXT("Usage: Clanhall.Enemy.UseSkill <Slot>, e.g. Q"));
+		PrintError(Key, TEXT("Usage: Clanhall.<Player|Enemy>.UseSkill <Slot>, e.g. Q"));
 		return;
 	}
-
-	AClanhallHumanoidBase* Enemy = Cast<AClanhallHumanoidBase>(ResolveTargetActor(World, Key));
-	if (!Enemy)
+	if (!Fighter)
 	{
-		PrintError(Key, TEXT("Current target is not an AClanhallHumanoidBase"));
+		PrintError(Key, TEXT("Fighter is not an AClanhallHumanoidBase"));
 		return;
 	}
 
@@ -448,17 +447,43 @@ static void HandleEnemyUseSkill(UWorld* World, const TArray<FString>& Args)
 		return;
 	}
 
-	const FGameplayAbilitySpecHandle Handle = Enemy->GetActiveSkillHandle(Slot);
-	UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent();
+	const FGameplayAbilitySpecHandle Handle = Fighter->GetActiveSkillHandle(Slot);
+	UAbilitySystemComponent* ASC = Fighter->GetAbilitySystemComponent();
 	if (!Handle.IsValid() || !ASC)
 	{
-		PrintError(Key, FString::Printf(TEXT("%s has no skill in %s"), *Enemy->GetName(), *Slot.ToString()));
+		PrintError(Key, FString::Printf(TEXT("%s has no skill in %s"), *Fighter->GetName(), *Slot.ToString()));
 		return;
 	}
 
 	const bool bActivated = ASC->TryActivateAbility(Handle);
-	PrintResult(Key, FString::Printf(TEXT("[Enemy] %s: %s"), *Slot.ToString(), bActivated ? TEXT("activated") : TEXT("refused (cooldown, commit or state)")),
+	PrintResult(Key, FString::Printf(TEXT("[%s] %s: %s"), Who, *Slot.ToString(), bActivated ? TEXT("activated") : TEXT("refused (cooldown, commit or state)")),
 		bActivated ? FColor::Green : FColor::Red);
+}
+
+static void HandlePlayerUseSkill(UWorld* World, const TArray<FString>& Args)
+{
+	UseSkillInSlot(Cast<AClanhallHumanoidBase>(ResolvePlayerPawn(World, EDebugMsgKey::PlayerUseSkill)), Args, EDebugMsgKey::PlayerUseSkill, TEXT("Player"));
+}
+
+static void HandlePlayerSelectWeapon(UWorld* World, const TArray<FString>& Args)
+{
+	const EDebugMsgKey Key = EDebugMsgKey::PlayerSelectWeapon;
+	AClanhallHumanoidBase* Player = Cast<AClanhallHumanoidBase>(ResolvePlayerPawn(World, Key));
+	if (!Player || Args.Num() < 1)
+	{
+		PrintError(Key, TEXT("Usage: Clanhall.Player.SelectWeapon <LoadoutIndex>"));
+		return;
+	}
+	const int32 Index = FCString::Atoi(*Args[0]);
+	const bool bSelected = Player->SelectWeapon(Index);
+	PrintResult(Key, FString::Printf(TEXT("[Player] select weapon %d: %s"), Index, bSelected ? TEXT("ok") : TEXT("refused")),
+		bSelected ? FColor::Green : FColor::Red);
+}
+
+static void HandleEnemyUseSkill(UWorld* World, const TArray<FString>& Args)
+{
+	const EDebugMsgKey Key = EDebugMsgKey::EnemyUseSkill;
+	UseSkillInSlot(Cast<AClanhallHumanoidBase>(ResolveTargetActor(World, Key)), Args, Key, TEXT("Enemy"));
 }
 
 // Противник оружие не убирает - смена стоит ему ту же долю (`WeaponSystem.md`, «Свап оружия»).
@@ -733,6 +758,22 @@ static FAutoConsoleCommandWithWorldAndArgs CVarEnemyUseCrystal(
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& /*Args*/, UWorld* World)
 	{
 		HandleEnemyUseCrystal(World);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerUseSkill(
+	TEXT("Clanhall.Player.UseSkill"),
+	TEXT("Activate the player's skill in a slot of the selected weapon, as LMB with the slot held. Usage: Clanhall.Player.UseSkill <Slot>, e.g. Q"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandlePlayerUseSkill(World, Args);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerSelectWeapon(
+	TEXT("Clanhall.Player.SelectWeapon"),
+	TEXT("Select a loadout weapon on the player, as a weapon key. Usage: Clanhall.Player.SelectWeapon <LoadoutIndex>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		HandlePlayerSelectWeapon(World, Args);
 	}));
 
 #endif // !UE_BUILD_SHIPPING

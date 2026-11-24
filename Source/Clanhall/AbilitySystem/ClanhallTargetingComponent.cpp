@@ -44,7 +44,9 @@ void UClanhallTargetingComponent::UpdateTarget()
 	FCollisionQueryParams Params(TEXT("ClanhallTargeting"), false, GetOwner());
 
 	AActor* NewTarget = nullptr;
-	if (GetWorld()->LineTraceSingleByChannel(Hit, CameraLoc, End, ECC_Visibility, Params))
+	// Канал Pawn, а не Visibility: капсула персонажа (профиль Pawn) Visibility игнорирует, и луч по
+	// нему не попал бы ни в одного бойца. Стены Pawn блокируют - цель за стеной не берётся.
+	if (GetWorld()->LineTraceSingleByChannel(Hit, CameraLoc, End, ECC_Pawn, Params))
 	{
 		// Цель валидна только если у неё есть ASC (игровой персонаж / враг)
 		if (Hit.GetActor() && Hit.GetActor()->Implements<UAbilitySystemInterface>())

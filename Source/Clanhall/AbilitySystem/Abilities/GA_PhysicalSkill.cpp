@@ -1,4 +1,5 @@
 #include "GA_PhysicalSkill.h"
+#include "Debug/ClanhallDebugMessage.h"
 #include "Clanhall.h"
 #include "AbilitySystem/AbilityData.h"
 #include "AbilitySystem/Fragments/GameplayFragments.h"
@@ -281,7 +282,7 @@ void UGA_PhysicalSkill::ApplyChosenLevel(UClanhallMarkComponent* Holder, AActor*
 #if !UE_BUILD_SHIPPING
 			else
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(
+				ClanhallDebug::Screen(FColor::Yellow, FString::Printf(
 					TEXT("%s: %s placed by own school - strong version only"), *Data->DisplayName.ToString(), *Level.Reads.ToString()));
 			}
 #endif
@@ -394,7 +395,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 				DurationBeats = Level.DurationBeatsOverride;
 			}
 #if !UE_BUILD_SHIPPING
-			GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::White, FString::Printf(TEXT("%s - level %d"), *Data->DisplayName.ToString(), Level.Level));
+			ClanhallDebug::Screen(FColor::White, FString::Printf(TEXT("%s - level %d"), *Data->DisplayName.ToString(), Level.Level));
 #endif
 		}
 
@@ -413,7 +414,7 @@ void UGA_PhysicalSkill::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		DurationBeats *= Settings.ScabbardDurationFactor;
 		HitDamageMultiplier *= Settings.ScabbardDamageMultiplier;
 #if !UE_BUILD_SHIPPING
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, FString::Printf(TEXT("%s - from scabbard"), *Data->DisplayName.ToString()));
+		ClanhallDebug::Screen(FColor::Cyan, FString::Printf(TEXT("%s - from scabbard"), *Data->DisplayName.ToString()));
 #endif
 	}
 
@@ -597,7 +598,7 @@ bool UGA_PhysicalSkill::TryTauntParry(AActor* Avatar, AActor* Target, UAbilitySy
 	TargetASC->CancelAbilities(&TauntTags);
 
 #if !UE_BUILD_SHIPPING
-	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, FString::Printf(TEXT("%s stopped %s with a taunt"),
+	ClanhallDebug::Screen(FColor::Cyan, FString::Printf(TEXT("%s stopped %s with a taunt"),
 		*GetNameSafe(Target), *GetNameSafe(Avatar)));
 #endif
 
@@ -659,7 +660,7 @@ void UGA_PhysicalSkill::ResolveHitOn(AActor* Target)
 
 #if !UE_BUILD_SHIPPING
 	// На каждое попадание, без гейта: при мультицели полезно видеть, сколько целей задело.
-	GEngine->AddOnScreenDebugMessage(-1, 2.0f, HitResult.bConfirmed ? FColor::Orange : FColor::Silver, FString::Printf(
+	ClanhallDebug::Screen(HitResult.bConfirmed ? FColor::Orange : FColor::Silver, FString::Printf(
 		TEXT("%s -> %s | AP -%.0f HP -%.0f%s%s%s%s"),
 		*Data->DisplayName.ToString(), *GetNameSafe(Target), HitResult.DamageToAP, HitResult.DamageToHP,
 		HitResult.bAbsorbed ? TEXT(" | absorbed by threshold") : TEXT(""),

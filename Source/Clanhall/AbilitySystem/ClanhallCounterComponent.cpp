@@ -1,4 +1,5 @@
 #include "AbilitySystem/ClanhallCounterComponent.h"
+#include "Debug/ClanhallDebugMessage.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
 #include "AbilitySystem/Effects/ClanhallGameplayEffects.h"
@@ -73,7 +74,7 @@ void UClanhallCounterComponent::ConsumeCounter()
 			ClanhallBeats::ToSeconds(UClanhallCombatSettings::Get().CounterStunBeats));
 
 #if !UE_BUILD_SHIPPING
-		GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван"));
+		ClanhallDebug::Screen(FColor::Green, TEXT("✓ КОНТРНАВЫК! Навык прерван"));
 #endif
 	}
 

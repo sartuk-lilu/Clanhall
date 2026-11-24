@@ -2,8 +2,10 @@
 // Уровень - горизонт времени, а не сила: время жизни берётся из настроек боя по уровню
 // (MarkL1Beats / MarkL2Beats / MarkL3Beats), поля-переопределения на метке нет.
 //
-// Эффект - GameplayEffect с модификаторами атрибутов БЕЗ собственной длительности (Infinite):
-// время жизни держит UClanhallMarkComponent, он же снимает эффект. Бонусы меток складываются, а
+// Что метка меняет - Modifiers: атрибут, операция, значение. Компонент собирает из них Infinite
+// GameplayEffect на лету (один на ассет метки), время жизни держит он же. Так метка - ровно один
+// ассет, без парного Blueprint-эффекта на каждую. Effect - запасной путь для того, что модификатором
+// не выразить (Infinite GE, тоже снимается вместе с меткой). Бонусы меток складываются, а
 // не перемножаются: модификаторы множителей - операция MultiplyAdditive
 // (`MarksSystem.md`, «Слоты меток»; ×1.15 и ×1.4 дают ×1.55). MultiplyCompound метками не
 // используется.
@@ -12,12 +14,31 @@
 
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
+#include "AttributeSet.h"
+#include "GameplayEffectTypes.h"
 #include "ClanhallCombatTypes.h"
 #include "MarkData.generated.h"
 
 class UGameplayEffect;
 class UTexture2D;
 class UAnimMontage;
+
+/** Одна правка атрибута меткой. Множители - Multiply (Additive): бонусы складываются. */
+USTRUCT(BlueprintType)
+struct CLANHALL_API FClanhallMarkModifier
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Mark")
+	FGameplayAttribute Attribute;
+
+	/** Multiply (Additive) для множителей (1.15 - плюс 15%), Add (Base) для крита и снижения порога. */
+	UPROPERTY(EditAnywhere, Category = "Mark")
+	TEnumAsByte<EGameplayModOp::Type> Op = EGameplayModOp::MultiplyAdditive;
+
+	UPROPERTY(EditAnywhere, Category = "Mark")
+	float Value = 1.0f;
+};
 
 UCLASS()
 class CLANHALL_API UMarkData : public UPrimaryDataAsset
@@ -38,7 +59,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Mark")
 	EClanhallMarkKind Kind = EClanhallMarkKind::Debuff;
 
-	/** Что метка меняет - модификаторы атрибутов (MultiplyAdditive для множителей), Infinite. */
+	/** Что метка меняет - правки атрибутов; компонент собирает из них Infinite-эффект. */
+	UPROPERTY(EditAnywhere, Category = "Mark")
+	TArray<FClanhallMarkModifier> Modifiers;
+
+	/** Запасной путь - готовый GameplayEffect (Infinite) для того, что модификатором не выразить. */
 	UPROPERTY(EditAnywhere, Category = "Mark")
 	TSubclassOf<UGameplayEffect> Effect;
 

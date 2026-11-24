@@ -4,6 +4,7 @@
 #include "ClanhallCombatSettings.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "GameplayEffect.h"
 #include "Engine/World.h"
 
 UClanhallMarkComponent::UClanhallMarkComponent()
@@ -33,6 +34,36 @@ double UClanhallMarkComponent::LifetimeSeconds(int32 Level) const
 	return ClanhallBeats::ToSeconds(Beats);
 }
 
+UGameplayEffect* UClanhallMarkComponent::GetModifierEffect(UMarkData* Mark)
+{
+	if (!Mark || Mark->Modifiers.Num() == 0)
+	{
+		return nullptr;
+	}
+	if (const TObjectPtr<UGameplayEffect>* Found = BuiltModifierEffects.Find(Mark))
+	{
+		return Found->Get();
+	}
+
+	// Эффект без собственной длительности: метку снимает компонент по своему таймеру.
+	UGameplayEffect* Effect = NewObject<UGameplayEffect>(this, MakeUniqueObjectName(this, UGameplayEffect::StaticClass(),
+		FName(*FString::Printf(TEXT("GE_Mark_%s"), *Mark->GetName()))));
+	Effect->DurationPolicy = EGameplayEffectDurationType::Infinite;
+	for (const FClanhallMarkModifier& Modifier : Mark->Modifiers)
+	{
+		if (!Modifier.Attribute.IsValid())
+		{
+			continue;
+		}
+		FGameplayModifierInfo& Info = Effect->Modifiers.AddDefaulted_GetRef();
+		Info.Attribute = Modifier.Attribute;
+		Info.ModifierOp = Modifier.Op;
+		Info.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(Modifier.Value));
+	}
+	BuiltModifierEffects.Add(Mark, Effect);
+	return Effect;
+}
+
 void UClanhallMarkComponent::Apply(FPlacedMark& Placed)
 {
 	UAbilitySystemComponent* ASC = GetOwnerASC();
@@ -47,6 +78,10 @@ void UClanhallMarkComponent::Apply(FPlacedMark& Placed)
 	if (Placed.Mark->Effect)
 	{
 		Placed.EffectHandle = ClanhallGameplayEffects::ApplyEffect(ASC, ASC, Placed.Mark->Effect);
+	}
+	if (const UGameplayEffect* ModifierEffect = GetModifierEffect(Placed.Mark))
+	{
+		Placed.ModifierHandle = ASC->ApplyGameplayEffectToSelf(ModifierEffect, 1.0f, ASC->MakeEffectContext());
 	}
 }
 
@@ -65,6 +100,11 @@ void UClanhallMarkComponent::Remove(FPlacedMark& Placed)
 	{
 		ASC->RemoveActiveGameplayEffect(Placed.EffectHandle);
 		Placed.EffectHandle.Invalidate();
+	}
+	if (Placed.ModifierHandle.IsValid())
+	{
+		ASC->RemoveActiveGameplayEffect(Placed.ModifierHandle);
+		Placed.ModifierHandle.Invalidate();
 	}
 }
 

@@ -1,4 +1,7 @@
 #include "AbilitySystem/ClanhallDamage.h"
+#include "Debug/ClanhallDebugMessage.h"
+
+DEFINE_LOG_CATEGORY(LogClanhallCombat);
 #include "AbilitySystem/ClanhallAttributeSet.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallHitboxComponent.h"
