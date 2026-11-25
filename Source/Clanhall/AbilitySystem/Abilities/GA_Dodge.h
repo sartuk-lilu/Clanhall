@@ -35,9 +35,9 @@ public:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
 protected:
-	/** Хвост восстановления - общий для всех направлений и оружий. Длительность State.EvadeRecovery
-	 *  после отскока равна ровно его GetPlayLength(), вешается только если монтаж реально стартовал.
-	 *  nullptr - законное состояние: хвоста тогда нет, лок - только сам отскок. */
+	/** Хвост восстановления - общий для всех направлений и оружий. Подгоняется play rate'ом под
+	 *  остаток полной длины отскока (DodgeBeats - DodgeTravelBeats класса оружия); State.EvadeRecovery
+	 *  висит ровно этот остаток. nullptr - законное состояние: лок держится тем же параметром. */
 	UPROPERTY(EditDefaultsOnly, Category = "Dodge|Animation")
 	TObjectPtr<UAnimMontage> EvadeRecoveryMontage;
 
@@ -52,4 +52,11 @@ private:
 
 	/** Урон отклика по касанию - из класса выбранного оружия на момент отскока. */
 	float TouchDamage = 0.0f;
+
+	/** Хвост после перемещения, с - остаток полной длины отскока (DodgeBeats - DodgeTravelBeats). */
+	float RecoverySeconds = 0.0f;
+
+	/** Откуда начался отскок и сколько длилось перемещение - для строки в LogClanhallCombat. */
+	FVector StartLocation = FVector::ZeroVector;
+	float TravelSeconds = 0.0f;
 };

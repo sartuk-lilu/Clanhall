@@ -1,4 +1,5 @@
 #include "GA_Dodge.h"
+#include "Debug/ClanhallDebugMessage.h"
 #include "AbilitySystem/ClanhallGameplayTags.h"
 #include "AbilitySystem/ClanhallDamage.h"
 #include "AbilitySystem/WeaponData.h"
@@ -56,7 +57,13 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 	const AClanhallHumanoidBase* Humanoid = Cast<AClanhallHumanoidBase>(Character);
 	const UWeaponTypeData* WeaponType = Humanoid ? Humanoid->GetWeaponType() : nullptr;
 	const float Distance = WeaponType ? WeaponType->DodgeDistance : ClanhallWeaponDefaults::DodgeDistance;
-	const float DurationSeconds = ClanhallBeats::ToSeconds(WeaponType ? WeaponType->DodgeBeats : ClanhallWeaponDefaults::DodgeBeats);
+	// Перемещение резкое, цена - полная длина: после перемещения до её конца висит хвост
+	// (State.EvadeRecovery). Одно поле на оба смысла давало отскок медленнее шага.
+	const float TotalSeconds = ClanhallBeats::ToSeconds(WeaponType ? WeaponType->DodgeBeats : ClanhallWeaponDefaults::DodgeBeats);
+	const float DurationSeconds = FMath::Min(ClanhallBeats::ToSeconds(WeaponType ? WeaponType->DodgeTravelBeats : ClanhallWeaponDefaults::DodgeTravelBeats), TotalSeconds);
+	RecoverySeconds = FMath::Max(TotalSeconds - DurationSeconds, 0.0f);
+	TravelSeconds = DurationSeconds;
+	StartLocation = Character->GetActorLocation();
 	TouchDamage = WeaponType ? WeaponType->DodgeTouchDamage : 0.0f;
 
 	// Направление берётся от корпуса, а не от камеры и не от вектора ввода (`CombatSystem.md`):
@@ -156,14 +163,23 @@ void UGA_Dodge::OnDodgeFinished()
 	UAnimInstance* AnimInst = (Character && Character->GetMesh()) ? Character->GetMesh()->GetAnimInstance() : nullptr;
 	UAbilitySystemComponent* ASC = CurrentActorInfo ? CurrentActorInfo->AbilitySystemComponent.Get() : nullptr;
 
-	// Монтаж хвоста не стартовал - лок не продлеваем: невидимого лока в системе не бывает.
-	if (AnimInst && EvadeRecoveryMontage && ASC)
+	if (Character)
 	{
-		const float PlayedDuration = AnimInst->Montage_Play(EvadeRecoveryMontage);
-		if (PlayedDuration > 0.0f)
+		ClanhallDebug::Screen(FColor::Silver, FString::Printf(TEXT("dodge: %.0f cm in %.2f s, recovery %.2f s"),
+			FVector::Dist2D(StartLocation, Character->GetActorLocation()), TravelSeconds, RecoverySeconds));
+	}
+
+	// Хвост - остаток полной длины отскока. Монтаж хвоста подгоняется под него play rate'ом, лок
+	// равен длине анимации; монтажа нет - лок держится тем же параметром (механика работает без
+	// анимационных ассетов, `Invariants.md`).
+	if (ASC && RecoverySeconds > 0.0f)
+	{
+		if (AnimInst && EvadeRecoveryMontage)
 		{
-			ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_EvadeRecovery.GetTag(), EvadeRecoveryMontage->GetPlayLength());
+			const float ClipLength = EvadeRecoveryMontage->GetPlayLength();
+			AnimInst->Montage_Play(EvadeRecoveryMontage, ClipLength > 0.0f ? ClipLength / RecoverySeconds : 1.0f);
 		}
+		ClanhallGameplayEffects::ApplyTimedTag(ASC, ClanhallGameplayTags::State_EvadeRecovery.GetTag(), RecoverySeconds);
 	}
 
 	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);

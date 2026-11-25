@@ -21,6 +21,7 @@ namespace ClanhallWeaponDefaults
 	constexpr float WeaponSpeedMultiplier = 1.0f;
 	constexpr float DodgeDistance = 250.0f;
 	constexpr float DodgeBeats = 1.0f;
+	constexpr float DodgeTravelBeats = 0.5f;
 	constexpr float SkillTurnRate = 180.0f;
 }
 
@@ -64,9 +65,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge", meta = (ClampMin = "0.0"))
 	float DodgeDistance = ClanhallWeaponDefaults::DodgeDistance;
 
-	/** Длина отскока в долях - его цена: пока идёт, новые действия закрыты. Плейсхолдер. */
+	/** Полная длина отскока в долях - его цена: перемещение плюс хвост, пока всё это идёт, новые
+	 *  действия закрыты. Тяжёлое оружие - длиннее. Плейсхолдер. */
 	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge", meta = (ClampMin = "0.25"))
 	float DodgeBeats = ClanhallWeaponDefaults::DodgeBeats;
+
+	/** Время самого перемещения в долях - отскок резкий, цена лежит в хвосте после него. Больше
+	 *  DodgeBeats не бывает: перемещение - часть полной длины. Плейсхолдер. */
+	UPROPERTY(EditAnywhere, Category = "WeaponType|Dodge", meta = (ClampMin = "0.1"))
+	float DodgeTravelBeats = ClanhallWeaponDefaults::DodgeTravelBeats;
 
 	/** Урон отклика по касанию (Hitbox-нотифай на монтаже отскока) - просто удар, без меток.
 	 *  0 - отклика нет. */

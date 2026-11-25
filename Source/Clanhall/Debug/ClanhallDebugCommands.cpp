@@ -55,6 +55,7 @@ enum class EDebugMsgKey : int32
 	PlayerUseSkill,
 	PlayerSelectWeapon,
 	PlayerHoldLayer,
+	PlayerDodge,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -794,6 +795,26 @@ static FAutoConsoleCommandWithWorldAndArgs CVarPlayerHoldLayer(
 			: Args[0].Equals(TEXT("Mouth"), ESearchCase::IgnoreCase) ? EClanhallInputLayer::Mouth : EClanhallInputLayer::None;
 		Player->DebugHoldInputLayer(Layer);
 		PrintResult(Key, FString::Printf(TEXT("[Player] input layer: %s"), *UEnum::GetValueAsString(Player->GetInputLayer())), FColor::Green);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerDodge(
+	TEXT("Clanhall.Player.Dodge"),
+	TEXT("Dodge in a direction relative to the body, as Space + direction. Usage: Clanhall.Player.Dodge <Forward|Back|Left|Right>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		const EDebugMsgKey Key = EDebugMsgKey::PlayerDodge;
+		AClanhallCharacter* Player = Cast<AClanhallCharacter>(ResolvePlayerPawn(World, Key));
+		if (!Player || Args.Num() < 1)
+		{
+			PrintError(Key, TEXT("Usage: Clanhall.Player.Dodge <Forward|Back|Left|Right>"));
+			return;
+		}
+		const FString& D = Args[0];
+		const EClanhallEvadeDirection Direction = D.Equals(TEXT("Back"), ESearchCase::IgnoreCase) ? EClanhallEvadeDirection::Back
+			: D.Equals(TEXT("Left"), ESearchCase::IgnoreCase) ? EClanhallEvadeDirection::Left
+			: D.Equals(TEXT("Right"), ESearchCase::IgnoreCase) ? EClanhallEvadeDirection::Right : EClanhallEvadeDirection::Forward;
+		Player->TriggerEvade(Direction);
+		PrintResult(Key, FString::Printf(TEXT("[Player] dodge %s"), *D), FColor::Green);
 	}));
 
 #endif // !UE_BUILD_SHIPPING
