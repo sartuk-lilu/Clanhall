@@ -25,7 +25,7 @@ public class Clanhall : ModuleRules
 			"DeveloperSettings"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "AssetRegistry" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "AssetRegistry", "SlateCore" });
 
 		PublicIncludePaths.AddRange(new string[] {
 			"Clanhall",
