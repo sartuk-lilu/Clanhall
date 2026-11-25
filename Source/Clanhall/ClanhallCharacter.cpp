@@ -19,6 +19,7 @@
 #include "AbilitySystem/Abilities/GA_Duck.h"
 #include "AbilitySystem/ClanhallTargetingComponent.h"
 #include "AbilitySystem/ClanhallBossSensorComponent.h"
+#include "Camera/ClanhallCameraRigComponent.h"
 #include "ClanhallCombatSettings.h"
 #include "UI/ClanhallUILibrary.h"
 #include "Debug/ClanhallDebugMessage.h"
@@ -67,6 +68,9 @@ AClanhallCharacter::AClanhallCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+
+	// Кадр камеры (плечо, прицеливание, зум) водит компонент поверх штанги.
+	CameraRig = CreateDefaultSubobject<UClanhallCameraRigComponent>(TEXT("CameraRig"));
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
@@ -154,6 +158,11 @@ void AClanhallCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AClanhallCharacter::Look);
+
+		if (CameraZoomAction)
+		{
+			EnhancedInputComponent->BindAction(CameraZoomAction.Get(), ETriggerEvent::Triggered, this, &AClanhallCharacter::OnCameraZoom);
+		}
 
 		// Клавиши слотов - одни и те же для приёмов и слогов, смысл решает слой. W A S D в том же
 		// контексте ещё и движение: обе привязки срабатывают, Move сам молчит под слоем. Один
@@ -555,7 +564,20 @@ void AClanhallCharacter::HandleInputLayerChange(EClanhallInputLayer Before)
 	{
 		CurrentMoveInput = FVector2D::ZeroVector;
 	}
+	// Под любой кнопкой мыши камера уходит в кадр прицеливания - открыть противника.
+	if (CameraRig)
+	{
+		CameraRig->SetAiming(Now != EClanhallInputLayer::None);
+	}
 	OnInputLayerChanged.Broadcast(Now);
+}
+
+void AClanhallCharacter::OnCameraZoom(const FInputActionValue& Value)
+{
+	if (CameraRig)
+	{
+		CameraRig->AddZoomInput(Value.Get<float>());
+	}
 }
 
 void AClanhallCharacter::DebugHoldInputLayer(EClanhallInputLayer Layer)

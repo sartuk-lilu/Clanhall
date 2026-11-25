@@ -13,6 +13,7 @@
 #include "ClanhallCombatTypes.h"
 #include "ClanhallHumanoidBase.h"
 #include "ClanhallCharacter.h"
+#include "Camera/ClanhallCameraRigComponent.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -56,6 +57,7 @@ enum class EDebugMsgKey : int32
 	PlayerSelectWeapon,
 	PlayerHoldLayer,
 	PlayerDodge,
+	PlayerCameraZoom,
 };
 
 static const TMap<FName, FGameplayAttribute>& GetDebugAttributeMap()
@@ -815,6 +817,24 @@ static FAutoConsoleCommandWithWorldAndArgs CVarPlayerDodge(
 			: D.Equals(TEXT("Right"), ESearchCase::IgnoreCase) ? EClanhallEvadeDirection::Right : EClanhallEvadeDirection::Forward;
 		Player->TriggerEvade(Direction);
 		PrintResult(Key, FString::Printf(TEXT("[Player] dodge %s"), *D), FColor::Green);
+	}));
+
+static FAutoConsoleCommandWithWorldAndArgs CVarPlayerCameraZoom(
+	TEXT("Clanhall.Player.CameraZoom"),
+	TEXT("Turn the mouse wheel by N notches: positive - closer. Usage: Clanhall.Player.CameraZoom <Notches>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		const EDebugMsgKey Key = EDebugMsgKey::PlayerCameraZoom;
+		const APawn* Player = ResolvePlayerPawn(World, Key);
+		UClanhallCameraRigComponent* Rig = Player ? Player->FindComponentByClass<UClanhallCameraRigComponent>() : nullptr;
+		if (!Rig || Args.Num() < 1)
+		{
+			PrintError(Key, TEXT("Usage: Clanhall.Player.CameraZoom <Notches> (needs UClanhallCameraRigComponent on the player)"));
+			return;
+		}
+		const float Notches = FCString::Atof(*Args[0]);
+		Rig->AddZoomInput(Notches);
+		PrintResult(Key, FString::Printf(TEXT("[Player] camera zoom %+.1f notches"), Notches), FColor::Green);
 	}));
 
 #endif // !UE_BUILD_SHIPPING

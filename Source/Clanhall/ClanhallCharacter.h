@@ -11,6 +11,7 @@
 
 class USpringArmComponent;
 class UCameraComponent;
+class UClanhallCameraRigComponent;
 class UInputAction;
 struct FInputActionValue;
 class UClanhallTargetingComponent;
@@ -83,6 +84,11 @@ class AClanhallCharacter : public AClanhallHumanoidBase
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 
+	/** Камера из-за плеча: обычный кадр, прицеливание под кнопкой мыши, зум колесом. Параметры
+	 *  кадра - в Details этого компонента (`Implementation/Camera.md`). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UClanhallCameraRigComponent> CameraRig;
+
 protected:
 
 	/** Move Input Action */
@@ -96,6 +102,12 @@ protected:
 	/** Mouse Look Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
+
+	/** Колесо мыши (Axis1D) - зум камеры. */
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<UInputAction> CameraZoomAction;
+
+	void OnCameraZoom(const FInputActionValue& Value);
 
 	// --- Ввод удержанием кнопки мыши (`Controls.md`, «Ввод») ---
 
