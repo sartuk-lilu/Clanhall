@@ -28,16 +28,20 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Clanhall|HUD")
 	bool bHideEmptyBars = true;
 
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UClanhallAttributeBarWidget> WBP_AP_Bar;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UClanhallAttributeBarWidget> WBP_HP_Bar;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UClanhallAttributeBarWidget> WBP_MP_Bar;
+	/** Полоски находятся по имени в вёрстке (WBP_AP_Bar, WBP_HP_Bar, WBP_MP_Bar), а не через
+	 *  BindWidget: одноимённое поле родителя другого типа ломает старые графы наследника. */
+	virtual void NativeOnInitialized() override;
 
 private:
+	UPROPERTY(Transient)
+	TObjectPtr<UClanhallAttributeBarWidget> APBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UClanhallAttributeBarWidget> HPBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UClanhallAttributeBarWidget> MPBar;
+
 	TWeakObjectPtr<AActor> FighterActor;
 
 	void UpdateBarVisibility();

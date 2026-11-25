@@ -8,6 +8,14 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 
+void UClanhallHUDWidget::NativeOnInitialized()
+{
+	Super::NativeOnInitialized();
+	PlayerFrame = Cast<UClanhallFighterFrameWidget>(GetWidgetFromName(TEXT("WBP_PlayerFrame")));
+	BossFrames = Cast<UClanhallBossFrameContainerWidget>(GetWidgetFromName(TEXT("WBP_BossFrameContainer")));
+	Crosshair = GetWidgetFromName(TEXT("WBP_Crosshair"));
+}
+
 void UClanhallHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -38,13 +46,13 @@ void UClanhallHUDWidget::SetPlayerCharacter(AClanhallCharacter* InCharacter)
 	}
 	PlayerCharacter = InCharacter;
 
-	if (WBP_PlayerFrame)
+	if (PlayerFrame)
 	{
-		WBP_PlayerFrame->SetFighter(InCharacter);
+		PlayerFrame->SetFighter(InCharacter);
 	}
-	if (WBP_BossFrameContainer)
+	if (BossFrames)
 	{
-		WBP_BossFrameContainer->SetSensor(InCharacter ? InCharacter->FindComponentByClass<UClanhallBossSensorComponent>() : nullptr);
+		BossFrames->SetSensor(InCharacter ? InCharacter->FindComponentByClass<UClanhallBossSensorComponent>() : nullptr);
 	}
 	if (InCharacter)
 	{
@@ -55,9 +63,9 @@ void UClanhallHUDWidget::SetPlayerCharacter(AClanhallCharacter* InCharacter)
 
 void UClanhallHUDWidget::HandleInputLayerChanged(EClanhallInputLayer Layer)
 {
-	if (WBP_Crosshair)
+	if (Crosshair)
 	{
-		WBP_Crosshair->SetVisibility(Layer == EClanhallInputLayer::Body ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		Crosshair->SetVisibility(Layer == EClanhallInputLayer::Body ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 
@@ -68,13 +76,13 @@ void UClanhallHUDWidget::HandleInputLayerChanged(EClanhallInputLayer Layer)
 TArray<UWidget*> UClanhallHUDWidget::GetDraggableFrames() const
 {
 	TArray<UWidget*> Frames;
-	if (WBP_PlayerFrame)
+	if (PlayerFrame)
 	{
-		Frames.Add(WBP_PlayerFrame);
+		Frames.Add(PlayerFrame);
 	}
-	if (WBP_BossFrameContainer)
+	if (BossFrames)
 	{
-		Frames.Add(WBP_BossFrameContainer);
+		Frames.Add(BossFrames);
 	}
 	return Frames;
 }
@@ -135,11 +143,11 @@ void UClanhallHUDWidget::ApplySavedLayout()
 	{
 		return;
 	}
-	if (UCanvasPanelSlot* PlayerSlot = WBP_PlayerFrame ? UWidgetLayoutLibrary::SlotAsCanvasSlot(WBP_PlayerFrame) : nullptr)
+	if (UCanvasPanelSlot* PlayerSlot = PlayerFrame ? UWidgetLayoutLibrary::SlotAsCanvasSlot(PlayerFrame) : nullptr)
 	{
 		PlayerSlot->SetPosition(PlayerPosition);
 	}
-	if (UCanvasPanelSlot* BossSlot = WBP_BossFrameContainer ? UWidgetLayoutLibrary::SlotAsCanvasSlot(WBP_BossFrameContainer) : nullptr)
+	if (UCanvasPanelSlot* BossSlot = BossFrames ? UWidgetLayoutLibrary::SlotAsCanvasSlot(BossFrames) : nullptr)
 	{
 		BossSlot->SetPosition(BossPosition);
 	}
@@ -147,8 +155,8 @@ void UClanhallHUDWidget::ApplySavedLayout()
 
 void UClanhallHUDWidget::SaveLayout() const
 {
-	const UCanvasPanelSlot* PlayerSlot = WBP_PlayerFrame ? UWidgetLayoutLibrary::SlotAsCanvasSlot(WBP_PlayerFrame) : nullptr;
-	const UCanvasPanelSlot* BossSlot = WBP_BossFrameContainer ? UWidgetLayoutLibrary::SlotAsCanvasSlot(WBP_BossFrameContainer) : nullptr;
+	const UCanvasPanelSlot* PlayerSlot = PlayerFrame ? UWidgetLayoutLibrary::SlotAsCanvasSlot(PlayerFrame) : nullptr;
+	const UCanvasPanelSlot* BossSlot = BossFrames ? UWidgetLayoutLibrary::SlotAsCanvasSlot(BossFrames) : nullptr;
 	if (PlayerSlot && BossSlot)
 	{
 		UClanhallUILibrary::SaveHUDLayout(PlayerSlot->GetPosition(), BossSlot->GetPosition());

@@ -25,7 +25,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Clanhall|HUD")
 	TSubclassOf<UClanhallFighterFrameWidget> EnemyFrameClass;
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|HUD", meta = (BindWidget))
 	TObjectPtr<UVerticalBox> FramesBox;
 
 	virtual void NativeDestruct() override;

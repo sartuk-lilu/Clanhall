@@ -29,19 +29,13 @@ public:
 	void SetPlayerCharacter(AClanhallCharacter* InCharacter);
 
 protected:
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|HUD", meta = (BindWidget))
 	TObjectPtr<UCanvasPanel> HudCanvas;
 
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UClanhallFighterFrameWidget> WBP_PlayerFrame;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UClanhallBossFrameContainerWidget> WBP_BossFrameContainer;
-
-	/** Прицел - только дизайн; видимость задаёт HUD. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UUserWidget> WBP_Crosshair;
-
+	/** Дочерние элементы находятся по имени в вёрстке (WBP_PlayerFrame, WBP_BossFrameContainer,
+	 *  WBP_Crosshair), а не через BindWidget: одноимённое поле родителя другого типа ломает старые
+	 *  графы наследника. */
+	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
@@ -50,6 +44,16 @@ protected:
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 private:
+	UPROPERTY(Transient)
+	TObjectPtr<UClanhallFighterFrameWidget> PlayerFrame;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UClanhallBossFrameContainerWidget> BossFrames;
+
+	/** Прицел - только дизайн; видимость задаёт HUD. */
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> Crosshair;
+
 	TWeakObjectPtr<AClanhallCharacter> PlayerCharacter;
 
 	/** Рамка, которую тащат сейчас, и смещение курсора от её угла. */

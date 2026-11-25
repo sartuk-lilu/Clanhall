@@ -33,10 +33,10 @@ public:
 	FLinearColor BarFillColor = FLinearColor::White;
 
 protected:
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|HUD", meta = (BindWidget))
 	TObjectPtr<UProgressBar> Bar;
 
-	UPROPERTY(meta = (BindWidgetOptional))
+	UPROPERTY(BlueprintReadOnly, Category = "Clanhall|HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> ValueText;
 
 	virtual void NativePreConstruct() override;

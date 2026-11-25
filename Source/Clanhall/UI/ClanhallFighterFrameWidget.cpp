@@ -6,6 +6,14 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 
+void UClanhallFighterFrameWidget::NativeOnInitialized()
+{
+	Super::NativeOnInitialized();
+	APBar = Cast<UClanhallAttributeBarWidget>(GetWidgetFromName(TEXT("WBP_AP_Bar")));
+	HPBar = Cast<UClanhallAttributeBarWidget>(GetWidgetFromName(TEXT("WBP_HP_Bar")));
+	MPBar = Cast<UClanhallAttributeBarWidget>(GetWidgetFromName(TEXT("WBP_MP_Bar")));
+}
+
 void UClanhallFighterFrameWidget::SetFighter(AActor* Fighter)
 {
 	FighterActor = Fighter;
@@ -13,17 +21,17 @@ void UClanhallFighterFrameWidget::SetFighter(AActor* Fighter)
 	UAbilitySystemComponent* ASC = ASI ? ASI->GetAbilitySystemComponent() : nullptr;
 
 	// Какую пару атрибутов показывает полоска, решает её место на рамке, а не настройка экземпляра.
-	if (WBP_AP_Bar)
+	if (APBar)
 	{
-		WBP_AP_Bar->SetAttributeSource(ASC, UClanhallAttributeSet::GetAPAttribute(), UClanhallAttributeSet::GetMaxAPAttribute());
+		APBar->SetAttributeSource(ASC, UClanhallAttributeSet::GetAPAttribute(), UClanhallAttributeSet::GetMaxAPAttribute());
 	}
-	if (WBP_HP_Bar)
+	if (HPBar)
 	{
-		WBP_HP_Bar->SetAttributeSource(ASC, UClanhallAttributeSet::GetHPAttribute(), UClanhallAttributeSet::GetMaxHPAttribute());
+		HPBar->SetAttributeSource(ASC, UClanhallAttributeSet::GetHPAttribute(), UClanhallAttributeSet::GetMaxHPAttribute());
 	}
-	if (WBP_MP_Bar)
+	if (MPBar)
 	{
-		WBP_MP_Bar->SetAttributeSource(ASC, UClanhallAttributeSet::GetMPAttribute(), UClanhallAttributeSet::GetMaxMPAttribute());
+		MPBar->SetAttributeSource(ASC, UClanhallAttributeSet::GetMPAttribute(), UClanhallAttributeSet::GetMaxMPAttribute());
 	}
 
 	UpdateBarVisibility();
@@ -40,7 +48,7 @@ void UClanhallFighterFrameWidget::UpdateBarVisibility()
 	{
 		return;
 	}
-	for (UClanhallAttributeBarWidget* BarWidget : { WBP_AP_Bar.Get(), WBP_MP_Bar.Get() })
+	for (UClanhallAttributeBarWidget* BarWidget : { APBar.Get(), MPBar.Get() })
 	{
 		if (BarWidget)
 		{
